@@ -1,0 +1,3 @@
+(l a. l b. l s. l z. a b s z) (l s. l z. s (s (s z))) (l s. l z. s (s (s z)));
+
+(((((l a. a)))))
