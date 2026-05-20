@@ -20,4 +20,5 @@ all: \
 	cpp-classic/Skeleton.C \
 	cpp-classic/Skeleton.H \
 	cpp-classic/Test.C \
+	cpp-classic/LCTest \
 	| cpp-classic
