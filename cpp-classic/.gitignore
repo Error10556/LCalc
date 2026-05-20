@@ -1,0 +1,14 @@
+/Absyn.C
+/Absyn.H
+/Buffer.C
+/Buffer.H
+/grammar.l
+/grammar.y
+/ParserError.H
+/Parser.H
+/Printer.C
+/Printer.H
+/Skeleton.C
+/Skeleton.H
+/Test.C
+/*.o
