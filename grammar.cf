@@ -7,3 +7,6 @@ Application. Expr1 ::= Expr1 Expr2;
 Variable. Expr2 ::= Ident;
 
 entrypoints Program, Expr;
+
+comment "//";
+comment "/*" "*/"
