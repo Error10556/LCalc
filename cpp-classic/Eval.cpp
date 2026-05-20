@@ -249,6 +249,12 @@ int main(int argc, char** argv) {
         cerr << "Entering " << file << endl;
         LC::AProgram* prog = static_cast<LC::AProgram*>(LC::pProgram(f));
         for (auto& expr : *prog->listexpr_) {
+            usedNames.clear();
+            {
+                VCheckNames check;
+                expr->accept(&check);
+                if (check.Error) continue;
+            }
             expr->accept(&eval);
             expr = eval.Result;
             eval.Result = nullptr;
