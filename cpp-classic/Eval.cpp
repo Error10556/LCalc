@@ -113,6 +113,7 @@ public:
 };
 
 // Consumes arguments; duplicates `into`
+// `into` must be closed
 class VSubstitute : public LC::Visitor {
     string what;
     LC::Expr* into;
@@ -134,27 +135,22 @@ public:
     void visitAProgram(LC::AProgram* p) override {}
 
     void visitAbstraction(LC::Abstraction* p) override {
+        if (p->ident_ == what) {
+            Result = p;
+            return;
+        }
+        // 'into' is a closed term
+        p->expr_->accept(this);
+        p->expr_ = Result;
         Result = p;
-        if (p->ident_ == what) return;
-        LC::Expr* newInto = into->clone();
-        {
-            VRename renamer(p->ident_);
-            newInto->accept(&renamer);
-        }
-        {
-            VSubstitute subst(what, newInto);
-            p->expr_->accept(&subst);
-            p->expr_ = subst.Result;
-        }
-        delete newInto;
     }
 
     void visitApplication(LC::Application* p) override {
-        Result = p;
         p->expr_1->accept(this);
         p->expr_1 = Result;
         p->expr_2->accept(this);
         p->expr_2 = Result;
+        Result = p;
     }
 
     void visitVariable(LC::Variable* p) override {
@@ -197,11 +193,15 @@ public:
         LC::Expr* arg = Result;
         Result = p->expr_2 = nullptr;
         delete p;
-        VSubstitute subst(func->ident_, arg);
-        func->expr_->accept(&subst);
-        Result = subst.Result;
+        LC::Expr* applied;
+        {
+            VSubstitute subst(func->ident_, arg);
+            func->expr_->accept(&subst);
+            applied = subst.Result;
+        }
         func->expr_ = nullptr;
         delete func;
+        applied->accept(this);
     }
 
     void visitVariable(LC::Variable* p) override {
