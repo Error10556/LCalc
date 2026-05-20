@@ -4,7 +4,9 @@ cpp-classic/Absyn.C cpp-classic/Absyn.H cpp-classic/Buffer.C cpp-classic/Buffer.
 cpp-classic/lex.LC.c: cpp-classic/grammar.l | cpp-classic
 	cd cpp-classic && flex grammar.l
 
-cpp-classic/
+cpp-classic/Bison.H cpp-classic/grammar.tab.c &: cpp-classic/grammar.y \
+	| cpp-classic
+	cd cpp-classic && bison grammar.y
 
 cpp-classic:
 	mkdir cpp-classic

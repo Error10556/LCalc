@@ -12,4 +12,6 @@
 /Skeleton.H
 /Test.C
 /lex.LC.c
+/Bison.H
+/grammar.tab.c
 /*.o
