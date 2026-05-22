@@ -1,5 +1,4 @@
 /*.o
-/Absyn.cpp
 /grammar.lex.cpp
 /grammar.tab.cpp
 /grammar.tab.hpp
