@@ -1,0 +1,48 @@
+%require "3.2"
+%language "c++"
+%define api.value.type variant
+%define api.token.constructor
+%define api.parser.class {Parser}
+%define api.namespace "LC"
+
+%token KW_l;
+%token LPAREN;
+%token RPAREN;
+%token DOT;
+%token SEMI;
+%token <std::string> IDENT;
+
+%code requires {
+    #include <algorithm>
+    #include "Absyn.hpp"
+}
+
+%nterm <Program> Program0
+%nterm <Expr> Expr0
+%nterm <Expr> Expr1
+%nterm <Expr> Expr2
+%nterm <ListExpr> ListExpr
+
+%%
+
+Program0
+    : /* AProgram */ ListExpr { std::reverse($1.begin(), $1.end()); $$.emplace<AProgram>(std::move($1)); }
+    ;
+
+ListExpr
+    : /* [] */ { }
+    | /* (:[]) */ Expr0 { $$.push_back(std::move($1)); }
+    | /* (:) */ Expr0 SEMI ListExpr { $$.push_back(std::move($1)); }
+    ;
+
+Expr0
+    : /* Abstraction */ KW_l IDENT DOT Expr0 { $$.emplace<Abstraction>(std::move($2), std::move($4)); }
+    ;
+
+Expr1
+    : /* Application */ Expr1 Expr2 { $$.emplace<Application>(std::move($1), std::move($2)); }
+    ;
+
+Expr2
+    : /* Variable */ IDENT { $$.emplace<Variable>(std::move($1)); }
+    ;
