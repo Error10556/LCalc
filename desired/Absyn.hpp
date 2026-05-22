@@ -18,6 +18,7 @@ using ListExpr = std::vector<Expr>;
 
 class AProgram {
 public:
+    AProgram() = default;
     AProgram(const AProgram&);
     AProgram(AProgram&&) = default;
     AProgram& operator=(const AProgram&);
@@ -28,6 +29,7 @@ public:
 
 class Abstraction {
 public:
+    Abstraction() = default;
     Abstraction(const Abstraction&);
     Abstraction(Abstraction&&) = default;
     Abstraction& operator=(const Abstraction&);
@@ -39,16 +41,18 @@ public:
 
 class Application {
 public:
+    Application() = default;
     Application(const Application&);
     Application(Application&&) = default;
     Application& operator=(const Application&);
     Application& operator=(Application&&) = default;
     Application(Expr&&, Expr&&);
-    std::unique_ptr<Expr> expr_1, expr_2;
+    std::unique_ptr<Expr> Expr_1, Expr_2;
 };
 
 class Variable {
 public:
+    Variable() = default;
     Variable(const Variable&);
     Variable(Variable&&) = default;
     Variable& operator=(const Variable&);

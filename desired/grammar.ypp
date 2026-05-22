@@ -3,7 +3,10 @@
 %define api.value.type variant
 %define api.token.constructor
 %define api.parser.class {Parser}
-%define api.namespace "LC"
+%define api.namespace {LC}
+%lex-param {yyscan_t scanner}
+%parse-param {yyscan_t scanner}
+%header "grammar.tab.hpp"
 
 %token KW_l;
 %token LPAREN;
@@ -14,7 +17,11 @@
 
 %code requires {
     #include <algorithm>
+    #include <iostream>
+    #include <string_view>
     #include "Absyn.hpp"
+
+    using yyscan_t = void*;
 }
 
 %nterm <Program> Program0
@@ -22,6 +29,16 @@
 %nterm <Expr> Expr1
 %nterm <Expr> Expr2
 %nterm <ListExpr> ListExpr
+
+%code {
+    extern LC::Parser::symbol_type LClex(yyscan_t scanner);
+
+    namespace LC {
+        Parser::symbol_type yylex(yyscan_t scanner) {
+            return LClex(scanner);
+        }
+    }
+}
 
 %%
 
@@ -37,12 +54,24 @@ ListExpr
 
 Expr0
     : /* Abstraction */ KW_l IDENT DOT Expr0 { $$.emplace<Abstraction>(std::move($2), std::move($4)); }
+    | /* _ */ Expr1 { $$ = std::move($1); }
     ;
 
 Expr1
     : /* Application */ Expr1 Expr2 { $$.emplace<Application>(std::move($1), std::move($2)); }
+    | /* _ */ Expr2 { $$ = std::move($1); }
     ;
 
 Expr2
     : /* Variable */ IDENT { $$.emplace<Variable>(std::move($1)); }
+    | /* _ */ LPAREN Expr0 RPAREN { $$ = std::move($2); }
     ;
+
+%%
+
+extern yyscan_t LCNewScanner(FILE* file);
+extern yyscan_t LCNewScanner(std::string_view str);
+
+void LC::Parser::error(const std::string& msg) {
+    std::cerr << "ERROR while parsing: " << msg << std::endl;
+}

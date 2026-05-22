@@ -1,15 +1,14 @@
 %option warn nodefault
-%option 8bit reentrant bison-bridge
+%option 8bit reentrant
 %option noyywrap
 %option prefix="LC"
-%option outfile="LCLex.cpp"
-%option 
+%option outfile="grammar.lex.cpp"
 
 %{
 /* Compile grammar.l with:
  * $ flex grammar.l
- * Compile LC-lex.c with:
- * $ c++ -std=c++17 LC-lex.cpp -c -o LC-lex.o
+ * Compile LCLex.cpp with:
+ * $ c++ -std=c++17 LCLex.cpp -c -o LCLex.o
  */
 #include <variant>
 #include <string>
@@ -18,13 +17,13 @@
 #include "grammar.tab.hpp"
 
 // to parse values
-using LexExtra = std::variant<std::string, double, int>;
+using LCLexExtra = std::variant<std::string, double, int>;
 
-#define LC_DECL Parser::symbol_type LClex();
+#define YY_DECL LC::Parser::symbol_type LClex(yyscan_t yyscanner)
 
 %}
 
-%option extra-type="LexExtra"
+%option extra-type="LCLexExtra"
 
 %s COMMENT
 
@@ -36,41 +35,40 @@ IDENT [a-zA-Z0-9'_]
 
 %%
 
-<INITIAL>/\* BEGIN(COMMENT);
+<INITIAL>"/*" BEGIN(COMMENT);
 <COMMENT>[^*]+ ;
-<COMMENT>\*/ BEGIN(INITIAL);
-<INITIAL>//.* ;
+<COMMENT>"*/" BEGIN(INITIAL);
+<INITIAL>"//".* ;
 
-<INITIAL>{LETTER}{IDENT}* return LC::Parser::make_IDENT(LCtext);
 <INITIAL>"l" return LC::Parser::make_KW_l();
+<INITIAL>{LETTER}{IDENT}* return LC::Parser::make_IDENT(yytext);
 <INITIAL>"(" return LC::Parser::make_LPAREN();
 <INITIAL>")" return LC::Parser::make_RPAREN();
 <INITIAL>"." return LC::Parser::make_DOT();
 <INITIAL>";" return LC::Parser::make_SEMI();
-<INITIAL><<EOF>> return LC::Parser::make_EOF();
+<INITIAL><<EOF>> return LC::Parser::make_YYEOF();
 <INITIAL>[[:space:]] ;
 
-. return LC::Parser::make_
+. return LC::Parser::make_YYerror();
 
 %%
 
-static LCscan_t LCNewScanner() {
-    LCscan_t scanner;
-    int err = LClex_init_extra(LexExtra(), &scanner);
+static yyscan_t LCNewScanner() {
+    yyscan_t scanner;
+    int err = LClex_init_extra(LCLexExtra(), &scanner);
     if (err) throw std::system_error(err, std::generic_category(),
         "Cannot create LC scanner");
     return scanner;
 }
 
-std::pair<LCscan_t LCNewScanner(FILE* file) {
-    LCscan_t scanner = LCNewScanner();
+yyscan_t LCNewScanner(FILE* file) {
+    yyscan_t scanner = LCNewScanner();
     LCrestart(file, scanner);
     return scanner;
 }
 
-LCscan_t LCNewScanner(std::string_view str) {
-    LCscan_t scanner = LCNewScanner();
-    LC_delete_buffer(LC_CURRENT_BUFFER);
-    LC_scan_bytes(str.data(), str.size());
+yyscan_t LCNewScanner(std::string_view str) {
+    yyscan_t scanner = LCNewScanner();
+    LC_scan_bytes(str.data(), str.size(), scanner);
     return scanner;
 }

@@ -51,3 +51,8 @@ cpp-classic/Eval: cpp-classic/Eval.o $(CLASSIC_GRAMMARHEADERS) \
 
 cpp-classic:
 	mkdir cpp-classic
+
+all: \
+	cpp-classic/LCTest \
+	cpp-classic/Eval \
+	| cpp-classic
