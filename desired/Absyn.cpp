@@ -3,6 +3,22 @@
 
 namespace LC {
 
+Ident::Ident(const std::string& s)
+    : String(s) {}
+
+Ident::Ident(std::string&& s)
+    : String(std::move(s)) {}
+
+Ident& Ident::operator=(const std::string& s) {
+    String = s;
+    return *this;
+}
+
+Ident& Ident::operator=(std::string&& s) {
+    String = std::move(s);
+    return *this;
+}
+
 AProgram::AProgram(const AProgram& other)
     : ListExpr_(other.ListExpr_) {}
 
