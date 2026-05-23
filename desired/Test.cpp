@@ -21,7 +21,10 @@ int main(int argc, char** argv) {
             files.push_back(arg);
             continue;
         }
-        if (arg[0] != '-') files.push_back(arg);
+        if (arg[0] != '-') {
+            files.push_back(arg);
+            continue;
+        }
         if (arg[1] == 0) {
             files.push_back(arg);
             continue;
@@ -75,6 +78,24 @@ Options:
 )%";
     }
     for (char* filename : files) {
-        // TODO
+        FILE* file; bool needclose = true;
+        if (strcmp(filename, "-") == 0)
+            file = stdin;
+        else {
+            file = fopen(filename, "r");
+            if (!file) {
+                cerr << "Cannot open file ";
+                perror(filename);
+                return 1;
+            }
+            needclose = true;
+        }
+        LC::ParseResult p = LC::ParseAnything(file);
+        if (!p)
+            cout << "Could not parse " << filename << '\n';
+        else
+            std::visit(LC::SyntaxPrinter(cout), *p);
+        cout << '\n';
+        if (needclose) fclose(file);
     }
 }

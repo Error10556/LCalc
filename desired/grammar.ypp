@@ -24,7 +24,9 @@
     #include "Absyn.hpp"
 
     using yyscan_t = void*;
-    using ParseResult = std::optional<std::variant<LC::Program, LC::Expr>>;
+    namespace LC {
+        using ParseResult = std::optional<std::variant<LC::Program, LC::Expr>>;
+    }
 }
 
 %nterm <Program> Program0
