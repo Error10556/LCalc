@@ -1,0 +1,204 @@
+#include <iostream>
+#include <map>
+#include <set>
+#include <string>
+#include <cstring>
+
+#include "Absyn.hpp"
+#include "grammar.tab.hpp"
+#include "PrettyPrinter.hpp"
+
+using namespace std;
+
+set<string> usedNames;
+
+bool isdigit(char ch) { return '0' <= ch && ch <= '9'; }
+
+void incrementNumberSuffix(string& name) {
+    int i = (int)name.size() - 1;
+    bool carry = true;
+    while (carry && i >= 0) {
+        if (!isdigit(name[i])) break;
+        if (name[i] == '9') {
+            name[i] = '0';
+            --i;
+            continue;
+        }
+        ++name[i];
+        carry = false;
+    }
+    if (carry) name.insert(name.begin() + (i + 1), '1');
+}
+
+string UniqueRename(string name) {
+    while (usedNames.count(name)) incrementNumberSuffix(name);
+    usedNames.insert(name);
+    return name;
+}
+
+bool verbose = false;
+
+class VCheckNames {
+    map<string, int> names;
+
+public:
+    bool Error = false;
+
+    void operator()(const LC::ListExpr& p) {
+        for (const LC::Expr& e : p) std::visit(*this, e);
+    }
+
+    void operator()(const LC::AProgram& p) { (*this)(p.ListExpr_); }
+
+    void operator()(const LC::Abstraction& p) {
+        names[p.Ident_.String]++;
+        usedNames.insert(p.Ident_.String);
+        std::visit(*this, *p.Expr_);
+        auto iter = names.find(p.Ident_.String);
+        if (--iter->second == 0) names.erase(iter);
+    }
+
+    void operator()(const LC::Application& p) {
+        std::visit(*this, *p.Expr_1);
+        std::visit(*this, *p.Expr_2);
+    }
+
+    void operator()(const LC::Variable& p) {
+        if (names.count(p.Ident_.String) == 0) {
+            Error = true;
+            cerr << "Variable " << p.Ident_.String << " undefined" << endl;
+        }
+    }
+};
+
+class VRename {
+    string what, into;
+
+public:
+    VRename(const std::string& what) : what(what), into(UniqueRename(what)) {}
+
+    void operator()(LC::ListExpr& p) const {
+        for (LC::Expr& e : p) std::visit(*this, e);
+    }
+
+    void operator()(LC::AProgram& p) const { (*this)(p.ListExpr_); }
+
+    void operator()(LC::Abstraction& p) const {
+        if (p.Ident_.String != what) std::visit(*this, *p.Expr_);
+    }
+
+    void operator()(LC::Application& p) const {
+        std::visit(*this, *p.Expr_1);
+        std::visit(*this, *p.Expr_2);
+    }
+
+    void operator()(LC::Variable& p) const {
+        if (p.Ident_.String == what) p.Ident_.String = into;
+    }
+};
+
+// `into` must be closed
+class VSubstitute {
+    string what;
+    LC::Expr into;
+
+public:
+    VSubstitute(const string& what, LC::Expr&& into)
+        : what(what), into(std::move(into)) {}
+    VSubstitute(const string& what, const LC::Expr& into)
+        : what(what), into(into) {}
+
+    LC::Expr operator()(LC::Abstraction&& p) const {
+        if (p.Ident_.String == what) {
+            return std::move(p);
+        }
+        // 'into' is a closed term
+        *p.Expr_ = std::visit(*this, std::move(*p.Expr_));
+        return std::move(p);
+    }
+
+    LC::Expr operator()(LC::Application&& p) const {
+        *p.Expr_1 = std::visit(*this, std::move(*p.Expr_1));
+        *p.Expr_2 = std::visit(*this, std::move(*p.Expr_2));
+        return p;
+    }
+
+    LC::Expr operator()(LC::Variable&& p) const {
+        if (p.Ident_.String != what)
+            return p;
+        return into;
+    }
+};
+
+class VEvaluate {
+public:
+    LC::Expr operator()(LC::Abstraction&& p) const { return p; }
+
+    LC::Expr operator()(LC::Application&& p) const {
+        LC::Expr _func = std::visit(*this, std::move(*p.Expr_1));
+        LC::Abstraction& func = std::get<LC::Abstraction>(_func);
+        LC::Expr arg = std::visit(*this, std::move(*p.Expr_2));
+        return std::visit(
+            *this, std::visit(VSubstitute(func.Ident_.String, std::move(arg)),
+                              std::move(*func.Expr_)));
+    }
+
+    LC::Expr operator()(LC::Variable&& p) const {
+        return p;
+    }
+};
+
+int main(int argc, char** argv) {
+    if (argc == 0) return 1;
+    vector<char*> files;
+    bool needhelp = false;
+    for (int i = 1; i < argc; i++) {
+        if (argv[i][0] == 0) continue;
+        if (argv[i][0] != '-') {
+            files.push_back(argv[i]);
+            continue;
+        }
+        if (!strcmp(argv[i] + 1, "h") || !strcmp(argv[i] + 1, "help"))
+            needhelp = true;
+        else {
+            cerr << "Unrecognized option: " << argv[i] << endl;
+            return 1;
+        }
+    }
+    if (needhelp) {
+        cerr << "Usage: " << argv[0] << " [-v|-verbose] [-h|-help] files...\n"
+             << endl;
+    }
+    if (files.empty() && !needhelp) {
+        cerr << "Nothing to do. Execute '" << argv[0] << " -h' for usage"
+             << endl;
+        return 0;
+    }
+
+    VEvaluate eval;
+    LC::PrettyPrinter printer(cout);
+    for (char* file : files) {
+        FILE* f = fopen(file, "r");
+        if (!f) {
+            perror(("Could not open file " + string(file)).c_str());
+            continue;
+        }
+        cerr << "Entering " << file << endl;
+        auto maybeProgram = LC::ParseProgram(f);
+        if (!maybeProgram) {
+            cerr << "Syntax error in " << file << endl;
+            fclose(f);
+            continue;
+        }
+        LC::AProgram prog = std::get<LC::AProgram>(*maybeProgram);
+        for (auto& expr : prog.ListExpr_) {
+            usedNames.clear();
+            VCheckNames check;
+            std::visit(check, expr);
+            if (check.Error) continue;
+            printer << std::visit(eval, std::move(expr));
+            cout << endl;
+        }
+        fclose(f);
+    }
+}
