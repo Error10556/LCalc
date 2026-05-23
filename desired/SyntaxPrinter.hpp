@@ -10,7 +10,7 @@ class SyntaxPrinter {
     const SyntaxPrinter* maybeParent;
     SyntaxPrinter(const SyntaxPrinter* parent, bool currentIndentIsBranch);
     friend const SyntaxPrinter& operator<<(const SyntaxPrinter&,
-                                           const std::string_view&);
+                                           std::string_view);
     void PrintIndentForHeader() const;
     void PrintIndentAsIs() const;
 
@@ -33,6 +33,6 @@ const SyntaxPrinter& operator<<(const SyntaxPrinter&, const AProgram&);
 const SyntaxPrinter& operator<<(const SyntaxPrinter&, const Abstraction&);
 const SyntaxPrinter& operator<<(const SyntaxPrinter&, const Application&);
 const SyntaxPrinter& operator<<(const SyntaxPrinter&, const Variable&);
-const SyntaxPrinter& operator<<(const SyntaxPrinter&, const std::string_view&);
+const SyntaxPrinter& operator<<(const SyntaxPrinter&, std::string_view);
 
 }

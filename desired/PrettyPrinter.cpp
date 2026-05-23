@@ -84,7 +84,7 @@ PrettyPrinterSHL(Abstraction);
 PrettyPrinterSHL(Application);
 PrettyPrinterSHL(Variable);
 
-PrettyPrinter& operator<<(PrettyPrinter& p, const std::string_view& v) {
+PrettyPrinter& operator<<(PrettyPrinter& p, std::string_view v) {
     p.out << v;
     return p;
 }

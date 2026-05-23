@@ -86,7 +86,7 @@ SyntaxPrinterSHL(Application);
 SyntaxPrinterSHL(Variable);
 
 const SyntaxPrinter& operator<<(const SyntaxPrinter& p,
-                                const std::string_view& s) {
+                                std::string_view s) {
     p.out << s;
     return p;
 }
