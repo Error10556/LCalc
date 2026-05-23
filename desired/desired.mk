@@ -24,8 +24,8 @@ desired/Test.o: desired/Test.cpp desired/Absyn.hpp desired/grammar.tab.hpp \
 	desired/PrettyPrinter.hpp desired/SyntaxPrinter.hpp | desired
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-desired/Test: desired/Test.o desired/grammar.tab.o desired/Printer.o \
-	desired/grammar.lex.o desired/Absyn.o | desired
+desired/Test: desired/Test.o desired/grammar.tab.o desired/PrettyPrinter.o \
+	desired/SyntaxPrinter.o desired/grammar.lex.o desired/Absyn.o | desired
 	cd desired && $(CXX) $(LDFLAGS) Test.o grammar.lex.o grammar.tab.o \
 		PrettyPrinter.o SyntaxPrinter.o Absyn.o -o Test
 
