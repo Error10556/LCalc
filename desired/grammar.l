@@ -1,3 +1,5 @@
+%option noline
+
 %option warn nodefault
 %option 8bit reentrant
 %option noyywrap
@@ -10,20 +12,16 @@
  * Compile LCLex.cpp with:
  * $ c++ -std=c++17 LCLex.cpp -c -o LCLex.o
  */
-#include <variant>
 #include <string>
 #include <string_view>
 #include <system_error>
 #include "grammar.tab.hpp"
 
-// to parse values
-using LCLexExtra = std::variant<std::string, double, int>;
-
 #define YY_DECL LC::Parser::symbol_type LClex(yyscan_t yyscanner)
 
 %}
 
-%option extra-type="LCLexExtra"
+%option extra-type="std::string*"
 
 %s COMMENT
 
@@ -55,7 +53,7 @@ IDENT [a-zA-Z0-9'_]
 
 static yyscan_t LCNewScanner() {
     yyscan_t scanner;
-    int err = LClex_init_extra(LCLexExtra(), &scanner);
+    int err = LClex_init_extra(new std::string(), &scanner);
     if (err) throw std::system_error(err, std::generic_category(),
         "Cannot create LC scanner");
     return scanner;
@@ -71,4 +69,9 @@ yyscan_t LCNewScanner(std::string_view str) {
     yyscan_t scanner = LCNewScanner();
     LC_scan_bytes(str.data(), str.size(), scanner);
     return scanner;
+}
+
+void LCDeleteScanner(yyscan_t scanner) {
+    delete LCget_extra(scanner);
+    LClex_destroy(scanner);
 }

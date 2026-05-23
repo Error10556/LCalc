@@ -1,3 +1,5 @@
+%no-lines
+
 %require "3.2"
 %language "c++"
 %define api.value.type variant
@@ -95,7 +97,7 @@ Expr2
 
 extern yyscan_t LCNewScanner(FILE* file);
 extern yyscan_t LCNewScanner(std::string_view str);
-extern int LClex_destroy(yyscan_t scanner);
+extern void LCDeleteScanner(yyscan_t scanner);
 
 namespace LC {
 
@@ -113,14 +115,14 @@ namespace LC {
     ParseResult ParseAnything(FILE* file) {
         yyscan_t scanner = LCNewScanner(file);
         ParseResult res = ParseAnything(scanner);
-        LClex_destroy(scanner);
+        LCDeleteScanner(scanner);
         return res;
     }
 
     ParseResult ParseAnything(std::string_view str) {
         yyscan_t scanner = LCNewScanner(str);
         ParseResult res = ParseAnything(scanner);
-        LClex_destroy(scanner);
+        LCDeleteScanner(scanner);
         return res;
     }
 
