@@ -3,75 +3,85 @@
 
 namespace LC {
 
-void Print(std::ostream& out, const Program& v, int coercionLevel) {
-    std::visit(PrettyPrinter(out, coercionLevel), v);
+PrettyPrinter::PrettyPrinter(std::ostream& out, unsigned int indent, int coercionLevel)
+    : out(out), coercionLevel(coercionLevel), indent(indent) {}
+
+void PrettyPrinter::NewLine() const {
+    out << '\n' << std::string(indent, ' ');
 }
 
-void Print(std::ostream& out, const ListExpr& v, int coercionLevel) {
+PrettyPrinter PrettyPrinter::WithCoercionLevel(int level) const {
+    return {out, indent, level};
+}
+
+PrettyPrinter PrettyPrinter::Indented(unsigned int plusIndent,
+                                      int coercionLevel) const {
+    return {out, indent + plusIndent, coercionLevel};
+}
+
+PrettyPrinter PrettyPrinter::Dedented(unsigned int minusIndent,
+                                      int coercionLevel) const {
+    return {out, minusIndent > indent ? 0 : indent - minusIndent,
+            coercionLevel};
+}
+
+void PrettyPrinter::operator()(const Program& v) const { std::visit(*this, v); }
+
+void PrettyPrinter::operator()(const ListExpr& v) const {
     if (coercionLevel > CoercionLevel<ListExpr>) out << '(';
     bool first = true;
     for (const auto& item : v) {
         [[unlikely]]
         if (first)
             first = false;
-        else
-            out << " ; ";
-        PrettyPrinter(out, 0)(item);
+        else {
+            out << " ;";
+            NewLine();
+        }
+        WithCoercionLevel(0)(item);
     }
     if (coercionLevel > CoercionLevel<ListExpr>) out << ')';
 }
 
-void Print(std::ostream& out, const Expr& v, int coercionLevel) {
-    std::visit(PrettyPrinter(out, coercionLevel), v);
-}
+void PrettyPrinter::operator()(const Expr& v) const { std::visit(*this, v); }
 
-void Print(std::ostream& out, const AProgram& v, int coercionLevel) {
+void PrettyPrinter::operator()(const AProgram& v) const {
     if (coercionLevel > CoercionLevel<AProgram>) out << '(';
-    Print(out, v.ListExpr_, 0);
+    WithCoercionLevel(0)(v.ListExpr_);
     if (coercionLevel > CoercionLevel<AProgram>) out << ')';
 }
 
-void Print(std::ostream& out, const Abstraction& v, int coercionLevel) {
+void PrettyPrinter::operator()(const Abstraction& v) const {
     if (coercionLevel > CoercionLevel<Abstraction>) out << '(';
     out << 'l';
     out << ' ';
-    Print(out, v.Ident_, 0);
+    WithCoercionLevel(0)(v.Ident_);
     out << ' ';
     out << '.';
     out << ' ';
-    Print(out, *v.Expr_, 0);
+    std::visit(WithCoercionLevel(0), *v.Expr_);
     if (coercionLevel > CoercionLevel<Abstraction>) out << ')';
 }
 
-void Print(std::ostream& out, const Application& v, int coercionLevel) {
+void PrettyPrinter::operator()(const Application& v) const {
     if (coercionLevel > CoercionLevel<Application>) out << '(';
-    Print(out, *v.Expr_1, 1);
+    WithCoercionLevel(1)(*v.Expr_1);
     out << ' ';
-    Print(out, *v.Expr_2, 2);
+    WithCoercionLevel(2)(*v.Expr_2);
     if (coercionLevel > CoercionLevel<Application>) out << ')';
 }
 
-void Print(std::ostream& out, const Variable& v, int coercionLevel) {
+void PrettyPrinter::operator()(const Variable& v) const {
     if (coercionLevel > CoercionLevel<Variable>) out << '(';
-    Print(out, v.Ident_, 0);
+    WithCoercionLevel(0)(v.Ident_);
     if (coercionLevel > CoercionLevel<Variable>) out << ')';
 }
 
-void Print(std::ostream& out, const Ident& v, int coercionLevel) {
+void PrettyPrinter::operator()(const Ident& v) const {
     if (coercionLevel > CoercionLevel<Variable>) out << '(';
     out << v.String;
     if (coercionLevel > CoercionLevel<Variable>) out << ')';
 }
-
-PrettyPrinter::PrettyPrinter(std::ostream& out, int coercionLevel)
-    : out(out), coercionLevel(coercionLevel) {}
-void PrettyPrinter::operator()(const Program& v) const { std::visit(*this, v); }
-void PrettyPrinter::operator()(const ListExpr& v) const { Print(out, v, coercionLevel); }
-void PrettyPrinter::operator()(const Expr& v) const { std::visit(*this, v); }
-void PrettyPrinter::operator()(const AProgram& v) const { Print(out, v, coercionLevel); }
-void PrettyPrinter::operator()(const Abstraction& v) const { Print(out, v, coercionLevel); }
-void PrettyPrinter::operator()(const Application& v) const { Print(out, v, coercionLevel); }
-void PrettyPrinter::operator()(const Variable& v) const { Print(out, v, coercionLevel); }
 
 #define PrettyPrinterSHL(type) \
     const PrettyPrinter& operator<<(const PrettyPrinter& p, const type& v) { p(v); return p; }

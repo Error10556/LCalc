@@ -15,8 +15,11 @@ class PrettyPrinter {
 public:
     PrettyPrinter(std::ostream&, unsigned int indent = 0,
                   int coercionLevel = 0);
-    PrettyPrinter Indented(unsigned int plusIndent = 4, int coercionLevel = 0);
-    PrettyPrinter Dedented(unsigned int minusIndent = 4, int coercionLevel = 0);
+    PrettyPrinter Indented(unsigned int plusIndent = 4,
+                           int coercionLevel = 0) const;
+    PrettyPrinter Dedented(unsigned int minusIndent = 4,
+                           int coercionLevel = 0) const;
+    PrettyPrinter WithCoercionLevel(int level) const;
     void operator()(const Program&) const;
     void operator()(const ListExpr&) const;
     void operator()(const Expr&) const;
