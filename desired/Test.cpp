@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstring>
 #include <vector>
 
@@ -91,11 +92,20 @@ Options:
             needclose = true;
         }
         LC::ParseResult p = LC::ParseAnything(file);
+        cout << filename << '\n';
         if (!p)
-            cout << "Could not parse " << filename << '\n';
-        else
-            std::visit(LC::SyntaxPrinter(cout), *p);
-        cout << '\n';
+            cout << "Could not parse!\n\n";
+        else {
+            if (tree) {
+                std::visit(LC::SyntaxPrinter(cout), *p);
+                cout << '\n';
+            }
+            if (pretty) {
+                std::visit(LC::PrettyPrinter(cout), *p);
+                cout << "\n\n";
+            }
+            if (!tree && !pretty) cout << "OK\n\n";
+        }
         if (needclose) fclose(file);
     }
 }

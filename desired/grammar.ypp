@@ -64,8 +64,8 @@
 %%
 
 __start__
-    : Program0 { *result = {{std::move($1)}}; }
-    | Expr0 { *result = {{std::move($1)}}; }
+    : Program0 YYEOF { *result = {{std::move($1)}}; }
+    | Expr0 YYEOF { *result = {{std::move($1)}}; }
     ;
 
 Program0
