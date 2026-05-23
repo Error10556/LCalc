@@ -19,6 +19,8 @@
     #include <algorithm>
     #include <iostream>
     #include <string_view>
+    #include <optional>
+    #include <variant>
     #include "Absyn.hpp"
 
     using yyscan_t = void*;
@@ -29,6 +31,20 @@
 %nterm <Expr> Expr1
 %nterm <Expr> Expr2
 %nterm <ListExpr> ListExpr
+
+%code provides {
+    namespace LC {
+        using ParseResult = std::optional<std::variant<LC::Program, LC::Expr>>;
+
+        ParseResult ParseAnything(FILE* file);
+        ParseResult ParseAnything(std::string_view str);
+        std::optional<LC::Program> ParseProgram(FILE* file);
+        std::optional<LC::Program> ParseProgram(std::string_view str);
+        std::optional<LC::Expr> ParseExpr(FILE* file);
+        std::optional<LC::Expr> ParseExpr(std::string_view str);
+    }
+}
+%parse-param {ParseResult* result}
 
 %code {
     extern LC::Parser::symbol_type LClex(yyscan_t scanner);
@@ -71,7 +87,76 @@ Expr2
 
 extern yyscan_t LCNewScanner(FILE* file);
 extern yyscan_t LCNewScanner(std::string_view str);
+extern int LClex_destroy(yyscan_t scanner);
 
-void LC::Parser::error(const std::string& msg) {
-    std::cerr << "ERROR while parsing: " << msg << std::endl;
+namespace LC {
+
+    void Parser::error(const std::string& msg) {
+        std::cerr << "ERROR while parsing: " << msg << std::endl;
+    }
+
+    static ParseResult ParseAnything(yyscan_t scanner) {
+        ParseResult res;
+        Parser parser(scanner, &res);
+        parser.parse();
+        return res;
+    }
+
+    ParseResult ParseAnything(FILE* file) {
+        yyscan_t scanner = LCNewScanner(file);
+        ParseResult res = ParseAnything(scanner);
+        LClex_destroy(scanner);
+        return res;
+    }
+
+    ParseResult ParseAnything(std::string_view str) {
+        yyscan_t scanner = LCNewScanner(str);
+        ParseResult res = ParseAnything(scanner);
+        LClex_destroy(scanner);
+        return res;
+    }
+
+    std::optional<LC::Program> ParseProgram(FILE* file) {
+        auto res = ParseAnything(file);
+        if (!res) return {};
+        return std::visit([](auto&& parsed) -> std::optional<LC::Program> {
+            if constexpr (std::is_same_v<std::decay_t<decltype(parsed)>,
+                                         LC::Program>)
+                return parsed;
+            return {};
+        }, *res);
+    }
+
+    std::optional<LC::Program> ParseProgram(std::string_view str) {
+        auto res = ParseAnything(str);
+        if (!res) return {};
+        return std::visit([](auto&& parsed) -> std::optional<LC::Program> {
+            if constexpr (std::is_same_v<std::decay_t<decltype(parsed)>,
+                                         LC::Program>)
+                return parsed;
+            return {};
+        }, *res);
+    }
+
+    std::optional<LC::Expr> ParseExpr(FILE* file) {
+        auto res = ParseAnything(file);
+        if (!res) return {};
+        return std::visit([](auto&& parsed) -> std::optional<LC::Expr> {
+            if constexpr (std::is_same_v<std::decay_t<decltype(parsed)>,
+                                         LC::Expr>)
+                return parsed;
+            return {};
+        }, *res);
+    }
+
+    std::optional<LC::Expr> ParseExpr(std::string_view str) {
+        auto res = ParseAnything(str);
+        if (!res) return {};
+        return std::visit([](auto&& parsed) -> std::optional<LC::Expr> {
+            if constexpr (std::is_same_v<std::decay_t<decltype(parsed)>,
+                                         LC::Expr>)
+                return parsed;
+            return {};
+        }, *res);
+    }
 }
