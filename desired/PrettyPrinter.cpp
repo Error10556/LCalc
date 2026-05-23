@@ -1,10 +1,10 @@
-#include "Printer.hpp"
+#include "PrettyPrinter.hpp"
 #include "Absyn.hpp"
 
 namespace LC {
 
 void Print(std::ostream& out, const Program& v, int coercionLevel) {
-    std::visit(Printer(out, coercionLevel), v);
+    std::visit(PrettyPrinter(out, coercionLevel), v);
 }
 
 void Print(std::ostream& out, const ListExpr& v, int coercionLevel) {
@@ -16,13 +16,13 @@ void Print(std::ostream& out, const ListExpr& v, int coercionLevel) {
             first = false;
         else
             out << " ; ";
-        Printer(out, 0)(item);
+        PrettyPrinter(out, 0)(item);
     }
     if (coercionLevel > CoercionLevel<ListExpr>) out << ')';
 }
 
 void Print(std::ostream& out, const Expr& v, int coercionLevel) {
-    std::visit(Printer(out, coercionLevel), v);
+    std::visit(PrettyPrinter(out, coercionLevel), v);
 }
 
 void Print(std::ostream& out, const AProgram& v, int coercionLevel) {
@@ -63,28 +63,28 @@ void Print(std::ostream& out, const Ident& v, int coercionLevel) {
     if (coercionLevel > CoercionLevel<Variable>) out << ')';
 }
 
-Printer::Printer(std::ostream& out, int coercionLevel)
+PrettyPrinter::PrettyPrinter(std::ostream& out, int coercionLevel)
     : out(out), coercionLevel(coercionLevel) {}
-void Printer::operator()(const Program& v) const { std::visit(*this, v); }
-void Printer::operator()(const ListExpr& v) const { Print(out, v, coercionLevel); }
-void Printer::operator()(const Expr& v) const { std::visit(*this, v); }
-void Printer::operator()(const AProgram& v) const { Print(out, v, coercionLevel); }
-void Printer::operator()(const Abstraction& v) const { Print(out, v, coercionLevel); }
-void Printer::operator()(const Application& v) const { Print(out, v, coercionLevel); }
-void Printer::operator()(const Variable& v) const { Print(out, v, coercionLevel); }
+void PrettyPrinter::operator()(const Program& v) const { std::visit(*this, v); }
+void PrettyPrinter::operator()(const ListExpr& v) const { Print(out, v, coercionLevel); }
+void PrettyPrinter::operator()(const Expr& v) const { std::visit(*this, v); }
+void PrettyPrinter::operator()(const AProgram& v) const { Print(out, v, coercionLevel); }
+void PrettyPrinter::operator()(const Abstraction& v) const { Print(out, v, coercionLevel); }
+void PrettyPrinter::operator()(const Application& v) const { Print(out, v, coercionLevel); }
+void PrettyPrinter::operator()(const Variable& v) const { Print(out, v, coercionLevel); }
 
-#define PrinterSHL(type) \
-    Printer& operator<<(Printer& p, const type& v) { p(v); return p; }
+#define PrettyPrinterSHL(type) \
+    const PrettyPrinter& operator<<(const PrettyPrinter& p, const type& v) { p(v); return p; }
 
-PrinterSHL(Program);
-PrinterSHL(ListExpr);
-PrinterSHL(Expr);
-PrinterSHL(AProgram);
-PrinterSHL(Abstraction);
-PrinterSHL(Application);
-PrinterSHL(Variable);
+PrettyPrinterSHL(Program);
+PrettyPrinterSHL(ListExpr);
+PrettyPrinterSHL(Expr);
+PrettyPrinterSHL(AProgram);
+PrettyPrinterSHL(Abstraction);
+PrettyPrinterSHL(Application);
+PrettyPrinterSHL(Variable);
 
-Printer& operator<<(Printer& p, const std::string_view& v) {
+PrettyPrinter& operator<<(PrettyPrinter& p, const std::string_view& v) {
     p.out << v;
     return p;
 }

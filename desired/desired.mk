@@ -14,14 +14,20 @@ desired/grammar.tab.o: desired/grammar.tab.cpp desired/Absyn.hpp | desired
 desired/grammar.lex.o: desired/grammar.lex.cpp | desired
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-desired/Test.o: desired/Test.cpp desired/Absyn.hpp desired/grammar.tab.hpp \
-	| desired
+desired/PrettyPrinter.o: desired/PrettyPrinter.cpp desired/PrettyPrinter.hpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-desired/Test: desired/Test.o desired/grammar.tab.o \
+desired/SyntaxPrinter.o: desired/SyntaxPrinter.cpp desired/SyntaxPrinter.hpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+desired/Test.o: desired/Test.cpp desired/Absyn.hpp desired/grammar.tab.hpp \
+	desired/PrettyPrinter.hpp desired/SyntaxPrinter.hpp | desired
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+desired/Test: desired/Test.o desired/grammar.tab.o desired/Printer.o \
 	desired/grammar.lex.o desired/Absyn.o | desired
 	cd desired && $(CXX) $(LDFLAGS) Test.o grammar.lex.o grammar.tab.o \
-		Absyn.o -o Test
+		PrettyPrinter.o SyntaxPrinter.o Absyn.o -o Test
 
 desired:
 	mkdir desired
