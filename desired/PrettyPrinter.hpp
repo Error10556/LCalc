@@ -15,6 +15,8 @@ class PrettyPrinter {
 public:
     PrettyPrinter(std::ostream&, unsigned int indent = 0,
                   int coercionLevel = 0);
+    PrettyPrinter Indented(unsigned int plusIndent = 4, int coercionLevel = 0);
+    PrettyPrinter Dedented(unsigned int minusIndent = 4, int coercionLevel = 0);
     void operator()(const Program&) const;
     void operator()(const ListExpr&) const;
     void operator()(const Expr&) const;
@@ -22,6 +24,8 @@ public:
     void operator()(const Abstraction&) const;
     void operator()(const Application&) const;
     void operator()(const Variable&) const;
+    void operator()(const Ident&) const;
+    void NewLine() const;
 };
 
 const PrettyPrinter& operator<<(const PrettyPrinter&, const Program&);
@@ -31,6 +35,7 @@ const PrettyPrinter& operator<<(const PrettyPrinter&, const AProgram&);
 const PrettyPrinter& operator<<(const PrettyPrinter&, const Abstraction&);
 const PrettyPrinter& operator<<(const PrettyPrinter&, const Application&);
 const PrettyPrinter& operator<<(const PrettyPrinter&, const Variable&);
+const PrettyPrinter& operator<<(const PrettyPrinter&, const Ident&);
 const PrettyPrinter& operator<<(const PrettyPrinter&, std::string_view);
 
 }
