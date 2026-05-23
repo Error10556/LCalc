@@ -5,24 +5,16 @@
 
 namespace LC {
 
-void Print(std::ostream&, const Program&, int coercionLevel = 0);
-void Print(std::ostream&, const ListExpr&, int coercionLevel = 0);
-void Print(std::ostream&, const Expr&, int coercionLevel = 0);
-void Print(std::ostream&, const AProgram&, int coercionLevel = 0);
-void Print(std::ostream&, const Abstraction&, int coercionLevel = 0);
-void Print(std::ostream&, const Application&, int coercionLevel = 0);
-void Print(std::ostream&, const Variable&, int coercionLevel = 0);
-void Print(std::ostream&, const Ident&, int coercionLevel = 0);
-
-// curried output and coercionLevel
 // for use with std::visit and operator<<
 class PrettyPrinter {
     std::ostream& out;
     int coercionLevel;
-    // unsigned int indent; TODO
+    unsigned int indent;
     friend PrettyPrinter& operator<<(PrettyPrinter&, const std::string_view&);
+
 public:
-    PrettyPrinter(std::ostream&, int coercionLevel = 0);
+    PrettyPrinter(std::ostream&, unsigned int indent = 0,
+                  int coercionLevel = 0);
     void operator()(const Program&) const;
     void operator()(const ListExpr&) const;
     void operator()(const Expr&) const;
