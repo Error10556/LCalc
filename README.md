@@ -1,0 +1,3 @@
+# Building
+
+Run `make`.
