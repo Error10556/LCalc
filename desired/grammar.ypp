@@ -75,7 +75,7 @@ Program0
 ListExpr
     : /* [] */ { }
     | /* (:[]) */ Expr0 { $$.push_back(std::move($1)); }
-    | /* (:) */ Expr0 SEMI ListExpr { $$.push_back(std::move($1)); }
+    | /* (:) */ Expr0 SEMI ListExpr { $$ = std::move($3); $$.push_back(std::move($1)); }
     ;
 
 Expr0

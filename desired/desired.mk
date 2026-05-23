@@ -10,27 +10,27 @@ desired/grammar.tab.hpp desired/grammar.tab.cpp &: desired/grammar.ypp \
 	cd desired && bison grammar.ypp
 
 desired/Absyn.o: desired/Absyn.cpp desired/Absyn.hpp | desired
-	$(CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
+	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
 desired/grammar.tab.o: desired/grammar.tab.cpp desired/Absyn.hpp | desired
-	$(CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
+	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
 desired/grammar.lex.o: desired/grammar.lex.cpp | desired
-	$(CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
+	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
 desired/PrettyPrinter.o: desired/PrettyPrinter.cpp desired/PrettyPrinter.hpp
-	$(CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
+	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
 desired/SyntaxPrinter.o: desired/SyntaxPrinter.cpp desired/SyntaxPrinter.hpp
-	$(CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
+	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
 desired/Test.o: desired/Test.cpp desired/Absyn.hpp desired/grammar.tab.hpp \
 	desired/PrettyPrinter.hpp desired/SyntaxPrinter.hpp | desired
-	$(CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
+	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
 desired/Test: desired/Test.o desired/grammar.tab.o desired/PrettyPrinter.o \
 	desired/SyntaxPrinter.o desired/grammar.lex.o desired/Absyn.o | desired
-	cd desired && $(CXX) $(LDFLAGS) $(DESIRED_LDFLAGS) Test.o grammar.lex.o \
+	cd desired && $(DESIRED_CXX) $(LDFLAGS) $(DESIRED_LDFLAGS) Test.o grammar.lex.o \
 		grammar.tab.o PrettyPrinter.o SyntaxPrinter.o Absyn.o -o Test
 
 desired:
