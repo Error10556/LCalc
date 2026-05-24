@@ -7,6 +7,7 @@
 #include "Absyn.hpp"
 #include "grammar.tab.hpp"
 #include "PrettyPrinter.hpp"
+#include "PatternMatching.hpp"
 
 using namespace std;
 
@@ -120,31 +121,34 @@ public:
     LC::Expr operator()(LC::Application&& p) const {
         *p.Expr_1 = std::visit(*this, std::move(*p.Expr_1));
         *p.Expr_2 = std::visit(*this, std::move(*p.Expr_2));
-        return p;
+        return std::move(p);
     }
 
     LC::Expr operator()(LC::Variable&& p) const {
         if (p.Ident_.String != what)
-            return p;
+            return std::move(p);
         return into;
     }
 };
 
 class VEvaluate {
 public:
-    LC::Expr operator()(LC::Abstraction&& p) const { return p; }
+    LC::Expr operator()(LC::Abstraction&& p) const { return std::move(p); }
 
     LC::Expr operator()(LC::Application&& p) const {
-        LC::Expr _func = std::visit(*this, std::move(*p.Expr_1));
-        LC::Abstraction& func = std::get<LC::Abstraction>(_func);
-        LC::Expr arg = std::visit(*this, std::move(*p.Expr_2));
-        return std::visit(
-            *this, std::visit(VSubstitute(func.Ident_.String, std::move(arg)),
-                              std::move(*func.Expr_)));
+        LC::Abstraction func = std::move(*p.Expr_1) | *this | PatternMatch{
+            [](LC::Abstraction abs) -> LC::Abstraction { return abs; },
+            [](auto&&) -> LC::Abstraction {
+                throw runtime_error("Applying a non-function");
+            }
+        };
+        return std::move(*func.Expr_) |
+               VSubstitute(func.Ident_.String, std::move(*p.Expr_2) | *this) |
+               *this;
     }
 
     LC::Expr operator()(LC::Variable&& p) const {
-        return p;
+        return std::move(p);
     }
 };
 
@@ -184,13 +188,12 @@ int main(int argc, char** argv) {
             continue;
         }
         cerr << "Entering " << file << endl;
-        std::visit([&](auto&& p) {
-            using argtype = std::decay_t<decltype(p)>;
-            if constexpr (std::is_same_v<argtype, LC::Parser::syntax_error>) {
-                cerr << "Syntax error in " << file << ": " << p.what() << endl;
-                return;
-            } else {
-                static_assert(std::is_same_v<argtype, LC::Program>);
+        LC::ParseProgram(f) | PatternMatch{
+            [&file](LC::Parser::syntax_error&& err) {
+                cerr << "Syntax error in " << file << ": "
+                    << err.what() << endl;
+            },
+            [&](LC::Program&& p) {
                 LC::AProgram& prog = std::get<LC::AProgram>(p);
                 for (auto& expr : prog.ListExpr_) {
                     usedNames.clear();
@@ -201,7 +204,7 @@ int main(int argc, char** argv) {
                     cout << endl;
                 }
             }
-        }, LC::ParseProgram(f));
+        };
         fclose(f);
     }
 }

@@ -6,6 +6,7 @@
 #include "PrettyPrinter.hpp"
 #include "SyntaxPrinter.hpp"
 #include "grammar.tab.hpp"
+#include "PatternMatching.hpp"
 using namespace std;
 
 int main(int argc, char** argv) {
@@ -93,26 +94,26 @@ Options:
             }
             needclose = true;
         }
-        std::variant<LC::Program, LC::Parser::syntax_error> p = LC::ParseProgram(file);
         cout << filename << '\n';
-        std::visit([&](auto&& p) {
-            using argtype = std::decay_t<decltype(p)>;
-            if constexpr (std::is_same_v<argtype, LC::Parser::syntax_error>) {
-                cout << "Could not parse!\nError: " << p.what() << "\n\n";
+
+        LC::ParseProgram(file) | PatternMatch{
+            [&](LC::Parser::syntax_error&& err) {
+                cout << "Could not parse!\nError: " << err.what() << "\n\n";
                 return;
-            } else {
-                static_assert(std::is_same_v<argtype, LC::Program>);
+            },
+            [&](LC::Program&& p) {
                 if (tree) {
-                    std::visit(LC::SyntaxPrinter(cout), p);
+                    p | LC::SyntaxPrinter(cout);
                     cout << '\n';
                 }
                 if (pretty) {
-                    std::visit(LC::PrettyPrinter(cout), p);
+                    p | LC::PrettyPrinter(cout);
                     cout << "\n\n";
                 }
                 if (!tree && !pretty) cout << "OK\n\n";
             }
-        }, p);
+        };
+
         if (needclose) fclose(file);
     }
 }
