@@ -10,7 +10,8 @@ class PrettyPrinter {
     std::ostream& out;
     int coercionLevel;
     unsigned int indent;
-    friend PrettyPrinter& operator<<(PrettyPrinter&, std::string_view);
+    friend const PrettyPrinter& operator<<(const PrettyPrinter&,
+                                           std::string_view);
 
 public:
     PrettyPrinter(std::ostream&, unsigned int indent = 0,

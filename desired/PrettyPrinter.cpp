@@ -32,8 +32,8 @@ void PrettyPrinter::operator()(const ListExpr& v) const {
     PrettyPrinter itemprinter = WithCoercionLevel(0);
     auto iter = v.begin();
     auto end = v.end();
-    if (iter != end)) itemprinter(*iter++);
-    for (; iter != end; ++iter)
+    if (iter != end) itemprinter(*iter++);
+    for (; iter != end; ++iter) {
         out << " ;";
         NewLine();
         itemprinter(*iter);
