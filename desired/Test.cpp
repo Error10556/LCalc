@@ -93,21 +93,26 @@ Options:
             }
             needclose = true;
         }
-        LC::ParseResult p = LC::ParseAnything(file);
+        std::variant<LC::Program, LC::Parser::syntax_error> p = LC::ParseProgram(file);
         cout << filename << '\n';
-        if (!p)
-            cout << "Could not parse!\n\n";
-        else {
-            if (tree) {
-                std::visit(LC::SyntaxPrinter(cout), *p);
-                cout << '\n';
+        std::visit([&](auto&& p) {
+            using argtype = std::decay_t<decltype(p)>;
+            if constexpr (std::is_same_v<argtype, LC::Parser::syntax_error>) {
+                cout << "Could not parse!\nError: " << p.what() << "\n\n";
+                return;
+            } else {
+                static_assert(std::is_same_v<argtype, LC::Program>);
+                if (tree) {
+                    std::visit(LC::SyntaxPrinter(cout), p);
+                    cout << '\n';
+                }
+                if (pretty) {
+                    std::visit(LC::PrettyPrinter(cout), p);
+                    cout << "\n\n";
+                }
+                if (!tree && !pretty) cout << "OK\n\n";
             }
-            if (pretty) {
-                std::visit(LC::PrettyPrinter(cout), *p);
-                cout << "\n\n";
-            }
-            if (!tree && !pretty) cout << "OK\n\n";
-        }
+        }, p);
         if (needclose) fclose(file);
     }
 }

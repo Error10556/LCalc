@@ -6,6 +6,7 @@
 %define api.namespace {LC}
 %lex-param {yyscan_t scanner}
 %parse-param {yyscan_t scanner}
+%parse-param {std::optional<std::variant<ParseResultVariant, syntax_error>>* result}
 %header "grammar.tab.hpp"
 
 %token KW_l;
@@ -25,7 +26,7 @@
 
     using yyscan_t = void*;
     namespace LC {
-        using ParseResult = std::optional<std::variant<LC::Program>>;
+        using ParseResultVariant = std::variant<LC::Program>;
     }
 }
 
@@ -37,15 +38,14 @@
 
 %code provides {
     namespace LC {
-        ParseResult ParseAnything(FILE* file);
-        ParseResult ParseAnything(std::string_view str);
-        std::optional<LC::Program> ParseProgram(FILE* file);
-        std::optional<LC::Program> ParseProgram(std::string_view str);
-        std::optional<LC::Expr> ParseExpr(FILE* file);
-        std::optional<LC::Expr> ParseExpr(std::string_view str);
+        using ParseResultOrError = std::variant<ParseResultVariant, Parser::syntax_error>;
+
+        ParseResultOrError Parse(FILE* file);
+        ParseResultOrError Parse(std::string_view str);
+        std::variant<LC::Program, Parser::syntax_error> ParseProgram(FILE* file);
+        std::variant<LC::Program, Parser::syntax_error> ParseProgram(std::string_view str);
     }
 }
-%parse-param {ParseResult* result}
 
 %code {
     extern LC::Parser::symbol_type LClex(yyscan_t scanner);
@@ -62,8 +62,8 @@
 %%
 
 __start__
-    : Program0 YYEOF { *result = {{std::move($1)}}; }
-    /* here assuming that Program is the only entrypoint */
+    : Program0 YYEOF { *result = {{ParseResultVariant(std::move($1))}}; }
+    /* here assuming that Program is the only entrypoint, unlike in grammar.cf */
     ;
 
 Program0
@@ -107,43 +107,48 @@ namespace LC {
     };
 
     void Parser::error(const std::string& msg) {
-        std::cerr << "ERROR while parsing: " << msg << std::endl;
+        *result = {{syntax_error(msg)}};
     }
 
-    static ParseResult ParseAnything(const LCScanner& scanner) {
-        ParseResult res;
+    static ParseResultOrError Parse(const LCScanner& scanner) {
+        std::optional<ParseResultOrError> res;
         Parser parser(scanner.FlexScanner(), &res);
         parser.parse();
-        return res;
+        if (!res) return {Parser::syntax_error("")};
+        return *res;
     }
 
-    ParseResult ParseAnything(FILE* file) {
-        return ParseAnything(LCScanner(file));
+    ParseResultOrError Parse(FILE* file) {
+        return Parse(LCScanner(file));
     }
 
-    ParseResult ParseAnything(std::string_view str) {
-        return ParseAnything(LCScanner(str));
+    ParseResultOrError Parse(std::string_view str) {
+        return Parse(LCScanner(str));
     }
 
-    std::optional<LC::Program> ParseProgram(FILE* file) {
-        auto res = ParseAnything(file);
-        if (!res) return {};
-        return std::visit([](auto&& parsed) -> std::optional<LC::Program> {
-            if constexpr (std::is_same_v<std::decay_t<decltype(parsed)>,
-                                         LC::Program>)
-                return parsed;
-            return {};
-        }, *res);
+    template <class T>
+    static std::variant<T, Parser::syntax_error>
+    EnsureParsedType(ParseResultOrError&& parsed) {
+        using RetType = std::variant<LC::Program, Parser::syntax_error>;
+        return std::visit([](auto&& returned) -> RetType {
+            if constexpr (std::is_same_v<std::decay_t<decltype(returned)>,
+                Parser::syntax_error>) return std::move(returned);
+            else
+                return std::visit([](auto&& parsed) -> RetType {
+                    if constexpr (std::is_same_v<std::decay_t<decltype(parsed)>,
+                        LC::Program>) return std::move(parsed);
+                    else
+                        //TODO make subclass of syntax_error for this
+                        return Parser::syntax_error("Unexpected syntactic construct");
+                }, std::move(returned));
+        }, std::move(parsed));
     }
 
-    std::optional<LC::Program> ParseProgram(std::string_view str) {
-        auto res = ParseAnything(str);
-        if (!res) return {};
-        return std::visit([](auto&& parsed) -> std::optional<LC::Program> {
-            if constexpr (std::is_same_v<std::decay_t<decltype(parsed)>,
-                                         LC::Program>)
-                return parsed;
-            return {};
-        }, *res);
+    std::variant<LC::Program, Parser::syntax_error> ParseProgram(FILE* file) {
+        return EnsureParsedType<LC::Program>(Parse(file));
+    }
+
+    std::variant<LC::Program, Parser::syntax_error> ParseProgram(std::string_view str) {
+        return EnsureParsedType<LC::Program>(Parse(str));
     }
 }

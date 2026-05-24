@@ -184,21 +184,24 @@ int main(int argc, char** argv) {
             continue;
         }
         cerr << "Entering " << file << endl;
-        auto maybeProgram = LC::ParseProgram(f);
-        if (!maybeProgram) {
-            cerr << "Syntax error in " << file << endl;
-            fclose(f);
-            continue;
-        }
-        LC::AProgram prog = std::get<LC::AProgram>(*maybeProgram);
-        for (auto& expr : prog.ListExpr_) {
-            usedNames.clear();
-            VCheckNames check;
-            std::visit(check, expr);
-            if (check.Error) continue;
-            printer << std::visit(eval, std::move(expr));
-            cout << endl;
-        }
+        std::visit([&](auto&& p) {
+            using argtype = std::decay_t<decltype(p)>;
+            if constexpr (std::is_same_v<argtype, LC::Parser::syntax_error>) {
+                cerr << "Syntax error in " << file << ": " << p.what() << endl;
+                return;
+            } else {
+                static_assert(std::is_same_v<argtype, LC::Program>);
+                LC::AProgram& prog = std::get<LC::AProgram>(p);
+                for (auto& expr : prog.ListExpr_) {
+                    usedNames.clear();
+                    VCheckNames check;
+                    std::visit(check, expr);
+                    if (check.Error) continue;
+                    printer << std::visit(eval, std::move(expr));
+                    cout << endl;
+                }
+            }
+        }, LC::ParseProgram(f));
         fclose(f);
     }
 }
