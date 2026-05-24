@@ -11,10 +11,19 @@ public:
     using TCase::operator()...;
 };
 
-template <class TVariant, class TMatcher>
-decltype(auto) operator|(TVariant&& variant, TMatcher&& vis) {
-    return std::visit(std::forward<TMatcher>(vis),
-                      std::forward<TVariant>(variant));
+template <class... TVariants, class TMatcher>
+decltype(auto) operator|(std::variant<TVariants...>&& variant, TMatcher&& vis) {
+    return std::visit(std::forward<TMatcher>(vis), std::move(variant));
+}
+
+template <class... TVariants, class TMatcher>
+decltype(auto) operator|(const std::variant<TVariants...>& variant, TMatcher&& vis) {
+    return std::visit(std::forward<TMatcher>(vis), variant);
+}
+
+template <class... TVariants, class TMatcher>
+decltype(auto) operator|(std::variant<TVariants...>& variant, TMatcher&& vis) {
+    return std::visit(std::forward<TMatcher>(vis), variant);
 }
 
 template <class... TVariant, class TMatcher>
