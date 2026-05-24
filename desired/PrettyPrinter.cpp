@@ -78,9 +78,9 @@ void PrettyPrinter::operator()(const Variable& v) const {
 }
 
 void PrettyPrinter::operator()(const Ident& v) const {
-    if (coercionLevel > CoercionLevel<Variable>) out << '(';
+    if (coercionLevel > CoercionLevel<Ident>) out << '(';
     out << v.String;
-    if (coercionLevel > CoercionLevel<Variable>) out << ')';
+    if (coercionLevel > CoercionLevel<Ident>) out << ')';
 }
 
 #define PrettyPrinterSHL(type) \
