@@ -29,16 +29,14 @@ void PrettyPrinter::operator()(const Program& v) const { std::visit(*this, v); }
 
 void PrettyPrinter::operator()(const ListExpr& v) const {
     if (coercionLevel > CoercionLevel<ListExpr>) out << '(';
-    bool first = true;
-    for (const auto& item : v) {
-        [[unlikely]]
-        if (first)
-            first = false;
-        else {
-            out << " ;";
-            NewLine();
-        }
-        WithCoercionLevel(0)(item);
+    PrettyPrinter itemprinter = WithCoercionLevel(0);
+    auto iter = v.begin();
+    auto end = v.end();
+    if (iter != end)) itemprinter(*iter++);
+    for (; iter != end; ++iter)
+        out << " ;";
+        NewLine();
+        itemprinter(*iter);
     }
     if (coercionLevel > CoercionLevel<ListExpr>) out << ')';
 }
