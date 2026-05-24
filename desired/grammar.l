@@ -11,8 +11,8 @@
  * $ c++ -std=c++17 LCLex.cpp -c -o LCLex.o
  */
 #include <string>
-#include <string_view>
 #include <system_error>
+#include <string_view>
 #include "grammar.tab.hpp"
 
 #define YY_DECL LC::Parser::symbol_type LClex(yyscan_t yyscanner)
@@ -33,6 +33,7 @@ IDENT [a-zA-Z0-9'_]
 
 <INITIAL>"/*" BEGIN(COMMENT);
 <COMMENT>[^*]+ ;
+<COMMENT>"*" ;
 <COMMENT>"*/" BEGIN(INITIAL);
 <INITIAL>"//".* ;
 
@@ -49,27 +50,38 @@ IDENT [a-zA-Z0-9'_]
 
 %%
 
-static yyscan_t LCNewScanner() {
+namespace LC {
+
+class LCScanner {
     yyscan_t scanner;
+    LCScanner();
+
+public:
+    LCScanner(FILE* file);
+    LCScanner(std::string_view str);
+    yyscan_t FlexScanner() const;
+    ~LCScanner();
+};
+
+LCScanner::LCScanner() {
     int err = LClex_init_extra(new std::string(), &scanner);
     if (err) throw std::system_error(err, std::generic_category(),
         "Cannot create LC scanner");
-    return scanner;
 }
 
-yyscan_t LCNewScanner(FILE* file) {
-    yyscan_t scanner = LCNewScanner();
+LCScanner::LCScanner(FILE* file) : LCScanner() {
     LCrestart(file, scanner);
-    return scanner;
 }
 
-yyscan_t LCNewScanner(std::string_view str) {
-    yyscan_t scanner = LCNewScanner();
+LCScanner::LCScanner(std::string_view str) : LCScanner() {
     LC_scan_bytes(str.data(), str.size(), scanner);
-    return scanner;
 }
 
-void LCDeleteScanner(yyscan_t scanner) {
+yyscan_t LCScanner::FlexScanner() const { return scanner; }
+
+LCScanner::~LCScanner() {
     delete LCget_extra(scanner);
     LClex_destroy(scanner);
+}
+
 }
