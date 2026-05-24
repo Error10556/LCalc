@@ -93,6 +93,8 @@ Expr2
 
 %%
 
+#include "PatternMatching.hpp"
+
 namespace LC {
 
     class LCScanner {
@@ -130,18 +132,18 @@ namespace LC {
     static std::variant<T, Parser::syntax_error>
     EnsureParsedType(ParseResultOrError&& parsed) {
         using RetType = std::variant<LC::Program, Parser::syntax_error>;
-        return std::visit([](auto&& returned) -> RetType {
-            if constexpr (std::is_same_v<std::decay_t<decltype(returned)>,
-                Parser::syntax_error>) return std::move(returned);
-            else
-                return std::visit([](auto&& parsed) -> RetType {
-                    if constexpr (std::is_same_v<std::decay_t<decltype(parsed)>,
-                        LC::Program>) return std::move(parsed);
-                    else
+        return std::move(parsed) | PatternMatch{
+            [](Parser::syntax_error&& err) -> RetType { return std::move(err); },
+            [](ParseResultVariant&& var) -> RetType {
+                return std::move(var) | PatternMatch{
+                    [](T&& target) -> RetType { return std::move(target); },
+                    [](auto&&) -> RetType {
                         //TODO make subclass of syntax_error for this
                         return Parser::syntax_error("Unexpected syntactic construct");
-                }, std::move(returned));
-        }, std::move(parsed));
+                    }
+                };
+            }
+        };
     }
 
     std::variant<LC::Program, Parser::syntax_error> ParseProgram(FILE* file) {
