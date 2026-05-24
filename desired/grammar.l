@@ -1,5 +1,3 @@
-%option noline
-
 %option warn nodefault
 %option 8bit reentrant
 %option noyywrap
