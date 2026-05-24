@@ -79,9 +79,11 @@ Options:
 )%";
     }
     for (char* filename : files) {
-        FILE* file; bool needclose = true;
-        if (strcmp(filename, "-") == 0)
+        FILE* file; bool needclose;
+        if (strcmp(filename, "-") == 0) {
             file = stdin;
+            needclose = false;
+        }
         else {
             file = fopen(filename, "r");
             if (!file) {
