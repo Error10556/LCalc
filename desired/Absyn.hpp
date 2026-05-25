@@ -6,8 +6,11 @@
 
 namespace LC {
 
-template<class T>
+template <class T>
 struct CoercionLevel_t {};
+
+template <class T>
+struct SyntaxNodeName_t {};
 
 struct Ident {
 public:
@@ -23,6 +26,7 @@ public:
     Ident& operator=(std::string&&);
 };
 template<> struct CoercionLevel_t<Ident> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<Ident> { static constexpr const char* value = "Ident"; };
 
 class AProgram;
 using Program = std::variant<AProgram>;
@@ -32,6 +36,7 @@ using Expr = std::variant<Abstraction, Application, Variable>;
 
 using ListExpr = std::vector<Expr>;
 template<> struct CoercionLevel_t<ListExpr> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<ListExpr> { static constexpr const char* value = "ListExpr"; };
 
 class AProgram {
 public:
@@ -44,6 +49,7 @@ public:
     ListExpr ListExpr_;
 };
 template<> struct CoercionLevel_t<AProgram> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<AProgram> { static constexpr const char* value = "AProgram"; };
 
 class Abstraction {
 public:
@@ -57,6 +63,7 @@ public:
     std::unique_ptr<Expr> Expr_;
 };
 template<> struct CoercionLevel_t<Abstraction> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<Abstraction> { static constexpr const char* value = "Abstraction"; };
 
 class Application {
 public:
@@ -69,6 +76,7 @@ public:
     std::unique_ptr<Expr> Expr_1, Expr_2;
 };
 template<> struct CoercionLevel_t<Application> { static constexpr int value = 1; };
+template<> struct SyntaxNodeName_t<Application> { static constexpr const char* value = "Application"; };
 
 class Variable {
 public:
@@ -81,8 +89,11 @@ public:
     Ident Ident_;
 };
 template<> struct CoercionLevel_t<Variable> { static constexpr int value = 2; };
+template<> struct SyntaxNodeName_t<Variable> { static constexpr const char* value = "Variable"; };
 
 template<class T>
 constexpr int CoercionLevel = CoercionLevel_t<T>::value;
+template<class T>
+constexpr const char* SyntaxNodeName = SyntaxNodeName_t<T>::value;
 
 }
