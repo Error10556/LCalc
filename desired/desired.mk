@@ -18,10 +18,12 @@ desired/grammar.tab.o: desired/grammar.tab.cpp desired/Absyn.hpp | desired
 desired/grammar.lex.o: desired/grammar.lex.cpp | desired
 	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
-desired/PrettyPrinter.o: desired/PrettyPrinter.cpp desired/PrettyPrinter.hpp
+desired/PrettyPrinter.o: desired/PrettyPrinter.cpp desired/PrettyPrinter.hpp \
+	desired/Absyn.hpp
 	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
-desired/SyntaxPrinter.o: desired/SyntaxPrinter.cpp desired/SyntaxPrinter.hpp
+desired/SyntaxPrinter.o: desired/SyntaxPrinter.cpp desired/SyntaxPrinter.hpp \
+	desired/Absyn.hpp
 	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
 desired/Test.o: desired/Test.cpp desired/Absyn.hpp desired/grammar.tab.hpp \

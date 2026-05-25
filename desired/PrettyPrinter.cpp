@@ -28,7 +28,7 @@ PrettyPrinter PrettyPrinter::Dedented(unsigned int minusIndent,
 void PrettyPrinter::operator()(const Program& v) const { std::visit(*this, v); }
 
 void PrettyPrinter::operator()(const ListExpr& v) const {
-    if (coercionLevel > CoercionLevel<ListExpr>) out << '(';
+    if (coercionLevel > reflection::CoercionLevel<ListExpr>) out << '(';
     PrettyPrinter itemprinter = WithCoercionLevel(0);
     auto iter = v.begin();
     auto end = v.end();
@@ -38,19 +38,19 @@ void PrettyPrinter::operator()(const ListExpr& v) const {
         NewLine();
         itemprinter(*iter);
     }
-    if (coercionLevel > CoercionLevel<ListExpr>) out << ')';
+    if (coercionLevel > reflection::CoercionLevel<ListExpr>) out << ')';
 }
 
 void PrettyPrinter::operator()(const Expr& v) const { std::visit(*this, v); }
 
 void PrettyPrinter::operator()(const AProgram& v) const {
-    if (coercionLevel > CoercionLevel<AProgram>) out << '(';
+    if (coercionLevel > reflection::CoercionLevel<AProgram>) out << '(';
     WithCoercionLevel(0)(v.ListExpr_);
-    if (coercionLevel > CoercionLevel<AProgram>) out << ')';
+    if (coercionLevel > reflection::CoercionLevel<AProgram>) out << ')';
 }
 
 void PrettyPrinter::operator()(const Abstraction& v) const {
-    if (coercionLevel > CoercionLevel<Abstraction>) out << '(';
+    if (coercionLevel > reflection::CoercionLevel<Abstraction>) out << '(';
     out << 'l';
     out << ' ';
     WithCoercionLevel(0)(v.Ident_);
@@ -58,27 +58,27 @@ void PrettyPrinter::operator()(const Abstraction& v) const {
     out << '.';
     out << ' ';
     std::visit(WithCoercionLevel(0), *v.Expr_);
-    if (coercionLevel > CoercionLevel<Abstraction>) out << ')';
+    if (coercionLevel > reflection::CoercionLevel<Abstraction>) out << ')';
 }
 
 void PrettyPrinter::operator()(const Application& v) const {
-    if (coercionLevel > CoercionLevel<Application>) out << '(';
+    if (coercionLevel > reflection::CoercionLevel<Application>) out << '(';
     WithCoercionLevel(1)(*v.Expr_1);
     out << ' ';
     WithCoercionLevel(2)(*v.Expr_2);
-    if (coercionLevel > CoercionLevel<Application>) out << ')';
+    if (coercionLevel > reflection::CoercionLevel<Application>) out << ')';
 }
 
 void PrettyPrinter::operator()(const Variable& v) const {
-    if (coercionLevel > CoercionLevel<Variable>) out << '(';
+    if (coercionLevel > reflection::CoercionLevel<Variable>) out << '(';
     WithCoercionLevel(0)(v.Ident_);
-    if (coercionLevel > CoercionLevel<Variable>) out << ')';
+    if (coercionLevel > reflection::CoercionLevel<Variable>) out << ')';
 }
 
 void PrettyPrinter::operator()(const Ident& v) const {
-    if (coercionLevel > CoercionLevel<Ident>) out << '(';
+    if (coercionLevel > reflection::CoercionLevel<Ident>) out << '(';
     out << v.String;
-    if (coercionLevel > CoercionLevel<Ident>) out << ')';
+    if (coercionLevel > reflection::CoercionLevel<Ident>) out << ')';
 }
 
 #define PrettyPrinterSHL(type) \
