@@ -81,6 +81,8 @@ struct CoercionLevel_t {};
 template <class T>
 struct SyntaxNodeName_t {};
 
+template<> struct SyntaxNodeName_t<Program> { static constexpr const char* value = "Program"; };
+template<> struct SyntaxNodeName_t<Expr> { static constexpr const char* value = "Expr"; };
 template<> struct CoercionLevel_t<Ident> { static constexpr int value = 0; };
 template<> struct SyntaxNodeName_t<Ident> { static constexpr const char* value = "Ident"; };
 template<> struct CoercionLevel_t<ListExpr> { static constexpr int value = 0; };

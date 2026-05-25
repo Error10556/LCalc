@@ -136,9 +136,14 @@ namespace LC {
             [](ParseResultVariant&& var) -> RetType {
                 return std::move(var) | PatternMatch{
                     [](T&& target) -> RetType { return std::move(target); },
-                    [](auto&&) -> RetType {
+                    [](auto&& node) -> RetType {
+                        using gotType = std::decay_t<decltype(node)>;
                         //TODO make subclass of syntax_error for this
-                        return Parser::syntax_error("Unexpected syntactic construct");
+                        std::string msg = "Unexpected syntactic construct: tried to parse ";
+                        msg.append(reflection::SyntaxNodeName<T>)
+                            .append(", but got ")
+                            .append(reflection::SyntaxNodeName<gotType>);
+                        return Parser::syntax_error(msg);
                     }
                 };
             }
