@@ -6,7 +6,7 @@ Abstraction. Expr ::= "l" Ident "." Expr;
 Application. Expr1 ::= Expr1 Expr2;
 Variable. Expr2 ::= Ident;
 
-entrypoints Program, Expr;
+entrypoints Program;
 
 comment "//";
 comment "/*" "*/"

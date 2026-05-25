@@ -63,7 +63,6 @@
 
 __start__
     : Program0 YYEOF { *result = {{ParseResultVariant(std::move($1))}}; }
-    /* here assuming that Program is the only entrypoint, unlike in grammar.cf */
     ;
 
 Program0
