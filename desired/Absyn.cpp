@@ -1,5 +1,4 @@
 #include "Absyn.hpp"
-#include <memory>
 
 namespace LC {
 
