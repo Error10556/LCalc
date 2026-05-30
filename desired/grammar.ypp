@@ -17,8 +17,6 @@
 %token <std::string> IDENT;
 
 %code requires {
-    #include <algorithm>
-    #include <iostream>
     #include <string_view>
     #include <optional>
     #include <variant>
@@ -66,13 +64,13 @@ __start__
     ;
 
 Program0
-    : /* AProgram */ ListExpr { std::reverse($1.begin(), $1.end()); $$.emplace<AProgram>(std::move($1)); }
+    : /* AProgram */ ListExpr { $$.emplace<AProgram>(std::move($1)); }
     ;
 
 ListExpr
     : /* [] */ { }
-    | /* (:[]) */ Expr0 { $$.push_back(std::move($1)); }
-    | /* (:) */ Expr0 SEMI ListExpr { $$ = std::move($3); $$.push_back(std::move($1)); }
+    | /* (:[]) */ Expr0 { $$.push_front(std::move($1)); }
+    | /* (:) */ Expr0 SEMI ListExpr { $$ = std::move($3); $$.push_front(std::move($1)); }
     ;
 
 Expr0
@@ -130,16 +128,17 @@ namespace LC {
     template <class T>
     static std::variant<T, Parser::syntax_error>
     EnsureParsedType(ParseResultOrError&& parsed) {
-        using RetType = std::variant<LC::Program, Parser::syntax_error>;
+        using RetType = std::variant<T, Parser::syntax_error>;
         return std::move(parsed) | PatternMatch{
-            [](Parser::syntax_error&& err) -> RetType { return std::move(err); },
+            [](Parser::syntax_error&& err) -> RetType {
+                return std::move(err);
+            },
             [](ParseResultVariant&& var) -> RetType {
                 return std::move(var) | PatternMatch{
                     [](T&& target) -> RetType { return std::move(target); },
                     [](auto&& node) -> RetType {
                         using gotType = std::decay_t<decltype(node)>;
-                        //TODO make subclass of syntax_error for this
-                        std::string msg = "Unexpected syntactic construct: tried to parse ";
+                        std::string msg = "Unexpected syntax: tried to parse ";
                         msg.append(reflection::SyntaxNodeName<T>)
                             .append(", but got ")
                             .append(reflection::SyntaxNodeName<gotType>);

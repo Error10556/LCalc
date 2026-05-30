@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include <string>
-#include <vector>
+#include <deque>
 #include <variant>
 
 namespace LC {
@@ -26,7 +26,7 @@ using Program = std::variant<AProgram>;
 class Abstraction; class Application; class Variable;
 using Expr = std::variant<Abstraction, Application, Variable>;
 
-using ListExpr = std::vector<Expr>;
+using ListExpr = std::deque<Expr>;
 
 class AProgram {
 public:
