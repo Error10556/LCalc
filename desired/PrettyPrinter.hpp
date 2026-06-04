@@ -1,3 +1,6 @@
+// The default pretty printer does not suit all languages.
+// See PrettyPrinter.cpp for details.
+
 #pragma once
 #include <iostream>
 #include <string_view>
@@ -5,11 +8,13 @@
 
 namespace LC {
 
-// for use with std::visit and operator<<
+// for use with std::visit, |PatternMatch{...}, and operator<<
 class PrettyPrinter {
     std::ostream& out;
-    int coercionLevel;
     unsigned int indent;
+    int coercionLevel;
+    void NewLine(unsigned int indent) const;
+
     friend const PrettyPrinter& operator<<(const PrettyPrinter&,
                                            std::string_view);
 

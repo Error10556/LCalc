@@ -1,14 +1,36 @@
+/**** Disclaimer ****
+ * The default PrettyPrinter implementation makes a number of assumptions about
+ * the target language. Namely:
+ * * All tokens are separated from each other by a space, except for commas ',',
+ *   which are only separated from the right, and brackets '[]' or
+ *   parentheses '()', which are not separated from the enclosed text.
+ * * Curly braces '{}' (and only those) enclose an indented block. The
+ * indentation equals 4 spaces. The left curly brace causes one line break
+ * _after_ itself, the right one causes one _before_ itself. The right brace is
+ * not indented.
+ * * Semicolons ';' cause a line break after themselves.
+ * * Precedence is always resolved by enclosing a term in parentheses '()'.
+ *
+ * Since the above limitations likely make the pretty-printed code look far from
+ * pretty, you are encouraged to patch this file with your own implementations
+ * of some methods.
+ */
+
 #include "PrettyPrinter.hpp"
+
 #include "Absyn.hpp"
 
 namespace LC {
 
-PrettyPrinter::PrettyPrinter(std::ostream& out, unsigned int indent, int coercionLevel)
-    : out(out), coercionLevel(coercionLevel), indent(indent) {}
+PrettyPrinter::PrettyPrinter(std::ostream& out, unsigned int indent,
+                             int coercionLevel)
+    : out(out), indent(indent), coercionLevel(coercionLevel) {}
 
-void PrettyPrinter::NewLine() const {
+void PrettyPrinter::NewLine(unsigned int indent) const {
     out << '\n' << std::string(indent, ' ');
 }
+
+void PrettyPrinter::NewLine() const { NewLine(indent); }
 
 PrettyPrinter PrettyPrinter::WithCoercionLevel(int level) const {
     return {out, indent, level};
@@ -81,8 +103,11 @@ void PrettyPrinter::operator()(const Ident& v) const {
     if (coercionLevel > reflection::CoercionLevel<Ident>) out << ')';
 }
 
-#define PrettyPrinterSHL(type) \
-    const PrettyPrinter& operator<<(const PrettyPrinter& p, const type& v) { p(v); return p; }
+#define PrettyPrinterSHL(type)                                               \
+    const PrettyPrinter& operator<<(const PrettyPrinter& p, const type& v) { \
+        p(v);                                                                \
+        return p;                                                            \
+    }
 
 PrettyPrinterSHL(Program);
 PrettyPrinterSHL(ListExpr);
@@ -97,4 +122,4 @@ const PrettyPrinter& operator<<(const PrettyPrinter& p, std::string_view v) {
     return p;
 }
 
-}
+}  // namespace LC
