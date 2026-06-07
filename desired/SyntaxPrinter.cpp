@@ -90,8 +90,7 @@ SyntaxPrinterSHL(Abstraction);
 SyntaxPrinterSHL(Application);
 SyntaxPrinterSHL(Variable);
 
-const SyntaxPrinter& operator<<(const SyntaxPrinter& p,
-                                std::string_view s) {
+const SyntaxPrinter& operator<<(const SyntaxPrinter& p, std::string_view s) {
     p.out << s;
     return p;
 }
