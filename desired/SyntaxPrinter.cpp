@@ -31,9 +31,14 @@ void SyntaxPrinter::operator()(const ListExpr& v) const {
     PrintIndentForHeader();
     size_t n = v.size();
     out << "ListExpr [" << n << "]\n";
-    SyntaxPrinter nonlast(this, true);
-    for (size_t i = 0; i < n; i++)
-        std::visit(i + 1 == n ? SyntaxPrinter(this, false) : nonlast, v[i]);
+    if (!n) return;
+    if (n > 1) {
+        SyntaxPrinter nonlast(this, true);
+        size_t n1 = n - 1;
+        for (size_t i = 0; i < n1; i++)
+            std::visit(nonlast, v[i]);
+    }
+    std::visit(SyntaxPrinter(this, false), v.back());
 }
 
 void SyntaxPrinter::operator()(const Expr& v) const {
