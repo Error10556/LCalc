@@ -5,7 +5,7 @@ VAR_COMPILE = $(VAR_CXX) $(VAR_CXXFLAGS) -c -o
 
 cpp-var/Absyn.hpp cpp-var/Absyn.cpp cpp-var/grammar.l cpp-var/grammar.ypp \
 	cpp-var/PatternMatching.hpp cpp-var/SyntaxPrinter.cpp \
-	cpp-var/SyntaxPrinter.hpp &: grammar.cf | cpp-var
+	cpp-var/SyntaxPrinter.hpp cpp-var/Test.cpp &: grammar.cf | cpp-var
 	cd cpp-var && bnfc --cpp-var -p LC ../grammar.cf
 
 cpp-var/Absyn.o: cpp-var/Absyn.cpp cpp-var/Absyn.hpp | cpp-var
@@ -26,11 +26,20 @@ cpp-var/grammar.tab.o: cpp-var/grammar.tab.cpp cpp-var/PatternMatching.hpp cpp-v
 cpp-var/SyntaxPrinter.o: cpp-var/SyntaxPrinter.cpp cpp-var/SyntaxPrinter.hpp | cpp-var
 	$(VAR_COMPILE) $@ -Icpp-var $<
 
+cpp-var/Test.o: cpp-var/Test.cpp cpp-var/Absyn.hpp cpp-var/grammar.tab.hpp \
+	cpp-var/SyntaxPrinter.hpp cpp-var/PatternMatching.hpp | cpp-var
+	$(VAR_COMPILE) $@ -Icpp-var $<
+
+cpp-var/Test: cpp-var/Test.o cpp-var/Absyn.o cpp-var/grammar.lex.o cpp-var/grammar.tab.o \
+	cpp-var/SyntaxPrinter.o | cpp-var
+	cd cpp-var && $(VAR_CXX) $(VAR_LDFLAGS) $(LDFLAGS) \
+		Test.o Absyn.o grammar.lex.o grammar.tab.o SyntaxPrinter.o \
+		-o Test
+
 cpp-var:
 	mkdir cpp-var
 
-all: cpp-var/Absyn.o cpp-var/grammar.lex.o cpp-var/grammar.tab.o \
-	cpp-var/SyntaxPrinter.o
+all: cpp-var/Test
 
 .PHONY: clean-var
 clean-var:
@@ -48,3 +57,6 @@ clean-var:
 	@ test ! -f cpp-var/SyntaxPrinter.cpp || rm cpp-var/SyntaxPrinter.cpp
 	@ test ! -f cpp-var/SyntaxPrinter.hpp || rm cpp-var/SyntaxPrinter.hpp
 	@ test ! -f cpp-var/SyntaxPrinter.o || rm cpp-var/SyntaxPrinter.o
+	@ test ! -f cpp-var/Test.cpp || rm cpp-var/Test.cpp
+	@ test ! -f cpp-var/Test.o || rm cpp-var/Test.o
+	@ test ! -f cpp-var/Test || rm cpp-var/Test
