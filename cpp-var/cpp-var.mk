@@ -26,15 +26,18 @@ cpp-var/grammar.tab.o: cpp-var/grammar.tab.cpp cpp-var/PatternMatching.hpp cpp-v
 cpp-var/SyntaxPrinter.o: cpp-var/SyntaxPrinter.cpp cpp-var/SyntaxPrinter.hpp | cpp-var
 	$(VAR_COMPILE) $@ -Icpp-var $<
 
+cpp-var/PrettyPrinter.o: cpp-var/PrettyPrinter.cpp cpp-var/PrettyPrinter.hpp | cpp-var
+	$(VAR_COMPILE) $@ -Icpp-var $<
+
 cpp-var/Test.o: cpp-var/Test.cpp cpp-var/Absyn.hpp cpp-var/grammar.tab.hpp \
 	cpp-var/SyntaxPrinter.hpp cpp-var/PatternMatching.hpp | cpp-var
 	$(VAR_COMPILE) $@ -Icpp-var $<
 
 cpp-var/Test: cpp-var/Test.o cpp-var/Absyn.o cpp-var/grammar.lex.o cpp-var/grammar.tab.o \
-	cpp-var/SyntaxPrinter.o | cpp-var
+	cpp-var/SyntaxPrinter.o cpp-var/PrettyPrinter.o | cpp-var
 	cd cpp-var && $(VAR_CXX) $(VAR_LDFLAGS) $(LDFLAGS) \
 		Test.o Absyn.o grammar.lex.o grammar.tab.o SyntaxPrinter.o \
-		-o Test
+		PrettyPrinter.o -o Test
 
 cpp-var:
 	mkdir cpp-var
@@ -57,6 +60,9 @@ clean-var:
 	@ test ! -f cpp-var/SyntaxPrinter.cpp || rm cpp-var/SyntaxPrinter.cpp
 	@ test ! -f cpp-var/SyntaxPrinter.hpp || rm cpp-var/SyntaxPrinter.hpp
 	@ test ! -f cpp-var/SyntaxPrinter.o || rm cpp-var/SyntaxPrinter.o
+	@ test ! -f cpp-var/PrettyPrinter.cpp || rm cpp-var/PrettyPrinter.cpp
+	@ test ! -f cpp-var/PrettyPrinter.hpp || rm cpp-var/PrettyPrinter.hpp
+	@ test ! -f cpp-var/PrettyPrinter.o || rm cpp-var/PrettyPrinter.o
 	@ test ! -f cpp-var/Test.cpp || rm cpp-var/Test.cpp
 	@ test ! -f cpp-var/Test.o || rm cpp-var/Test.o
 	@ test ! -f cpp-var/Test || rm cpp-var/Test
