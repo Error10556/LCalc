@@ -5,7 +5,8 @@ VAR_COMPILE = $(VAR_CXX) $(VAR_CXXFLAGS) -c -o
 
 cpp-var/Absyn.hpp cpp-var/Absyn.cpp cpp-var/grammar.l cpp-var/grammar.ypp \
 	cpp-var/PatternMatching.hpp cpp-var/SyntaxPrinter.cpp \
-	cpp-var/SyntaxPrinter.hpp cpp-var/Test.cpp &: grammar.cf | cpp-var
+	cpp-var/SyntaxPrinter.hpp cpp-var/PrettyPrinter.cpp \
+	cpp-var/PrettyPrinter.hpp cpp-var/Test.cpp &: grammar.cf | cpp-var
 	cd cpp-var && bnfc --cpp-var -p LC ../grammar.cf
 
 cpp-var/Absyn.o: cpp-var/Absyn.cpp cpp-var/Absyn.hpp | cpp-var
