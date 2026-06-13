@@ -9,4 +9,9 @@ Variable. Expr2 ::= Ident;
 entrypoints Program;
 
 comment "//";
-comment "/*" "*/"
+comment "/*" "*/";
+
+StringExpr. Expr ::= "str:" String;
+IntegerExpr. Expr ::= "int:" Integer;
+DoubleExpr. Expr ::= "dbl:" Double;
+CharExpr. Expr ::= "chr:" Char;
