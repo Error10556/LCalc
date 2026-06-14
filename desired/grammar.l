@@ -3,6 +3,7 @@
 %option noyywrap
 %option prefix="LC"
 %option outfile="grammar.lex.cpp"
+%option nofile
 
 %{
 #include <charconv>
@@ -22,7 +23,7 @@ inline int hexDigitValue(char ch) {
 
 inline int32_t hexInt32(const char* start, int len) {
     int32_t val = 0;
-    for (int i = 0; i < len; i++) val = (val << 8) | hexDigitValue(start[i]);
+    for (int i = 0; i < len; i++) val = (val << 4) | hexDigitValue(start[i]);
     return val;
 }
 
@@ -60,6 +61,7 @@ inline void encodeUTF8(std::string& dest, int32_t ch) {
         buf[sz++] = ch & 0x3F;
         ch >>= 6;
     }
+    buf[sz] = 0;
     for (int i = 0, j = sz - 1; i < j; ++i, --j) std::swap(buf[i], buf[j]);
     buf[0] |= static_cast<char>(0xFF << (8 - sz));
     for (int i = 1; i < sz; i++) buf[i] |= 0x80;
@@ -103,7 +105,7 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
 <ESCAPE>v BEGIN(STRING); yyextra->push_back('\v');
 <ESCAPE>x{HEXINT} {
         BEGIN(STRING);
-        encodeUTF8(*yyextra, hexInt32(yytext, yyleng - 1));
+        encodeUTF8(*yyextra, hexInt32(yytext + 1, yyleng - 1));
     }
 <ESCAPE>. BEGIN(STRING); yyextra->push_back(*yytext);
 
