@@ -33,11 +33,11 @@ void PrintEscapedCharRaw(std::ostream& out, int32_t ch) {
             out << "\\v";
             break;
         case '\\':
-            out << '\\' << ch;
+            out << "\\\\";
             break;
         default:
             if (0x20 <= ch && ch < 0x7F) {
-                out << ch;
+                out << static_cast<char>(ch);
                 break;
             }
             out << "\\x";
