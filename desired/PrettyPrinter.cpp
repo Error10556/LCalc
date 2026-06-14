@@ -84,7 +84,7 @@ void PrettyPrinter::operator()(const AProgram& v) const {
 
 void PrettyPrinter::operator()(const Abstraction& v) const {
     IF_BAD_COERC(Abstraction) out << '(';
-    out << "( ";
+    out << "l ";
     WithCoercionLevel(0)(v.Ident_);
     out << " . ";
     std::visit(WithCoercionLevel(0), *v.Expr_);
