@@ -70,7 +70,7 @@ inline void encodeUTF8(std::string& dest, int32_t ch) {
 
 %option extra-type="std::string*"
 
-%s COMMENT STRING CHAR
+%s COMMENT STRING ESCAPE CHAR
 
 HEXINT [0-7][0-9a-fA-F]{7}|[0-9a-fA-F]{1,7}
 
