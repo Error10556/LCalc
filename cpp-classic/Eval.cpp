@@ -76,6 +76,11 @@ public:
             cerr << "Variable " << p->ident_ << " undefined" << endl;
         }
     }
+
+    void visitStringExpr(LC::StringExpr* p) override {}
+    void visitIntegerExpr(LC::IntegerExpr* p) override {}
+    void visitDoubleExpr(LC::DoubleExpr* p) override {}
+    void visitCharExpr(LC::CharExpr* p) override {}
 };
 
 class VRename : public LC::Visitor {
@@ -110,6 +115,10 @@ public:
     void visitVariable(LC::Variable* p) override {
         if (p->ident_ == what) p->ident_ = into;
     }
+    void visitStringExpr(LC::StringExpr* p) override {}
+    void visitIntegerExpr(LC::IntegerExpr* p) override {}
+    void visitDoubleExpr(LC::DoubleExpr* p) override {}
+    void visitCharExpr(LC::CharExpr* p) override {}
 };
 
 // Consumes arguments; duplicates `into`
@@ -161,6 +170,11 @@ public:
         Result = into->clone();
         delete p;
     }
+
+    void visitStringExpr(LC::StringExpr* p) override { Result = p; }
+    void visitIntegerExpr(LC::IntegerExpr* p) override { Result = p; }
+    void visitDoubleExpr(LC::DoubleExpr* p) override { Result = p; }
+    void visitCharExpr(LC::CharExpr* p) override { Result = p; }
 };
 
 // consumes arguments
@@ -207,6 +221,11 @@ public:
     void visitVariable(LC::Variable* p) override {
         Result = p;
     }
+
+    void visitStringExpr(LC::StringExpr* p) override { Result = p; }
+    void visitIntegerExpr(LC::IntegerExpr* p) override { Result = p; }
+    void visitDoubleExpr(LC::DoubleExpr* p) override { Result = p; }
+    void visitCharExpr(LC::CharExpr* p) override { Result = p; }
 };
 
 int main(int argc, char** argv) {
