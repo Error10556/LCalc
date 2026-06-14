@@ -34,6 +34,14 @@ public:
     void operator()(const Application&) const;
     void operator()(const Variable&) const;
     void operator()(const Ident&) const;
+    void operator()(const String&) const;
+    void operator()(const Integer&) const;
+    void operator()(const Double&) const;
+    void operator()(const Char&) const;
+    void operator()(const StringExpr&) const;
+    void operator()(const IntegerExpr&) const;
+    void operator()(const DoubleExpr&) const;
+    void operator()(const CharExpr&) const;
     void NewLine() const;
 };
 
@@ -45,6 +53,14 @@ const PrettyPrinter& operator<<(const PrettyPrinter&, const Abstraction&);
 const PrettyPrinter& operator<<(const PrettyPrinter&, const Application&);
 const PrettyPrinter& operator<<(const PrettyPrinter&, const Variable&);
 const PrettyPrinter& operator<<(const PrettyPrinter&, const Ident&);
+const PrettyPrinter& operator<<(const PrettyPrinter&, const String&);
+const PrettyPrinter& operator<<(const PrettyPrinter&, const Integer&);
+const PrettyPrinter& operator<<(const PrettyPrinter&, const Char&);
+const PrettyPrinter& operator<<(const PrettyPrinter&, const Double&);
+const PrettyPrinter& operator<<(const PrettyPrinter&, const StringExpr&);
+const PrettyPrinter& operator<<(const PrettyPrinter&, const IntegerExpr&);
+const PrettyPrinter& operator<<(const PrettyPrinter&, const CharExpr&);
+const PrettyPrinter& operator<<(const PrettyPrinter&, const DoubleExpr&);
 const PrettyPrinter& operator<<(const PrettyPrinter&, std::string_view);
 
 }

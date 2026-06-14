@@ -54,10 +54,10 @@ public:
     void operator()(const LC::AProgram& p) { (*this)(p.ListExpr_); }
 
     void operator()(const LC::Abstraction& p) {
-        names[p.Ident_.String]++;
-        usedNames.insert(p.Ident_.String);
+        names[p.Ident_.Value]++;
+        usedNames.insert(p.Ident_.Value);
         std::visit(*this, *p.Expr_);
-        auto iter = names.find(p.Ident_.String);
+        auto iter = names.find(p.Ident_.Value);
         if (--iter->second == 0) names.erase(iter);
     }
 
@@ -67,11 +67,16 @@ public:
     }
 
     void operator()(const LC::Variable& p) {
-        if (names.count(p.Ident_.String) == 0) {
+        if (names.count(p.Ident_.Value) == 0) {
             Error = true;
-            cerr << "Variable " << p.Ident_.String << " undefined" << endl;
+            cerr << "Variable " << p.Ident_.Value << " undefined" << endl;
         }
     }
+
+    void operator()(const LC::StringExpr&) {};
+    void operator()(const LC::CharExpr&) {};
+    void operator()(const LC::IntegerExpr&) {};
+    void operator()(const LC::DoubleExpr&) {};
 };
 
 class VRename {
@@ -87,7 +92,7 @@ public:
     void operator()(LC::AProgram& p) const { (*this)(p.ListExpr_); }
 
     void operator()(LC::Abstraction& p) const {
-        if (p.Ident_.String != what) std::visit(*this, *p.Expr_);
+        if (p.Ident_.Value != what) std::visit(*this, *p.Expr_);
     }
 
     void operator()(LC::Application& p) const {
@@ -96,8 +101,13 @@ public:
     }
 
     void operator()(LC::Variable& p) const {
-        if (p.Ident_.String == what) p.Ident_.String = into;
+        if (p.Ident_.Value == what) p.Ident_.Value = into;
     }
+
+    void operator()(LC::StringExpr&) const {}
+    void operator()(LC::IntegerExpr&) const {}
+    void operator()(LC::DoubleExpr&) const {}
+    void operator()(LC::CharExpr&) const {}
 };
 
 // `into` must be closed
@@ -112,7 +122,7 @@ public:
         : what(what), into(into) {}
 
     LC::Expr operator()(LC::Abstraction&& p) const {
-        if (p.Ident_.String == what) {
+        if (p.Ident_.Value == what) {
             return std::move(p);
         }
         // 'into' is a closed term
@@ -127,10 +137,15 @@ public:
     }
 
     LC::Expr operator()(LC::Variable&& p) const {
-        if (p.Ident_.String != what)
+        if (p.Ident_.Value != what)
             return std::move(p);
         return into;
     }
+
+    LC::Expr operator()(LC::StringExpr&& p) const { return std::move(p); }
+    LC::Expr operator()(LC::IntegerExpr&& p) const { return std::move(p); }
+    LC::Expr operator()(LC::DoubleExpr&& p) const { return std::move(p); }
+    LC::Expr operator()(LC::CharExpr&& p) const { return std::move(p); }
 };
 
 class VEvaluate {
@@ -145,13 +160,18 @@ public:
             }
         };
         return std::move(*func.Expr_) |
-               VSubstitute(func.Ident_.String, std::move(*p.Expr_2) | *this) |
+               VSubstitute(func.Ident_.Value, std::move(*p.Expr_2) | *this) |
                *this;
     }
 
     LC::Expr operator()(LC::Variable&& p) const {
         return std::move(p);
     }
+
+    LC::Expr operator()(LC::StringExpr&& p) const { return std::move(p); }
+    LC::Expr operator()(LC::IntegerExpr&& p) const { return std::move(p); }
+    LC::Expr operator()(LC::DoubleExpr&& p) const { return std::move(p); }
+    LC::Expr operator()(LC::CharExpr&& p) const { return std::move(p); }
 };
 
 int main(int argc, char** argv) {

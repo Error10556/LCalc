@@ -8,7 +8,7 @@ namespace LC {
 
 struct Ident {
 public:
-    std::string String;
+    std::string Value;
     Ident() = default;
     Ident(const Ident&) = default;
     Ident(Ident&&) = default;
@@ -20,11 +20,62 @@ public:
     Ident& operator=(std::string&&);
 };
 
+struct String {
+public:
+    std::string Value;
+    String() = default;
+    String(const String&) = default;
+    String(String&&) = default;
+    String& operator=(const String&) = default;
+    String& operator=(String&&) = default;
+    String(const std::string&); /* implicit */
+    String(std::string&&);
+    String& operator=(const std::string&);
+    String& operator=(std::string&&);
+};
+
+struct Double {
+public:
+    double Value;
+    Double() = default;
+    Double(const Double&) = default;
+    Double(Double&&) = default;
+    Double& operator=(const Double&) = default;
+    Double& operator=(Double&&) = default;
+    Double(const double&); /* implicit */
+    Double& operator=(const double&);
+};
+
+struct Integer {
+public:
+    long Value;
+    Integer() = default;
+    Integer(const Integer&) = default;
+    Integer(Integer&&) = default;
+    Integer& operator=(const Integer&) = default;
+    Integer& operator=(Integer&&) = default;
+    Integer(const long&); /* implicit */
+    Integer& operator=(const long&);
+};
+
+struct Char {
+public:
+    int32_t Value;
+    Char() = default;
+    Char(const Char&) = default;
+    Char(Char&&) = default;
+    Char& operator=(const Char&) = default;
+    Char& operator=(Char&&) = default;
+    Char(const int32_t&); /* implicit */
+    Char& operator=(const int32_t&);
+};
+
 class AProgram;
 using Program = std::variant<AProgram>;
 
 class Abstraction; class Application; class Variable;
-using Expr = std::variant<Abstraction, Application, Variable>;
+class StringExpr; class CharExpr; class IntegerExpr; class DoubleExpr;
+using Expr = std::variant<Abstraction, Application, Variable, StringExpr, CharExpr, IntegerExpr, DoubleExpr>;
 
 using ListExpr = std::deque<Expr>;
 
@@ -73,6 +124,50 @@ public:
     Ident Ident_;
 };
 
+class StringExpr {
+public:
+    StringExpr() = default;
+    StringExpr(const StringExpr&);
+    StringExpr(StringExpr&&) = default;
+    StringExpr& operator=(const StringExpr&);
+    StringExpr& operator=(StringExpr&&) = default;
+    StringExpr(String&&);
+    String String_;
+};
+
+class IntegerExpr {
+public:
+    IntegerExpr() = default;
+    IntegerExpr(const IntegerExpr&);
+    IntegerExpr(IntegerExpr&&) = default;
+    IntegerExpr& operator=(const IntegerExpr&);
+    IntegerExpr& operator=(IntegerExpr&&) = default;
+    IntegerExpr(Integer&&);
+    Integer Integer_;
+};
+
+class DoubleExpr {
+public:
+    DoubleExpr() = default;
+    DoubleExpr(const DoubleExpr&);
+    DoubleExpr(DoubleExpr&&) = default;
+    DoubleExpr& operator=(const DoubleExpr&);
+    DoubleExpr& operator=(DoubleExpr&&) = default;
+    DoubleExpr(Double&&);
+    Double Double_;
+};
+
+class CharExpr {
+public:
+    CharExpr() = default;
+    CharExpr(const CharExpr&);
+    CharExpr(CharExpr&&) = default;
+    CharExpr& operator=(const CharExpr&);
+    CharExpr& operator=(CharExpr&&) = default;
+    CharExpr(Char&&);
+    Char Char_;
+};
+
 namespace reflection {
 
 template <class T>
@@ -85,6 +180,14 @@ template<> struct SyntaxNodeName_t<Program> { static constexpr const char* value
 template<> struct SyntaxNodeName_t<Expr> { static constexpr const char* value = "Expr"; };
 template<> struct CoercionLevel_t<Ident> { static constexpr int value = 0; };
 template<> struct SyntaxNodeName_t<Ident> { static constexpr const char* value = "Ident"; };
+template<> struct CoercionLevel_t<String> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<String> { static constexpr const char* value = "String"; };
+template<> struct CoercionLevel_t<Integer> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<Integer> { static constexpr const char* value = "Integer"; };
+template<> struct CoercionLevel_t<Char> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<Char> { static constexpr const char* value = "Char"; };
+template<> struct CoercionLevel_t<Double> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<Double> { static constexpr const char* value = "Double"; };
 template<> struct CoercionLevel_t<ListExpr> { static constexpr int value = 0; };
 template<> struct SyntaxNodeName_t<ListExpr> { static constexpr const char* value = "ListExpr"; };
 template<> struct CoercionLevel_t<AProgram> { static constexpr int value = 0; };
@@ -95,6 +198,14 @@ template<> struct CoercionLevel_t<Application> { static constexpr int value = 1;
 template<> struct SyntaxNodeName_t<Application> { static constexpr const char* value = "Application"; };
 template<> struct CoercionLevel_t<Variable> { static constexpr int value = 2; };
 template<> struct SyntaxNodeName_t<Variable> { static constexpr const char* value = "Variable"; };
+template<> struct CoercionLevel_t<StringExpr> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<StringExpr> { static constexpr const char* value = "StringExpr"; };
+template<> struct CoercionLevel_t<CharExpr> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<CharExpr> { static constexpr const char* value = "CharExpr"; };
+template<> struct CoercionLevel_t<IntegerExpr> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<IntegerExpr> { static constexpr const char* value = "IntegerExpr"; };
+template<> struct CoercionLevel_t<DoubleExpr> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<DoubleExpr> { static constexpr const char* value = "DoubleExpr"; };
 
 template<class T>
 constexpr int CoercionLevel = CoercionLevel_t<T>::value;

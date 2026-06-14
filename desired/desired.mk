@@ -18,23 +18,27 @@ desired/grammar.tab.o: desired/grammar.tab.cpp desired/Absyn.hpp | desired
 desired/grammar.lex.o: desired/grammar.lex.cpp | desired
 	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
+desired/PrinterCommon.o: desired/PrinterCommon.cpp desired/PrinterCommon.hpp
+	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
+
 desired/PrettyPrinter.o: desired/PrettyPrinter.cpp desired/PrettyPrinter.hpp \
-	desired/Absyn.hpp
+	desired/Absyn.hpp desired/PrinterCommon.hpp
 	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
 desired/SyntaxPrinter.o: desired/SyntaxPrinter.cpp desired/SyntaxPrinter.hpp \
-	desired/Absyn.hpp
+	desired/Absyn.hpp desired/PrinterCommon.hpp
 	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
 desired/Test.o: desired/Test.cpp desired/Absyn.hpp desired/grammar.tab.hpp \
 	desired/PrettyPrinter.hpp desired/SyntaxPrinter.hpp | desired
 	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
-desired/Test: desired/Test.o desired/grammar.tab.o desired/PrettyPrinter.o \
-	desired/SyntaxPrinter.o desired/grammar.lex.o desired/Absyn.o | desired
+desired/Test: desired/Test.o desired/grammar.tab.o desired/PrinterCommon.o \
+	desired/PrettyPrinter.o desired/SyntaxPrinter.o desired/grammar.lex.o \
+	desired/Absyn.o | desired
 	cd desired && $(DESIRED_CXX) $(LDFLAGS) $(DESIRED_LDFLAGS) Test.o \
-		grammar.lex.o grammar.tab.o PrettyPrinter.o SyntaxPrinter.o \
-		Absyn.o -o Test
+		grammar.lex.o grammar.tab.o PrinterCommon.o PrettyPrinter.o \
+		SyntaxPrinter.o Absyn.o -o Test
 
 desired/Eval.o: desired/Eval.cpp desired/PrettyPrinter.hpp \
 	desired/grammar.tab.hpp desired/Absyn.hpp | desired
@@ -43,7 +47,8 @@ desired/Eval.o: desired/Eval.cpp desired/PrettyPrinter.hpp \
 desired/Eval: desired/Eval.o desired/grammar.tab.o desired/PrettyPrinter.o \
 	desired/grammar.lex.o desired/Absyn.o | desired
 	cd desired && $(DESIRED_CXX) $(LDFLAGS) $(DESIRED_LDFLAGS) Eval.o \
-		grammar.lex.o grammar.tab.o PrettyPrinter.o Absyn.o -o Eval
+		grammar.lex.o grammar.tab.o PrinterCommon.o PrettyPrinter.o Absyn.o \
+		-o Eval
 
 desired:
 	mkdir desired

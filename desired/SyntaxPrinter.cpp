@@ -1,4 +1,5 @@
 #include "SyntaxPrinter.hpp"
+#include "PrinterCommon.hpp"
 
 namespace LC {
 
@@ -75,7 +76,57 @@ void SyntaxPrinter::operator()(const Variable& v) const {
 
 void SyntaxPrinter::operator()(const Ident& v) const {
     PrintIndentForHeader();
-    out << "Ident {" << v.String << "}\n";
+    out << "Ident {" << v.Value << "}\n";
+}
+
+void SyntaxPrinter::operator()(const String& v) const {
+    PrintIndentForHeader();
+    out << "String ";
+    PrintEscapedString(out, v.Value);
+    out << '\n';
+}
+
+void SyntaxPrinter::operator()(const Integer& v) const {
+    PrintIndentForHeader();
+    out << "Integer " << v.Value << '\n';
+}
+
+void SyntaxPrinter::operator()(const Double& v) const {
+    PrintIndentForHeader();
+    out << "Double ";
+    PrintDouble(out, v.Value);
+    out << '\n';
+}
+
+void SyntaxPrinter::operator()(const Char& v) const {
+    PrintIndentForHeader();
+    out << "Char ";
+    PrintEscapedChar(out, v.Value);
+    out << '\n';
+}
+
+void SyntaxPrinter::operator()(const StringExpr& v) const {
+    PrintIndentForHeader();
+    out << "StringExpr\n";
+    SyntaxPrinter(this, false)(v.String_);
+}
+
+void SyntaxPrinter::operator()(const IntegerExpr& v) const {
+    PrintIndentForHeader();
+    out << "IntegerExpr\n";
+    SyntaxPrinter(this, false)(v.Integer_);
+}
+
+void SyntaxPrinter::operator()(const DoubleExpr& v) const {
+    PrintIndentForHeader();
+    out << "DoubleExpr\n";
+    SyntaxPrinter(this, false)(v.Double_);
+}
+
+void SyntaxPrinter::operator()(const CharExpr& v) const {
+    PrintIndentForHeader();
+    out << "CharExpr\n";
+    SyntaxPrinter(this, false)(v.Char_);
 }
 
 #define SyntaxPrinterSHL(type) \
@@ -89,6 +140,15 @@ SyntaxPrinterSHL(AProgram);
 SyntaxPrinterSHL(Abstraction);
 SyntaxPrinterSHL(Application);
 SyntaxPrinterSHL(Variable);
+SyntaxPrinterSHL(Ident);
+SyntaxPrinterSHL(String);
+SyntaxPrinterSHL(Integer);
+SyntaxPrinterSHL(Double);
+SyntaxPrinterSHL(Char);
+SyntaxPrinterSHL(StringExpr);
+SyntaxPrinterSHL(IntegerExpr);
+SyntaxPrinterSHL(DoubleExpr);
+SyntaxPrinterSHL(CharExpr);
 
 const SyntaxPrinter& operator<<(const SyntaxPrinter& p, std::string_view s) {
     p.out << s;

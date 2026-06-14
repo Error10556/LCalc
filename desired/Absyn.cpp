@@ -9,18 +9,58 @@ static std::unique_ptr<T> ClonePtr(const std::unique_ptr<T>& p) {
 }
 
 Ident::Ident(const std::string& s)
-    : String(s) {}
+    : Value(s) {}
 
 Ident::Ident(std::string&& s)
-    : String(std::move(s)) {}
+    : Value(std::move(s)) {}
 
 Ident& Ident::operator=(const std::string& s) {
-    String = s;
+    Value = s;
     return *this;
 }
 
 Ident& Ident::operator=(std::string&& s) {
-    String = std::move(s);
+    Value = std::move(s);
+    return *this;
+}
+
+String::String(const std::string& s)
+    : Value(s) {}
+
+String::String(std::string&& s)
+    : Value(std::move(s)) {}
+
+String& String::operator=(const std::string& s) {
+    Value = s;
+    return *this;
+}
+
+String& String::operator=(std::string&& s) {
+    Value = std::move(s);
+    return *this;
+}
+
+Char::Char(const int32_t& v)
+    : Value(v) {}
+
+Char& Char::operator=(const int32_t& v) {
+    Value = v;
+    return *this;
+}
+
+Integer::Integer(const long& v)
+    : Value(v) {}
+
+Integer& Integer::operator=(const long& v) {
+    Value = v;
+    return *this;
+}
+
+Double::Double(const double& v)
+    : Value(v) {}
+
+Double& Double::operator=(const double& v) {
+    Value = v;
     return *this;
 }
 
@@ -71,5 +111,49 @@ Variable& Variable::operator=(const Variable& other) {
 
 Variable::Variable(Ident&& _1)
     : Ident_(std::move(_1)) {}
+
+StringExpr::StringExpr(const StringExpr& other)
+    : String_(other.String_) {}
+
+StringExpr& StringExpr::operator=(const StringExpr& other) {
+    String_ = other.String_;
+    return *this;
+}
+
+StringExpr::StringExpr(String&& _1)
+    : String_(std::move(_1)) {}
+
+IntegerExpr::IntegerExpr(const IntegerExpr& other)
+    : Integer_(other.Integer_) {}
+
+IntegerExpr& IntegerExpr::operator=(const IntegerExpr& other) {
+    Integer_ = other.Integer_;
+    return *this;
+}
+
+IntegerExpr::IntegerExpr(Integer&& _1)
+    : Integer_(std::move(_1)) {}
+
+DoubleExpr::DoubleExpr(const DoubleExpr& other)
+    : Double_(other.Double_) {}
+
+DoubleExpr& DoubleExpr::operator=(const DoubleExpr& other) {
+    Double_ = other.Double_;
+    return *this;
+}
+
+DoubleExpr::DoubleExpr(Double&& _1)
+    : Double_(std::move(_1)) {}
+
+CharExpr::CharExpr(const CharExpr& other)
+    : Char_(other.Char_) {}
+
+CharExpr& CharExpr::operator=(const CharExpr& other) {
+    Char_ = other.Char_;
+    return *this;
+}
+
+CharExpr::CharExpr(Char&& _1)
+    : Char_(std::move(_1)) {}
 
 }

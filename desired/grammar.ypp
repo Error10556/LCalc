@@ -10,11 +10,19 @@
 %header "grammar.tab.hpp"
 
 %token KW_l;
+%token SYM1; /* str: */
+%token SYM2; /* int: */
+%token SYM3; /* dbl: */
+%token SYM4; /* chr: */
 %token LPAREN;
 %token RPAREN;
 %token DOT;
 %token SEMI;
 %token <std::string> IDENT;
+%token <int32_t> CHAR;
+%token <double> DOUBLE;
+%token <long> INTEGER;
+%token <std::string> STRING;
 
 %code requires {
     #include <string_view>
@@ -28,8 +36,8 @@
     }
 }
 
-%nterm <Program> Program0
-%nterm <Expr> Expr0
+%nterm <Program> Program
+%nterm <Expr> Expr
 %nterm <Expr> Expr1
 %nterm <Expr> Expr2
 %nterm <ListExpr> ListExpr
@@ -60,21 +68,25 @@
 %%
 
 __start__
-    : Program0 YYEOF { *result = {{ParseResultVariant(std::move($1))}}; }
+    : Program YYEOF { *result = {{ParseResultVariant(std::move($1))}}; }
     ;
 
-Program0
+Program
     : /* AProgram */ ListExpr { $$.emplace<AProgram>(std::move($1)); }
     ;
 
 ListExpr
     : /* [] */ { }
-    | /* (:[]) */ Expr0 { $$.push_front(std::move($1)); }
-    | /* (:) */ Expr0 SEMI ListExpr { $$ = std::move($3); $$.push_front(std::move($1)); }
+    | /* (:[]) */ Expr { $$.push_front(std::move($1)); }
+    | /* (:) */ Expr SEMI ListExpr { $$ = std::move($3); $$.push_front(std::move($1)); }
     ;
 
-Expr0
-    : /* Abstraction */ KW_l IDENT DOT Expr0 { $$.emplace<Abstraction>(std::move($2), std::move($4)); }
+Expr
+    : /* Abstraction */ KW_l IDENT DOT Expr { $$.emplace<Abstraction>(std::move($2), std::move($4)); }
+    | /* StringExpr */ SYM1 STRING { $$.emplace<StringExpr>(std::move($2)); }
+    | /* IntegerExpr */ SYM2 INTEGER { $$.emplace<IntegerExpr>(std::move($2)); }
+    | /* DoubleExpr */ SYM3 DOUBLE { $$.emplace<DoubleExpr>(std::move($2)); }
+    | /* CharExpr */ SYM4 CHAR { $$.emplace<CharExpr>(std::move($2)); }
     | /* _ */ Expr1 { $$ = std::move($1); }
     ;
 
@@ -85,7 +97,7 @@ Expr1
 
 Expr2
     : /* Variable */ IDENT { $$.emplace<Variable>(std::move($1)); }
-    | /* _ */ LPAREN Expr0 RPAREN { $$ = std::move($2); }
+    | /* _ */ LPAREN Expr RPAREN { $$ = std::move($2); }
     ;
 
 %%

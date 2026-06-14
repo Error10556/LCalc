@@ -22,7 +22,9 @@
 
 #include "PrettyPrinter.hpp"
 
+#include <system_error>
 #include "Absyn.hpp"
+#include "PrinterCommon.hpp"
 
 namespace LC {
 
@@ -105,8 +107,60 @@ void PrettyPrinter::operator()(const Variable& v) const {
 
 void PrettyPrinter::operator()(const Ident& v) const {
     IF_BAD_COERC(Ident) out << '(';
-    out << v.String;
+    out << v.Value;
     IF_BAD_COERC(Ident) out << ')';
+}
+
+void PrettyPrinter::operator()(const String& v) const {
+    IF_BAD_COERC(String) out << '(';
+    PrintEscapedString(out, v.Value);
+    IF_BAD_COERC(String) out << ')';
+}
+
+void PrettyPrinter::operator()(const Integer& v) const {
+    IF_BAD_COERC(Integer) out << '(';
+    out << v.Value;
+    IF_BAD_COERC(Integer) out << ')';
+}
+
+void PrettyPrinter::operator()(const Double& v) const {
+    IF_BAD_COERC(Double) out << '(';
+    PrintDouble(out, v.Value);
+    IF_BAD_COERC(Double) out << ')';
+}
+
+void PrettyPrinter::operator()(const Char& v) const {
+    IF_BAD_COERC(Double) out << '(';
+    PrintEscapedChar(out, v.Value);
+    IF_BAD_COERC(Double) out << ')';
+}
+
+void PrettyPrinter::operator()(const StringExpr& v) const {
+    IF_BAD_COERC(StringExpr) out << '(';
+    out << "str: ";
+    WithCoercionLevel(0)(v.String_);
+    IF_BAD_COERC(StringExpr) out << ')';
+}
+
+void PrettyPrinter::operator()(const IntegerExpr& v) const {
+    IF_BAD_COERC(IntegerExpr) out << '(';
+    out << "int: ";
+    WithCoercionLevel(0)(v.Integer_);
+    IF_BAD_COERC(IntegerExpr) out << ')';
+}
+
+void PrettyPrinter::operator()(const DoubleExpr& v) const {
+    IF_BAD_COERC(DoubleExpr) out << '(';
+    out << "dbl: ";
+    WithCoercionLevel(0)(v.Double_);
+    IF_BAD_COERC(DoubleExpr) out << ')';
+}
+
+void PrettyPrinter::operator()(const CharExpr& v) const {
+    IF_BAD_COERC(CharExpr) out << '(';
+    out << "chr: ";
+    WithCoercionLevel(0)(v.Char_);
+    IF_BAD_COERC(CharExpr) out << ')';
 }
 
 #define PrettyPrinterSHL(type)                                               \
@@ -123,6 +177,14 @@ PrettyPrinterSHL(Abstraction);
 PrettyPrinterSHL(Application);
 PrettyPrinterSHL(Variable);
 PrettyPrinterSHL(Ident);
+PrettyPrinterSHL(String);
+PrettyPrinterSHL(Integer);
+PrettyPrinterSHL(Double);
+PrettyPrinterSHL(Char);
+PrettyPrinterSHL(StringExpr);
+PrettyPrinterSHL(IntegerExpr);
+PrettyPrinterSHL(DoubleExpr);
+PrettyPrinterSHL(CharExpr);
 
 const PrettyPrinter& operator<<(const PrettyPrinter& p, std::string_view v) {
     p.out << v;
