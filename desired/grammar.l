@@ -103,14 +103,14 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
 <ESCAPE>v BEGIN(STRING); yyextra->push_back('\v');
 <ESCAPE>x{HEXINT} {
         BEGIN(STRING);
-        encodeUTF8(*yyextra, hexInt32(yytext, yylen - 1));
+        encodeUTF8(*yyextra, hexInt32(yytext, yyleng - 1));
     }
 <ESCAPE>. BEGIN(STRING); yyextra->push_back(*yytext);
 
     /* Integer (must be above Double) */
 <INITIAL>[+\-]?[0-9]+ {
         const char* const start = yytext + (*yytext == '+');
-        const char* const end = yytext + yylen;
+        const char* const end = yytext + yyleng;
         long num;
         auto res = std::from_chars(start, end, num);
         if (res.ec == std::errc() && res.ptr == end)
@@ -122,7 +122,7 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
     /* Double */
 <INITIAL>[+\-]?[0-9]+(\.[0-9]+)?([eE][+\-]?[0-9]+)? {
         const char* const start = yytext + (*yytext == '+');
-        const char* const end = yytext + yylen;
+        const char* const end = yytext + yyleng;
         double num;
         auto res = std::from_chars(start, end, num);
         if (res.ec == std::errc() && res.ptr == end)
@@ -143,17 +143,17 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
 <CHAR>\\v' BEGIN(INITIAL); return LC::Parser::make_CHAR('\v');
 <CHAR>\\x{HEXINT}' {
         BEGIN(INITIAL);
-        return LC::Parser::make_CHAR(hexInt32(yytext + 2, yylen - 2));
+        return LC::Parser::make_CHAR(hexInt32(yytext + 2, yyleng - 2));
     }
 <CHAR>\\({UTF8MULTICHAR}|.)' {
         BEGIN(INITIAL);
-        int32_t charcode = decodeUTF8(yytext + 1, yylen - 2);
+        int32_t charcode = decodeUTF8(yytext + 1, yyleng - 2);
         if (charcode == -1) return LC::Parser::make_YYerror();
         return LC::Parser::make_CHAR(charcode);
     }
 <CHAR>({UTF8MULTICHAR}|[^'\\])' {
         BEGIN(INITIAL);
-        int32_t charcode = decodeUTF8(yytext, yylen - 1);
+        int32_t charcode = decodeUTF8(yytext, yyleng - 1);
         if (charcode == -1) return LC::Parser::make_YYerror();
         return LC::Parser::make_CHAR(charcode);
     }
