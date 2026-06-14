@@ -151,7 +151,7 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
         if (charcode == -1) return LC::Parser::make_YYerror();
         return LC::Parser::make_CHAR(charcode);
     }
-<CHAR>({UTF8MULTICHAR}|[^'\\])' {
+<CHAR>({UTF8MULTICHAR}|[^'\\\n])' {
         BEGIN(INITIAL);
         int32_t charcode = decodeUTF8(yytext, yyleng - 1);
         if (charcode == -1) return LC::Parser::make_YYerror();
