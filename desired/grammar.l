@@ -164,6 +164,10 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
 <INITIAL>")" return LC::Parser::make_RPAREN();
 <INITIAL>"." return LC::Parser::make_DOT();
 <INITIAL>";" return LC::Parser::make_SEMI();
+<INITIAL>str: return LC::Parser::make_SYM1();
+<INITIAL>int: return LC::Parser::make_SYM2();
+<INITIAL>dbl: return LC::Parser::make_SYM3();
+<INITIAL>chr: return LC::Parser::make_SYM4();
 <INITIAL><<EOF>> return LC::Parser::make_YYEOF();
 <INITIAL>[ \n\t\f\v] ;
 
