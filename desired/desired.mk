@@ -44,8 +44,8 @@ desired/Eval.o: desired/Eval.cpp desired/PrettyPrinter.hpp \
 	desired/grammar.tab.hpp desired/Absyn.hpp | desired
 	$(DESIRED_CXX) $(CXXFLAGS) $(DESIRED_CXXFLAGS) -c -o $@ $<
 
-desired/Eval: desired/Eval.o desired/grammar.tab.o desired/PrettyPrinter.o \
-	desired/grammar.lex.o desired/Absyn.o | desired
+desired/Eval: desired/Eval.o desired/grammar.tab.o desired/PrinterCommon.o \
+	desired/PrettyPrinter.o desired/grammar.lex.o desired/Absyn.o | desired
 	cd desired && $(DESIRED_CXX) $(LDFLAGS) $(DESIRED_LDFLAGS) Eval.o \
 		grammar.lex.o grammar.tab.o PrinterCommon.o PrettyPrinter.o Absyn.o \
 		-o Eval
