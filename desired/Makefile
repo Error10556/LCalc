@@ -8,6 +8,8 @@ OBJECTS = Absyn.o \
 	grammar.lex.o \
 	grammar.tab.o
 
+ARCHIVES = libgrammarParser.a libgrammarPrinter.a
+
 BNFC_GENERATED = Absyn.cpp \
 	Absyn.hpp \
 	PatternMatching.hpp \
@@ -38,9 +40,7 @@ TARGET               | DESCRIPTION
 ---------------------|---------------------------------------------------------
 Test                 | A program that performs parsing and prints the AST.
 libgrammarParser.a   | Implements the syntax tree, lexing, and parsing.
-libgrammarParser.so  | As above.
 libgrammarPrinter.a  | Implements pretty-, syntax-tree-, and linear-printing.
-libgrammarPrinter.so | As above.
 grammar.lex.cpp      | Contains a lexer implementation.
 grammar.tab.{h,c}pp  | Contain a syntax parser implementation.
 
@@ -55,23 +55,17 @@ help:
 	$(file >/dev/stdout,$(HELPMESSAGE))
 	@:
 
-all:libgrammarParser.a \
-	libgrammarParser.so \
-	libgrammarPrinter.a \
-	libgrammarPrinter.so \
-	Test
+all: $(ARCHIVES) Test
 
 mostlyclean:
-	@for file in $(OBJECTS) Test; do \
-		test ! -f $$file || rm $$file \
-	done
+	@for f in $(OBJECTS) $(ARCHIVES) Test; do test ! -f $$f || rm $$f; done
 
 clean: mostlyclean
-	@for file in grammar.lex.cpp grammar.tab.cpp grammar.tab.hpp; do \
-		test ! -f $$file || rm $$file \
+	@ for f in grammar.lex.cpp grammar.tab.cpp grammar.tab.hpp; do \
+		test ! -f $$f || rm $$f; \
 	done
-	@for file in $(BNFC_GENERATED); do \
-		test ! -f $$file.bak || rm $$file.bak \
+	@ for f in $(BNFC_GENERATED); do \
+		test ! -f $$f.bak || rm $$f.bak; \
 	done
 
 grammar.lex.cpp: grammar.l
@@ -84,10 +78,10 @@ CXX_COMPILE = $(CXX) $(CXXFLAGS) -c -o $@ $<
 Absyn.o: Absyn.cpp Absyn.hpp
 	$(CXX_COMPILE)
 
-grammar.tab.o: grammar.tab.cpp Absyn.hpp
+grammar.tab.o: grammar.tab.cpp grammar.tab.hpp Absyn.hpp PatternMatching.hpp
 	$(CXX_COMPILE)
 
-grammar.lex.o: grammar.lex.cpp
+grammar.lex.o: grammar.lex.cpp grammar.tab.hpp
 	$(CXX_COMPILE)
 
 PrinterCommon.o: PrinterCommon.cpp PrinterCommon.hpp
