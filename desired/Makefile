@@ -78,7 +78,8 @@ CXX_COMPILE = $(CXX) $(CXXFLAGS) -c -o $@ $<
 Absyn.o: Absyn.cpp Absyn.hpp
 	$(CXX_COMPILE)
 
-grammar.tab.o: grammar.tab.cpp grammar.tab.hpp Absyn.hpp PatternMatching.hpp
+grammar.tab.o: grammar.tab.cpp grammar.tab.hpp \
+	Absyn.hpp PatternMatching.hpp
 	$(CXX_COMPILE)
 
 grammar.lex.o: grammar.lex.cpp grammar.tab.hpp
