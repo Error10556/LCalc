@@ -31,7 +31,7 @@ namespace LC {
 #define IF_BAD_COERC(classname) \
     if (coercionLevel > reflection::CoercionLevel<classname>)
 
-constexpr static const unsigned int INDENT = 4;
+constexpr static const unsigned int INDENT [[maybe_unused]] = 4;
 
 PrettyPrinter::PrettyPrinter(std::ostream& out, unsigned int indent,
                              int coercionLevel)

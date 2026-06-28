@@ -1,6 +1,8 @@
 %option warn nodefault
 %option 8bit reentrant
 %option noyywrap
+%option noinput
+%option nounput
 %option prefix="LC"
 %option outfile="grammar.lex.cpp"
 

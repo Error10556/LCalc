@@ -1,4 +1,4 @@
-CXXFLAGS = -std=c++17
+CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-but-set-variable
 
 OBJECTS = Absyn.o \
 	PrettyPrinter.o \
