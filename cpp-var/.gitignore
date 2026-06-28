@@ -1,6 +1,7 @@
 /*.o
 /Absyn.cpp
 /Absyn.hpp
+/Makefile
 /PatternMatching.hpp
 /PrettyPrinter.cpp
 /PrettyPrinter.hpp
