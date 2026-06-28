@@ -28,11 +28,11 @@ Phony targets:
 
 TARGET      | DESCRIPTION
 ------------|------------------------------------------------------------------
-help        | Print this message
-default     | Build static libraries for the parser and the printers
-all         | Build static and shared libraries, build "Test" program
-mostlyclean | Delete all object/executable files
-clean       | Delete all files created by this Makefile and BNFC backups
+help        | Print this message.
+default     | Build static libraries for the parser and the printers.
+all         | Build the static libraries and the "Test" program.
+mostlyclean | Delete all object/executable files.
+clean       | Delete all files created by this Makefile and BNFC backups.
 
 File targets:
 
