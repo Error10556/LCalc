@@ -11,6 +11,8 @@ cpp-var/Makefile:
 	bnfc --cpp-var -p LC -o cpp-var -m grammar.cf
 
 clean-var:
-	@ while read file; do \
-		test ! -f $${file#/} || rm $${file#/}; \
-	done <.gitignore
+	@ while read line; do \
+		for file in cpp-var/$${line#/}; do \
+			test ! -f $$file || rm $$file; \
+		done \
+	done <cpp-var/.gitignore
