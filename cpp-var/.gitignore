@@ -16,3 +16,5 @@
 /grammar.tab.cpp
 /grammar.tab.hpp
 /grammar.ypp
+/libgrammarParser.a
+/libgrammarPrinter.a
