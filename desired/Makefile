@@ -49,7 +49,7 @@ endef
 
 .PHONY: all clean mostlyclean default help
 
-default: libgrammarParser.a libgrammarPrinter.a
+default: $(ARCHIVES)
 
 help:
 	$(file >/dev/stdout,$(HELPMESSAGE))
