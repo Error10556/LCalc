@@ -7,7 +7,7 @@ all: cpp-var/Test
 cpp-var/Test: cpp-var/Makefile
 	$(MAKE) -C cpp-var CXX=$(VAR_CXX) CXXFLAGS='$(VAR_CXXFLAGS)' LDFLAGS='$(VAR_LDFLAGS)' all
 
-cpp-var/Makefile:
+cpp-var/Makefile: grammar.cf
 	bnfc --cpp-var -p LC -o cpp-var -m grammar.cf
 
 clean-var:
