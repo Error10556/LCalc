@@ -70,6 +70,34 @@ public:
     Char& operator=(const int32_t&);
 };
 
+struct SpecialBegin {
+public:
+    std::string Value;
+    SpecialBegin() = default;
+    SpecialBegin(const SpecialBegin&) = default;
+    SpecialBegin(SpecialBegin&&) = default;
+    SpecialBegin& operator=(const SpecialBegin&) = default;
+    SpecialBegin& operator=(SpecialBegin&&) = default;
+    SpecialBegin(const std::string&); /* implicit */
+    SpecialBegin(std::string&&);
+    SpecialBegin& operator=(const std::string&);
+    SpecialBegin& operator=(std::string&&);
+};
+
+struct SpecialEnd {
+public:
+    std::string Value;
+    SpecialEnd() = default;
+    SpecialEnd(const SpecialEnd&) = default;
+    SpecialEnd(SpecialEnd&&) = default;
+    SpecialEnd& operator=(const SpecialEnd&) = default;
+    SpecialEnd& operator=(SpecialEnd&&) = default;
+    SpecialEnd(const std::string&); /* implicit */
+    SpecialEnd(std::string&&);
+    SpecialEnd& operator=(const std::string&);
+    SpecialEnd& operator=(std::string&&);
+};
+
 class AProgram;
 using Program = std::variant<AProgram>;
 

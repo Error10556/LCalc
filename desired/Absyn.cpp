@@ -64,6 +64,38 @@ Double& Double::operator=(const double& v) {
     return *this;
 }
 
+SpecialBegin::SpecialBegin(const std::string& s)
+    : Value(s) {}
+
+SpecialBegin::SpecialBegin(std::string&& s)
+    : Value(std::move(s)) {}
+
+SpecialBegin& SpecialBegin::operator=(const std::string& s) {
+    Value = s;
+    return *this;
+}
+
+SpecialBegin& SpecialBegin::operator=(std::string&& s) {
+    Value = std::move(s);
+    return *this;
+}
+
+SpecialEnd::SpecialEnd(const std::string& s)
+    : Value(s) {}
+
+SpecialEnd::SpecialEnd(std::string&& s)
+    : Value(std::move(s)) {}
+
+SpecialEnd& SpecialEnd::operator=(const std::string& s) {
+    Value = s;
+    return *this;
+}
+
+SpecialEnd& SpecialEnd::operator=(std::string&& s) {
+    Value = std::move(s);
+    return *this;
+}
+
 AProgram::AProgram(const AProgram& other)
     : ListExpr_(other.ListExpr_) {}
 
