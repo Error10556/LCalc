@@ -22,7 +22,6 @@
 
 #include "PrettyPrinter.hpp"
 
-#include <system_error>
 #include "Absyn.hpp"
 #include "PrinterCommon.hpp"
 
@@ -135,6 +134,18 @@ void PrettyPrinter::operator()(const Char& v) const {
     IF_BAD_COERC(Double) out << ')';
 }
 
+void PrettyPrinter::operator()(const SpecialBegin& v) const {
+    IF_BAD_COERC(SpecialBegin) out << '(';
+    out << v.Value;
+    IF_BAD_COERC(SpecialBegin) out << ')';
+}
+
+void PrettyPrinter::operator()(const SpecialEnd& v) const {
+    IF_BAD_COERC(SpecialEnd) out << '(';
+    out << v.Value;
+    IF_BAD_COERC(SpecialEnd) out << ')';
+}
+
 void PrettyPrinter::operator()(const StringExpr& v) const {
     IF_BAD_COERC(StringExpr) out << '(';
     out << "str: ";
@@ -163,6 +174,16 @@ void PrettyPrinter::operator()(const CharExpr& v) const {
     IF_BAD_COERC(CharExpr) out << ')';
 }
 
+void PrettyPrinter::operator()(const SpecialExpr& v) const {
+    IF_BAD_COERC(SpecialExpr) out << '(';
+    WithCoercionLevel(0)(v.SpecialBegin_);
+    out << " ";
+    WithCoercionLevel(0)(*v.Expr_);
+    out << " ";
+    WithCoercionLevel(0)(v.SpecialEnd_);
+    IF_BAD_COERC(SpecialExpr) out << ')';
+}
+
 #define PrettyPrinterSHL(type)                                               \
     const PrettyPrinter& operator<<(const PrettyPrinter& p, const type& v) { \
         p(v);                                                                \
@@ -181,10 +202,13 @@ PrettyPrinterSHL(String);
 PrettyPrinterSHL(Integer);
 PrettyPrinterSHL(Double);
 PrettyPrinterSHL(Char);
+PrettyPrinterSHL(SpecialBegin);
+PrettyPrinterSHL(SpecialEnd);
 PrettyPrinterSHL(StringExpr);
 PrettyPrinterSHL(IntegerExpr);
 PrettyPrinterSHL(DoubleExpr);
 PrettyPrinterSHL(CharExpr);
+PrettyPrinterSHL(SpecialExpr);
 
 const PrettyPrinter& operator<<(const PrettyPrinter& p, std::string_view v) {
     p.out << v;
