@@ -119,10 +119,7 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
         yyextra->push_back(
             static_cast<char>(hexInt32(yytext + 1, yyleng - 1)));
     }
-<ESCAPE>u{HEXSHORT} {
-        BEGIN(STRING);
-        encodeUTF8(*yyextra, hexInt32(yytext + 1, yyleng - 1));
-    }
+<ESCAPE>u{HEXSHORT} |
 <ESCAPE>U{HEXINT} {
         BEGIN(STRING);
         encodeUTF8(*yyextra, hexInt32(yytext + 1, yyleng - 1));
@@ -163,14 +160,8 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
 <CHAR>\\r' BEGIN(INITIAL); return LC::Parser::make_CHAR('\r');
 <CHAR>\\t' BEGIN(INITIAL); return LC::Parser::make_CHAR('\t');
 <CHAR>\\v' BEGIN(INITIAL); return LC::Parser::make_CHAR('\v');
-<CHAR>\\x{HEXBYTE}' {
-        BEGIN(INITIAL);
-        return LC::Parser::make_CHAR(hexInt32(yytext + 2, yyleng - 2));
-    }
-<CHAR>\\u{HEXSHORT}' {
-        BEGIN(INITIAL);
-        return LC::Parser::make_CHAR(hexInt32(yytext + 2, yyleng - 2));
-    }
+<CHAR>\\x{HEXBYTE}'  |
+<CHAR>\\u{HEXSHORT}' |
 <CHAR>\\U{HEXINT}' {
         BEGIN(INITIAL);
         return LC::Parser::make_CHAR(hexInt32(yytext + 2, yyleng - 2));
