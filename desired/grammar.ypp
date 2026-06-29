@@ -23,6 +23,8 @@
 %token <double> DOUBLE;
 %token <long> INTEGER;
 %token <std::string> STRING;
+%token <std::string> CUSTOM_SpecialBegin;
+%token <std::string> CUSTOM_SpecialEnd;
 
 %code requires {
     #include <string_view>
