@@ -89,6 +89,7 @@ Expr
     | /* IntegerExpr */ SYM2 INTEGER { $$.emplace<IntegerExpr>(std::move($2)); }
     | /* DoubleExpr */ SYM3 DOUBLE { $$.emplace<DoubleExpr>(std::move($2)); }
     | /* CharExpr */ SYM4 CHAR { $$.emplace<CharExpr>(std::move($2)); }
+    | /* SpecialExpr */ CUSTOM_SpecialBegin Expr CUSTOM_SpecialEnd { $$.emplace<SpecialExpr>(std::move($1), std::move($2), std::move($3)); }
     | /* _ */ Expr1 { $$ = std::move($1); }
     ;
 
