@@ -93,6 +93,12 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
 <COMMENT>"*/" BEGIN(INITIAL);
 <INITIAL>"//".* ;
 
+    /* SpecialBegin */
+<INITIAL>\<:[1-9] return LC::Parser::make_CUSTOM_SpecialBegin(yytext);
+
+    /* SpecialEnd */
+<INITIAL>[1-9]:\> return LC::Parser::make_CUSTOM_SpecialEnd(yytext);
+
     /* String */
 <INITIAL>\" BEGIN(STRING); yyextra->clear();
 <STRING>\" BEGIN(INITIAL); return LC::Parser::make_STRING(*yyextra);
