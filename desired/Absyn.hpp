@@ -103,7 +103,8 @@ using Program = std::variant<AProgram>;
 
 class Abstraction; class Application; class Variable;
 class StringExpr; class CharExpr; class IntegerExpr; class DoubleExpr;
-using Expr = std::variant<Abstraction, Application, Variable, StringExpr, CharExpr, IntegerExpr, DoubleExpr>;
+class SpecialExpr;
+using Expr = std::variant<Abstraction, Application, Variable, StringExpr, CharExpr, IntegerExpr, DoubleExpr, SpecialExpr>;
 
 using ListExpr = std::deque<Expr>;
 
@@ -196,6 +197,19 @@ public:
     Char Char_;
 };
 
+class SpecialExpr {
+public:
+    SpecialExpr() = default;
+    SpecialExpr(const SpecialExpr&);
+    SpecialExpr(SpecialExpr&&) = default;
+    SpecialExpr& operator=(const SpecialExpr&);
+    SpecialExpr& operator=(SpecialExpr&&) = default;
+    SpecialExpr(SpecialBegin&&, Expr&&, SpecialEnd&&);
+    SpecialBegin SpecialBegin_;
+    std::unique_ptr<Expr> Expr_;
+    SpecialEnd SpecialEnd_;
+};
+
 namespace reflection {
 
 template <class T>
@@ -216,6 +230,10 @@ template<> struct CoercionLevel_t<Char> { static constexpr int value = 0; };
 template<> struct SyntaxNodeName_t<Char> { static constexpr const char* value = "Char"; };
 template<> struct CoercionLevel_t<Double> { static constexpr int value = 0; };
 template<> struct SyntaxNodeName_t<Double> { static constexpr const char* value = "Double"; };
+template<> struct CoercionLevel_t<SpecialBegin> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<SpecialBegin> { static constexpr const char* value = "SpecialBegin"; };
+template<> struct CoercionLevel_t<SpecialEnd> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<SpecialEnd> { static constexpr const char* value = "SpecialEnd"; };
 template<> struct CoercionLevel_t<ListExpr> { static constexpr int value = 0; };
 template<> struct SyntaxNodeName_t<ListExpr> { static constexpr const char* value = "ListExpr"; };
 template<> struct CoercionLevel_t<AProgram> { static constexpr int value = 0; };
@@ -234,6 +252,8 @@ template<> struct CoercionLevel_t<IntegerExpr> { static constexpr int value = 0;
 template<> struct SyntaxNodeName_t<IntegerExpr> { static constexpr const char* value = "IntegerExpr"; };
 template<> struct CoercionLevel_t<DoubleExpr> { static constexpr int value = 0; };
 template<> struct SyntaxNodeName_t<DoubleExpr> { static constexpr const char* value = "DoubleExpr"; };
+template<> struct CoercionLevel_t<SpecialExpr> { static constexpr int value = 0; };
+template<> struct SyntaxNodeName_t<SpecialExpr> { static constexpr const char* value = "SpecialExpr"; };
 
 template<class T>
 constexpr int CoercionLevel = CoercionLevel_t<T>::value;

@@ -188,4 +188,21 @@ CharExpr& CharExpr::operator=(const CharExpr& other) {
 CharExpr::CharExpr(Char&& _1)
     : Char_(std::move(_1)) {}
 
+SpecialExpr::SpecialExpr(const SpecialExpr& other)
+    : SpecialBegin_(other.SpecialBegin_)
+    , Expr_(ClonePtr<Expr>(other.Expr_))
+    , SpecialEnd_(other.SpecialEnd_) {}
+
+SpecialExpr& SpecialExpr::operator=(const SpecialExpr& other) {
+    SpecialBegin_ = other.SpecialBegin_;
+    Expr_ = ClonePtr<Expr>(other.Expr_);
+    SpecialEnd_ = other.SpecialEnd_;
+    return *this;
+}
+
+SpecialExpr::SpecialExpr(SpecialBegin&& _1, Expr&& _2, SpecialEnd&& _3)
+    : SpecialBegin_(std::move(_1))
+    , Expr_(std::make_unique<Expr>(std::move(_2)))
+    , SpecialEnd_(std::move(_3)) {}
+
 }
