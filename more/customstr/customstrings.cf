@@ -1,0 +1,5 @@
+token MYSTR '"' (char - '"')* '"';
+
+entrypoints MYSTR;
+
+-- запускать BNFC с опцией --force
