@@ -73,10 +73,11 @@ public:
         }
     }
 
-    void operator()(const LC::StringExpr&) {};
-    void operator()(const LC::CharExpr&) {};
-    void operator()(const LC::IntegerExpr&) {};
-    void operator()(const LC::DoubleExpr&) {};
+    void operator()(const LC::SpecialExpr& v) {
+        *v.Expr_ | *this;
+    }
+
+    void operator()(...) {}
 };
 
 class VRename {
@@ -104,10 +105,11 @@ public:
         if (p.Ident_.Value == what) p.Ident_.Value = into;
     }
 
-    void operator()(LC::StringExpr&) const {}
-    void operator()(LC::IntegerExpr&) const {}
-    void operator()(LC::DoubleExpr&) const {}
-    void operator()(LC::CharExpr&) const {}
+    void operator()(LC::SpecialExpr& p) const {
+        *p.Expr_ | *this;
+    }
+
+    void operator()(...) const {}
 };
 
 // `into` must be closed
@@ -142,10 +144,17 @@ public:
         return into;
     }
 
-    LC::Expr operator()(LC::StringExpr&& p) const { return std::move(p); }
-    LC::Expr operator()(LC::IntegerExpr&& p) const { return std::move(p); }
-    LC::Expr operator()(LC::DoubleExpr&& p) const { return std::move(p); }
-    LC::Expr operator()(LC::CharExpr&& p) const { return std::move(p); }
+    LC::Expr operator()(LC::SpecialExpr&& p) const {
+        *p.Expr_ = std::move(*p.Expr_) | *this;
+        return std::move(p);
+    }
+
+    template <class Something>
+    LC::Expr operator()(Something&& p) const { return std::move(p); }
+
+    // Something&& is a univ. reference, have to delete the lvalue overload
+    template <class Something>
+    LC::Expr operator()(Something&) const = delete;
 };
 
 class VEvaluate {
@@ -168,10 +177,17 @@ public:
         return std::move(p);
     }
 
-    LC::Expr operator()(LC::StringExpr&& p) const { return std::move(p); }
-    LC::Expr operator()(LC::IntegerExpr&& p) const { return std::move(p); }
-    LC::Expr operator()(LC::DoubleExpr&& p) const { return std::move(p); }
-    LC::Expr operator()(LC::CharExpr&& p) const { return std::move(p); }
+    LC::Expr operator()(LC::SpecialExpr&& p) const {
+        *p.Expr_ = std::move(*p.Expr_) | *this;
+        return std::move(p);
+    }
+
+    template <class Something>
+    LC::Expr operator()(Something&& p) const { return std::move(p); }
+
+    // Something&& is a univ. reference, have to delete the lvalue overload
+    template <class Something>
+    LC::Expr operator()(Something& p) const = delete;
 };
 
 int main(int argc, char** argv) {
