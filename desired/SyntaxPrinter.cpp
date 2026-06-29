@@ -105,6 +105,20 @@ void SyntaxPrinter::operator()(const Char& v) const {
     out << '\n';
 }
 
+void SyntaxPrinter::operator()(const SpecialBegin& v) const {
+    PrintIndentForHeader();
+    out << "SpecialBegin ";
+    PrintEscapedString(out, v.Value);
+    out << '\n';
+}
+
+void SyntaxPrinter::operator()(const SpecialEnd& v) const {
+    PrintIndentForHeader();
+    out << "SpecialEnd ";
+    PrintEscapedString(out, v.Value);
+    out << '\n';
+}
+
 void SyntaxPrinter::operator()(const StringExpr& v) const {
     PrintIndentForHeader();
     out << "StringExpr\n";
@@ -129,6 +143,14 @@ void SyntaxPrinter::operator()(const CharExpr& v) const {
     SyntaxPrinter(this, false)(v.Char_);
 }
 
+void SyntaxPrinter::operator()(const SpecialExpr& v) const {
+    PrintIndentForHeader();
+    out << "SpecialExpr\n";
+    SyntaxPrinter(this, true)(v.SpecialBegin_);
+    SyntaxPrinter(this, true)(*v.Expr_);
+    SyntaxPrinter(this, false)(v.SpecialEnd_);
+}
+
 #define SyntaxPrinterSHL(type) \
     const SyntaxPrinter& operator<<(const SyntaxPrinter& p, const type& v) \
     { p(v); return p; }
@@ -145,10 +167,13 @@ SyntaxPrinterSHL(String);
 SyntaxPrinterSHL(Integer);
 SyntaxPrinterSHL(Double);
 SyntaxPrinterSHL(Char);
+SyntaxPrinterSHL(SpecialBegin);
+SyntaxPrinterSHL(SpecialEnd);
 SyntaxPrinterSHL(StringExpr);
 SyntaxPrinterSHL(IntegerExpr);
 SyntaxPrinterSHL(DoubleExpr);
 SyntaxPrinterSHL(CharExpr);
+SyntaxPrinterSHL(SpecialExpr);
 
 const SyntaxPrinter& operator<<(const SyntaxPrinter& p, std::string_view s) {
     p.out << s;
