@@ -15,3 +15,7 @@ StringExpr. Expr ::= "str:" String;
 IntegerExpr. Expr ::= "int:" Integer;
 DoubleExpr. Expr ::= "dbl:" Double;
 CharExpr. Expr ::= "chr:" Char;
+
+token SpecialBegin {"<:"} (digit - '0')+;
+token SpecialEnd (digit - '0')+ {":>"};
+SpecialExpr. Expr ::= SpecialBegin Expr SpecialEnd;
