@@ -78,6 +78,8 @@ inline void encodeUTF8(std::string& dest, int32_t ch) {
 %s COMMENT STRING ESCAPE CHAR
 
 HEXINT [0-7][0-9a-fA-F]{7}|[0-9a-fA-F]{1,7}
+HEXSHORT [0-9a-fA-F]{1,4}
+HEXBYTE [0-9a-fA-F]{1,2}
 
     /* 2-6 bytes. Does not handle the [\x00-\x7F] case.
      * This regex permits non-minimal-length encodings,
@@ -112,7 +114,16 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
 <ESCAPE>r BEGIN(STRING); yyextra->push_back('\r');
 <ESCAPE>t BEGIN(STRING); yyextra->push_back('\t');
 <ESCAPE>v BEGIN(STRING); yyextra->push_back('\v');
-<ESCAPE>x{HEXINT} {
+<ESCAPE>x{HEXBYTE} {
+        BEGIN(STRING);
+        yyextra->push_back(
+            static_cast<char>(hexInt32(yytext + 1, yyleng - 1)));
+    }
+<ESCAPE>u{HEXSHORT} {
+        BEGIN(STRING);
+        encodeUTF8(*yyextra, hexInt32(yytext + 1, yyleng - 1));
+    }
+<ESCAPE>U{HEXINT} {
         BEGIN(STRING);
         encodeUTF8(*yyextra, hexInt32(yytext + 1, yyleng - 1));
     }
@@ -152,7 +163,15 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
 <CHAR>\\r' BEGIN(INITIAL); return LC::Parser::make_CHAR('\r');
 <CHAR>\\t' BEGIN(INITIAL); return LC::Parser::make_CHAR('\t');
 <CHAR>\\v' BEGIN(INITIAL); return LC::Parser::make_CHAR('\v');
-<CHAR>\\x{HEXINT}' {
+<CHAR>\\x{HEXBYTE}' {
+        BEGIN(INITIAL);
+        return LC::Parser::make_CHAR(hexInt32(yytext + 2, yyleng - 2));
+    }
+<CHAR>\\u{HEXSHORT}' {
+        BEGIN(INITIAL);
+        return LC::Parser::make_CHAR(hexInt32(yytext + 2, yyleng - 2));
+    }
+<CHAR>\\U{HEXINT}' {
         BEGIN(INITIAL);
         return LC::Parser::make_CHAR(hexInt32(yytext + 2, yyleng - 2));
     }
