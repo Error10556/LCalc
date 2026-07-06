@@ -5,6 +5,8 @@ coercions Expr 2;
 Abstraction. Expr ::= "l" Ident "." Expr;
 Application. Expr1 ::= Expr1 Expr2;
 Variable. Expr2 ::= Ident;
+id. Expr2 ::= "id" "<" Ident ">";
+const. Expr2 ::= "const" "<" Ident ">";
 
 entrypoints Program;
 
@@ -19,3 +21,6 @@ CharExpr. Expr ::= "chr:" Char;
 token SpecialBegin {"<:"} (digit - '0')+;
 token SpecialEnd (digit - '0')+ {":>"};
 SpecialExpr. Expr ::= SpecialBegin Expr SpecialEnd;
+
+define id varname = Abstraction varname (Variable varname);
+define const varname = Abstraction varname (id varname);
