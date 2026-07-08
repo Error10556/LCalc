@@ -1,20 +1,24 @@
 #include <cstring>
 #include <vector>
 
-#include "Absyn.hpp"
+#include "HaskellPrinter.hpp"
 #include "PrettyPrinter.hpp"
 #include "SyntaxPrinter.hpp"
 #include "grammar.tab.hpp"
 #include "PatternMatching.hpp"
 using namespace std;
 
+
+bool help = false, pretty = false, tree = false, haskell = false,
+    systest = false;
+
 int main(int argc, char** argv) {
     if (!argc) {
         cerr << "0 arguments provided" << endl;
         return 1;
     }
-    vector<char*> files;
-    bool help = false, pretty = false, tree = false, onlyFiles = false;
+    bool onlyFiles = false;
+    vector<const char*> files;
     for (int i = 1; i < argc; i++) {
         char* arg = argv[i];
         if (arg[0] == 0) continue;
@@ -39,6 +43,10 @@ int main(int argc, char** argv) {
                 pretty = true;
             else if (strcmp(arg + 2, "tree") == 0)
                 tree = true;
+            else if (strcmp(arg + 2, "haskell") == 0)
+                haskell = true;
+            else if (strcmp(arg + 2, "systest") == 0)
+                systest = true;
             else {
                 cerr << "Invalid option: " << arg << endl;
                 return 1;
@@ -56,6 +64,12 @@ int main(int argc, char** argv) {
                 case 't':
                     tree = true;
                     break;
+                case 'H':
+                    haskell = true;
+                    break;
+                case 's':
+                    systest = true;
+                    break;
                 default:
                     cerr << "Invalid option: -" << *i << endl;
                     return 1;
@@ -63,22 +77,29 @@ int main(int argc, char** argv) {
         }
     }
     if (!help && files.empty()) {
-        cerr << "Nothing to do. Run `" << argv[0] << " --help' for help"
-             << endl;
-        return 0;
+        files.push_back("-");
     }
     if (help) {
-        cerr << "Example syntax parser.\nUsage: \n"
+        cout << "Example syntax parser.\nUsage:\n"
              << argv[0] << " (OPTION|FILE)... [-- FILE...]\n";
-        cerr << R"%(
+        cout << R"%(
 Options:
-  -h --help    Display this message
-  -p --pretty  Pretty-print the abstract syntax tree
-  -t --tree    Print the abstract syntax tree like a tree
-     --        Treat the remaining arguments as files
+  -h --help     Display this message.
+  -p --pretty   Pretty-print the abstract syntax tree.
+  -t --tree     Print the abstract syntax tree like a tree.
+  -H --haskell  Print the abstract syntax tree as a Haskell expression.
+  -s --systest  For use in BNFC system tests. Overrides other options.
+     --         Treat  the remaining arguments as files.
+
+If no files are specified of if FILE is -, read standard input.
+
+The exit code is the number of files for which parsing failed. In particular,
+if every file is parsed successfully, the exit code will be 0.
 )%";
     }
-    for (char* filename : files) {
+    bool printFilenames = files.size() > 1;
+    int errorcount = 0;
+    for (const char* filename : files) {
         FILE* file; bool needclose;
         if (strcmp(filename, "-") == 0) {
             file = stdin;
@@ -93,26 +114,45 @@ Options:
             }
             needclose = true;
         }
-        cout << filename << '\n';
+        if (printFilenames) cerr << filename << endl;
 
         LC::Parse(file) | PatternMatch{
             [&](LC::Parser::syntax_error&& err) {
-                cout << "Could not parse!\nError: " << err.what() << "\n\n";
-                return;
+                cerr << "Could not parse!\nError: " << err.what() << "\n\n";
+                errorcount += errorcount != 0x7FFFFFFF;
             },
-            [&](auto&& ast) {
+            [](auto&& ast) {
+                if (systest) {
+                    cout << "Parse Successful!\n\n[Abstract Syntax]\n\n";
+                    ast | LC::HaskellPrinter(cout);
+                    cout << "\n\n[Linearized tree]\n\n";
+                    ast | LC::PrettyPrinter(cout);
+                    cout << endl;
+                    return;
+                }
+                bool printed = false;
                 if (tree) {
                     ast | LC::SyntaxPrinter(cout);
                     cout << '\n';
+                    printed = true;
                 }
                 if (pretty) {
                     ast | LC::PrettyPrinter(cout);
                     cout << "\n\n";
+                    printed = true;
                 }
-                if (!tree && !pretty) cout << "OK\n\n";
+                if (haskell) {
+                    ast | LC::HaskellPrinter(cout);
+                    cout << "\n\n";
+                    printed = true;
+                }
+                if (!printed) cout << "OK\n\n";
+                return;
             }
         };
 
         if (needclose) fclose(file);
     }
+
+    return errorcount;
 }
