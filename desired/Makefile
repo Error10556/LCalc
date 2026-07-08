@@ -4,6 +4,7 @@ CXXFLAGS = -std=c++17 -Wall -Wextra
 CXXFLAGS_BISON = $(CXXFLAGS) -Wno-unused-but-set-variable
 
 OBJECTS = Absyn.o \
+	HaskellPrinter.o \
 	PrettyPrinter.o \
 	PrinterCommon.o \
 	SyntaxPrinter.o \
@@ -15,6 +16,8 @@ ARCHIVES = libgrammarParser.a libgrammarPrinter.a
 
 BNFC_GENERATED = Absyn.cpp \
 	Absyn.hpp \
+	HaskellPrinter.cpp \
+	HaskellPrinter.hpp \
 	Makefile \
 	PatternMatching.hpp \
 	PrettyPrinter.cpp \
@@ -100,6 +103,10 @@ grammar.lex.o: grammar.lex.cpp grammar.tab.hpp
 PrinterCommon.o: PrinterCommon.cpp PrinterCommon.hpp
 	$(CXX_COMPILE)
 
+HaskellPrinter.o: HaskellPrinter.cpp HaskellPrinter.hpp \
+	Absyn.hpp PrinterCommon.hpp
+	$(CXX_COMPILE)
+
 PrettyPrinter.o: PrettyPrinter.cpp PrettyPrinter.hpp \
 	Absyn.hpp PrinterCommon.hpp
 	$(CXX_COMPILE)
@@ -112,11 +119,12 @@ AR_COMPILE = $(AR) $(ARFLAGS) $@ $^
 libgrammarParser.a: Absyn.o grammar.lex.o grammar.tab.o
 	$(AR_COMPILE)
 
-libgrammarPrinter.a: PrinterCommon.o PrettyPrinter.o SyntaxPrinter.o
+libgrammarPrinter.a: HaskellPrinter.o PrinterCommon.o \
+	PrettyPrinter.o SyntaxPrinter.o
 	$(AR_COMPILE)
 
 Test.o: Test.cpp Absyn.hpp grammar.tab.hpp \
-	PrettyPrinter.hpp SyntaxPrinter.hpp PatternMatching.hpp
+	HaskellPrinter.hpp PrettyPrinter.hpp SyntaxPrinter.hpp PatternMatching.hpp
 	$(CXX_COMPILE)
 
 Test: Test.o libgrammarParser.a libgrammarPrinter.a
