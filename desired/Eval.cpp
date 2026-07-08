@@ -77,7 +77,8 @@ public:
         *v.Expr_ | *this;
     }
 
-    void operator()(...) {}
+    template <class Something>
+    void operator()(const Something&) const {}
 };
 
 class VRename {
@@ -109,7 +110,8 @@ public:
         *p.Expr_ | *this;
     }
 
-    void operator()(...) const {}
+    template <class Something>
+    void operator()(Something&) const {}
 };
 
 // `into` must be closed
