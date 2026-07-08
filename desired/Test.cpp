@@ -104,6 +104,7 @@ if every file is parsed successfully, the exit code will be 0.
         if (strcmp(filename, "-") == 0) {
             file = stdin;
             needclose = false;
+            cerr << "Reading from stdin..." << endl;
         }
         else {
             file = fopen(filename, "r");
