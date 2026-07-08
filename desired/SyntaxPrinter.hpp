@@ -16,7 +16,7 @@ class SyntaxPrinter {
     void PrintIndentAsIs() const;
 
 public:
-    SyntaxPrinter(std::ostream& out);
+    explicit SyntaxPrinter(std::ostream& out);
     void operator()(const Ident&) const;
     void operator()(const Char&) const;
     void operator()(const Double&) const;
