@@ -9,22 +9,26 @@
 %parse-param {std::optional<std::variant<ParseResultVariant, syntax_error>>* result}
 %header "grammar.tab.hpp"
 
-%token KW_l;
-%token SYM1; /* str: */
-%token SYM2; /* int: */
-%token SYM3; /* dbl: */
-%token SYM4; /* chr: */
-%token LPAREN;
-%token RPAREN;
-%token DOT;
-%token SEMI;
-%token <std::string> IDENT;
-%token <int32_t> CHAR;
-%token <double> DOUBLE;
-%token <long> INTEGER;
-%token <std::string> STRING;
-%token <std::string> CUSTOM_SpecialBegin;
-%token <std::string> CUSTOM_SpecialEnd;
+%token LPAREN
+%token RPAREN
+%token DOT
+%token SEMI
+%token LT
+%token GT
+%token SYM_4
+%token KW_const
+%token SYM_3
+%token KW_id
+%token SYM_2
+%token KW_l
+%token SYM_1
+%token <std::string> IDENT
+%token <int32_t> CHAR
+%token <double> DOUBLE
+%token <long> INTEGER
+%token <std::string> STRING
+%token <std::string> CUSTOM_SpecialBegin
+%token <std::string> CUSTOM_SpecialEnd
 
 %code requires {
     #include <string_view>
@@ -33,36 +37,43 @@
     #include "Absyn.hpp"
 
     using yyscan_t = void*;
+
     namespace LC {
-        using ParseResultVariant = std::variant<LC::Program>;
-    }
+
+    using ParseResultVariant = std::variant<LC::Program>;
+
+    }  // namespace LC
 }
 
-%nterm <Program> Program
 %nterm <Expr> Expr
+%nterm <Program> Program
 %nterm <Expr> Expr1
 %nterm <Expr> Expr2
 %nterm <ListExpr> ListExpr
 
 %code provides {
     namespace LC {
-        using ParseResultOrError = std::variant<ParseResultVariant, Parser::syntax_error>;
 
-        ParseResultOrError Parse(FILE* file);
-        ParseResultOrError Parse(std::string_view str);
-        std::variant<LC::Program, Parser::syntax_error> ParseProgram(FILE* file);
-        std::variant<LC::Program, Parser::syntax_error> ParseProgram(std::string_view str);
-    }
+    using ParseResultOrError =
+        std::variant<ParseResultVariant, Parser::syntax_error>;
+    ParseResultOrError Parse(FILE* file);
+    ParseResultOrError Parse(std::string_view str);
+    std::variant<LC::Program, Parser::syntax_error> ParseProgram(FILE* file);
+    std::variant<LC::Program, Parser::syntax_error> ParseProgram(std::string_view str);
+
+    }  // namespace LC
 }
 
 %code {
     extern LC::Parser::symbol_type LClex(yyscan_t scanner);
 
     namespace LC {
-        inline Parser::symbol_type yylex(yyscan_t scanner) {
-            return LClex(scanner);
-        }
+
+    static inline Parser::symbol_type yylex(yyscan_t scanner) {
+        return LClex(scanner);
     }
+
+    }  // namespace LC
 }
 
 %start __start__
@@ -73,34 +84,36 @@ __start__
     : Program YYEOF { *result = {{ParseResultVariant(std::move($1))}}; }
     ;
 
+Expr
+    : /* _ */ Expr1 { $$ = std::move($1); }
+    | /* Abstraction */ KW_l IDENT DOT Expr { $$.emplace<Abstraction>(std::move($2), std::move($4)); }
+    | /* StringExpr */ SYM_1 STRING { $$.emplace<StringExpr>(std::move($2)); }
+    | /* IntegerExpr */ SYM_2 INTEGER { $$.emplace<IntegerExpr>(std::move($2)); }
+    | /* DoubleExpr */ SYM_3 DOUBLE { $$.emplace<DoubleExpr>(std::move($2)); }
+    | /* CharExpr */ SYM_4 CHAR { $$.emplace<CharExpr>(std::move($2)); }
+    | /* SpecialExpr */ CUSTOM_SpecialBegin Expr CUSTOM_SpecialEnd { $$.emplace<SpecialExpr>(std::move($1), std::move($2), std::move($3)); }
+    ;
+
 Program
     : /* AProgram */ ListExpr { $$.emplace<AProgram>(std::move($1)); }
     ;
 
-ListExpr
-    : /* [] */ { }
-    | /* (:[]) */ Expr { $$.push_front(std::move($1)); }
-    | /* (:) */ Expr SEMI ListExpr { $$ = std::move($3); $$.push_front(std::move($1)); }
-    ;
-
-Expr
-    : /* Abstraction */ KW_l IDENT DOT Expr { $$.emplace<Abstraction>(std::move($2), std::move($4)); }
-    | /* StringExpr */ SYM1 STRING { $$.emplace<StringExpr>(std::move($2)); }
-    | /* IntegerExpr */ SYM2 INTEGER { $$.emplace<IntegerExpr>(std::move($2)); }
-    | /* DoubleExpr */ SYM3 DOUBLE { $$.emplace<DoubleExpr>(std::move($2)); }
-    | /* CharExpr */ SYM4 CHAR { $$.emplace<CharExpr>(std::move($2)); }
-    | /* SpecialExpr */ CUSTOM_SpecialBegin Expr CUSTOM_SpecialEnd { $$.emplace<SpecialExpr>(std::move($1), std::move($2), std::move($3)); }
-    | /* _ */ Expr1 { $$ = std::move($1); }
-    ;
-
 Expr1
-    : /* Application */ Expr1 Expr2 { $$.emplace<Application>(std::move($1), std::move($2)); }
-    | /* _ */ Expr2 { $$ = std::move($1); }
+    : /* _ */ Expr2 { $$ = std::move($1); }
+    | /* Application */ Expr1 Expr2 { $$.emplace<Application>(std::move($1), std::move($2)); }
     ;
 
 Expr2
-    : /* Variable */ IDENT { $$.emplace<Variable>(std::move($1)); }
-    | /* _ */ LPAREN Expr RPAREN { $$ = std::move($2); }
+    : /* _ */ LPAREN Expr RPAREN { $$ = std::move($2); }
+    | /* Variable */ IDENT { $$.emplace<Variable>(std::move($1)); }
+    | /* id */ KW_id LT IDENT GT { $$ = make_id(std::move($3)); }
+    | /* const */ KW_const LT IDENT GT { $$ = make_const(std::move($3)); }
+    ;
+
+ListExpr
+    : /* [] */ /* empty */ { }
+    | /* (:[]) */ Expr { $$.push_front(std::move($1)); }
+    | /* (:) */ Expr SEMI ListExpr { $$ = std::move($3); $$.push_front(std::move($1)); }
     ;
 
 %%
@@ -109,66 +122,67 @@ Expr2
 
 namespace LC {
 
-    class LCScanner {
-        yyscan_t scanner;
-        LCScanner();
+class LCScanner {
+    yyscan_t scanner;
+    LCScanner();
 
-    public:
-        LCScanner(FILE* file);
-        LCScanner(std::string_view str);
-        yyscan_t FlexScanner() const;
-        ~LCScanner();
-    };
+public:
+    LCScanner(FILE* file);
+    LCScanner(std::string_view str);
+    yyscan_t FlexScanner() const;
+    ~LCScanner();
+};
 
-    void Parser::error(const std::string& msg) {
-        *result = {{syntax_error(msg)}};
-    }
-
-    static ParseResultOrError Parse(const LCScanner& scanner) {
-        std::optional<ParseResultOrError> res;
-        Parser parser(scanner.FlexScanner(), &res);
-        parser.parse();
-        if (!res) return {Parser::syntax_error("")};
-        return *res;
-    }
-
-    ParseResultOrError Parse(FILE* file) {
-        return Parse(LCScanner(file));
-    }
-
-    ParseResultOrError Parse(std::string_view str) {
-        return Parse(LCScanner(str));
-    }
-
-    template <class T>
-    static std::variant<T, Parser::syntax_error>
-    EnsureParsedType(ParseResultOrError&& parsed) {
-        using RetType = std::variant<T, Parser::syntax_error>;
-        return std::move(parsed) | PatternMatch{
-            [](Parser::syntax_error&& err) -> RetType {
-                return std::move(err);
-            },
-            [](ParseResultVariant&& var) -> RetType {
-                return std::move(var) | PatternMatch{
-                    [](T&& target) -> RetType { return std::move(target); },
-                    [](auto&& node) -> RetType {
-                        using gotType = std::decay_t<decltype(node)>;
-                        std::string msg = "Unexpected syntax: tried to parse ";
-                        msg.append(reflection::SyntaxNodeName<T>)
-                            .append(", but got ")
-                            .append(reflection::SyntaxNodeName<gotType>);
-                        return Parser::syntax_error(msg);
-                    }
-                };
-            }
-        };
-    }
-
-    std::variant<LC::Program, Parser::syntax_error> ParseProgram(FILE* file) {
-        return EnsureParsedType<LC::Program>(Parse(file));
-    }
-
-    std::variant<LC::Program, Parser::syntax_error> ParseProgram(std::string_view str) {
-        return EnsureParsedType<LC::Program>(Parse(str));
-    }
+void Parser::error(const std::string& msg) {
+    *result = {{syntax_error(msg)}};
 }
+
+static ParseResultOrError Parse(const LCScanner& scanner) {
+    std::optional<ParseResultOrError> res;
+    Parser parser(scanner.FlexScanner(), &res);
+    parser.parse();
+    if (!res) return {Parser::syntax_error("")};
+    return *res;
+}
+
+ParseResultOrError Parse(FILE* file) {
+    return Parse(LCScanner(file));
+}
+
+ParseResultOrError Parse(std::string_view str) {
+    return Parse(LCScanner(str));
+}
+
+template <class T>
+static std::variant<T, Parser::syntax_error>
+EnsureParsedType(ParseResultOrError&& parsed) {
+    using RetType = std::variant<T, Parser::syntax_error>;
+    return std::move(parsed) | PatternMatch{
+        [](Parser::syntax_error&& err) -> RetType {
+            return std::move(err);
+        },
+        [](ParseResultVariant&& var) -> RetType {
+            return std::move(var) | PatternMatch{
+                [](T&& target) -> RetType { return std::move(target); },
+                [](auto&& node) -> RetType {
+                    using gotType = std::decay_t<decltype(node)>;
+                    std::string msg = "Unexpected syntax: tried to parse ";
+                    msg.append(reflection::SyntaxNodeName<T>)
+                        .append(", but got ")
+                        .append(reflection::SyntaxNodeName<gotType>);
+                    return Parser::syntax_error(msg);
+                }
+            };
+        }
+    };
+}
+
+std::variant<Program, Parser::syntax_error> ParseProgram(FILE* file) {
+    return EnsureParsedType<Program>(Parse(file));
+}
+
+std::variant<Program, Parser::syntax_error> ParseProgram(std::string_view str) {
+    return EnsureParsedType<Program>(Parse(str));
+}
+
+}  // namespace LC

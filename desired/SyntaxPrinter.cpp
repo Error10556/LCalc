@@ -1,4 +1,5 @@
 #include "SyntaxPrinter.hpp"
+
 #include "PrinterCommon.hpp"
 
 namespace LC {
@@ -24,11 +25,121 @@ void SyntaxPrinter::PrintIndentAsIs() const {
     out << (currentIndentIsBranch ? "| " : "  ");
 }
 
-void SyntaxPrinter::operator()(const Program& v) const {
+void SyntaxPrinter::operator()(const Ident& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "Ident {" << v.Value << "}\n";
+}
+
+void SyntaxPrinter::operator()(const Char& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "Char ";
+    PrintEscapedChar(out, v.Value);
+    out << '\n';
+}
+
+void SyntaxPrinter::operator()(const Double& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "Double ";
+    PrintDouble(out, v.Value);
+    out << '\n';
+}
+
+void SyntaxPrinter::operator()(const Integer& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "Integer " << v.Value << '\n';
+}
+
+void SyntaxPrinter::operator()(const String& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "String ";
+    PrintEscapedString(out, v.Value);
+    out << '\n';
+}
+
+void SyntaxPrinter::operator()(const SpecialBegin& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "SpecialBegin ";
+    PrintEscapedString(out, v.Value);
+    out << '\n';
+}
+
+void SyntaxPrinter::operator()(const SpecialEnd& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "SpecialEnd ";
+    PrintEscapedString(out, v.Value);
+    out << '\n';
+}
+
+void SyntaxPrinter::operator()(const Expr& v [[maybe_unused]]) const {
     std::visit(*this, v);
 }
 
-void SyntaxPrinter::operator()(const ListExpr& v) const {
+void SyntaxPrinter::operator()(const Variable& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "Variable\n";
+    SyntaxPrinter(this, false)(v.Ident_);
+}
+
+void SyntaxPrinter::operator()(const Application& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "Application\n";
+    SyntaxPrinter nonlast(this, true);
+    nonlast(*v.Expr_1);
+    SyntaxPrinter(this, false)(*v.Expr_2);
+}
+
+void SyntaxPrinter::operator()(const Abstraction& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "Abstraction\n";
+    SyntaxPrinter nonlast(this, true);
+    nonlast(v.Ident_);
+    SyntaxPrinter(this, false)(*v.Expr_);
+}
+
+void SyntaxPrinter::operator()(const StringExpr& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "StringExpr\n";
+    SyntaxPrinter(this, false)(v.String_);
+}
+
+void SyntaxPrinter::operator()(const IntegerExpr& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "IntegerExpr\n";
+    SyntaxPrinter(this, false)(v.Integer_);
+}
+
+void SyntaxPrinter::operator()(const DoubleExpr& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "DoubleExpr\n";
+    SyntaxPrinter(this, false)(v.Double_);
+}
+
+void SyntaxPrinter::operator()(const CharExpr& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "CharExpr\n";
+    SyntaxPrinter(this, false)(v.Char_);
+}
+
+void SyntaxPrinter::operator()(const SpecialExpr& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "SpecialExpr\n";
+    SyntaxPrinter nonlast(this, true);
+    nonlast(v.SpecialBegin_);
+    nonlast(*v.Expr_);
+    SyntaxPrinter(this, false)(v.SpecialEnd_);
+}
+
+void SyntaxPrinter::operator()(const Program& v [[maybe_unused]]) const {
+    std::visit(*this, v);
+}
+
+void SyntaxPrinter::operator()(const AProgram& v [[maybe_unused]]) const {
+    PrintIndentForHeader();
+    out << "AProgram\n";
+    SyntaxPrinter(this, false)(v.ListExpr_);
+}
+
+void SyntaxPrinter::operator()(const ListExpr& v [[maybe_unused]]) const {
     PrintIndentForHeader();
     size_t n = v.size();
     out << "ListExpr [" << n << "]\n";
@@ -37,147 +148,38 @@ void SyntaxPrinter::operator()(const ListExpr& v) const {
         SyntaxPrinter nonlast(this, true);
         size_t n1 = n - 1;
         for (size_t i = 0; i < n1; i++)
-            std::visit(nonlast, v[i]);
+            nonlast(v[i]);
     }
-    std::visit(SyntaxPrinter(this, false), v.back());
+    SyntaxPrinter(this, false)(v.back());
 }
 
-void SyntaxPrinter::operator()(const Expr& v) const {
-    std::visit(*this, v);
-}
-
-void SyntaxPrinter::operator()(const AProgram& v) const {
-    PrintIndentForHeader();
-    out << "AProgram\n";
-    SyntaxPrinter(this, false)(v.ListExpr_);
-}
-
-void SyntaxPrinter::operator()(const Abstraction& v) const {
-    PrintIndentForHeader();
-    out << "Abstraction\n";
-    SyntaxPrinter nonlast(this, true);
-    nonlast(v.Ident_);
-    SyntaxPrinter(this, false)(*v.Expr_);
-}
-
-void SyntaxPrinter::operator()(const Application& v) const {
-    PrintIndentForHeader();
-    out << "Application\n";
-    SyntaxPrinter nonlast(this, true);
-    nonlast(*v.Expr_1);
-    SyntaxPrinter(this, false)(*v.Expr_2);
-}
-
-void SyntaxPrinter::operator()(const Variable& v) const {
-    PrintIndentForHeader();
-    out << "Variable\n";
-    SyntaxPrinter(this, false)(v.Ident_);
-}
-
-void SyntaxPrinter::operator()(const Ident& v) const {
-    PrintIndentForHeader();
-    out << "Ident {" << v.Value << "}\n";
-}
-
-void SyntaxPrinter::operator()(const String& v) const {
-    PrintIndentForHeader();
-    out << "String ";
-    PrintEscapedString(out, v.Value);
-    out << '\n';
-}
-
-void SyntaxPrinter::operator()(const Integer& v) const {
-    PrintIndentForHeader();
-    out << "Integer " << v.Value << '\n';
-}
-
-void SyntaxPrinter::operator()(const Double& v) const {
-    PrintIndentForHeader();
-    out << "Double ";
-    PrintDouble(out, v.Value);
-    out << '\n';
-}
-
-void SyntaxPrinter::operator()(const Char& v) const {
-    PrintIndentForHeader();
-    out << "Char ";
-    PrintEscapedChar(out, v.Value);
-    out << '\n';
-}
-
-void SyntaxPrinter::operator()(const SpecialBegin& v) const {
-    PrintIndentForHeader();
-    out << "SpecialBegin ";
-    PrintEscapedString(out, v.Value);
-    out << '\n';
-}
-
-void SyntaxPrinter::operator()(const SpecialEnd& v) const {
-    PrintIndentForHeader();
-    out << "SpecialEnd ";
-    PrintEscapedString(out, v.Value);
-    out << '\n';
-}
-
-void SyntaxPrinter::operator()(const StringExpr& v) const {
-    PrintIndentForHeader();
-    out << "StringExpr\n";
-    SyntaxPrinter(this, false)(v.String_);
-}
-
-void SyntaxPrinter::operator()(const IntegerExpr& v) const {
-    PrintIndentForHeader();
-    out << "IntegerExpr\n";
-    SyntaxPrinter(this, false)(v.Integer_);
-}
-
-void SyntaxPrinter::operator()(const DoubleExpr& v) const {
-    PrintIndentForHeader();
-    out << "DoubleExpr\n";
-    SyntaxPrinter(this, false)(v.Double_);
-}
-
-void SyntaxPrinter::operator()(const CharExpr& v) const {
-    PrintIndentForHeader();
-    out << "CharExpr\n";
-    SyntaxPrinter(this, false)(v.Char_);
-}
-
-void SyntaxPrinter::operator()(const SpecialExpr& v) const {
-    PrintIndentForHeader();
-    out << "SpecialExpr\n";
-    SyntaxPrinter(this, true)(v.SpecialBegin_);
-    SyntaxPrinter(this, true)(*v.Expr_);
-    SyntaxPrinter(this, false)(v.SpecialEnd_);
-}
-
-#define SyntaxPrinterSHL(type) \
+#define SyntaxPrinterSHL(type)                                             \
     const SyntaxPrinter& operator<<(const SyntaxPrinter& p, const type& v) \
     { p(v); return p; }
 
-SyntaxPrinterSHL(Program);
-SyntaxPrinterSHL(ListExpr);
-SyntaxPrinterSHL(Expr);
-SyntaxPrinterSHL(AProgram);
-SyntaxPrinterSHL(Abstraction);
-SyntaxPrinterSHL(Application);
-SyntaxPrinterSHL(Variable);
 SyntaxPrinterSHL(Ident);
-SyntaxPrinterSHL(String);
-SyntaxPrinterSHL(Integer);
-SyntaxPrinterSHL(Double);
 SyntaxPrinterSHL(Char);
+SyntaxPrinterSHL(Double);
+SyntaxPrinterSHL(Integer);
+SyntaxPrinterSHL(String);
 SyntaxPrinterSHL(SpecialBegin);
 SyntaxPrinterSHL(SpecialEnd);
+SyntaxPrinterSHL(Expr);
+SyntaxPrinterSHL(Variable);
+SyntaxPrinterSHL(Application);
+SyntaxPrinterSHL(Abstraction);
 SyntaxPrinterSHL(StringExpr);
 SyntaxPrinterSHL(IntegerExpr);
 SyntaxPrinterSHL(DoubleExpr);
 SyntaxPrinterSHL(CharExpr);
 SyntaxPrinterSHL(SpecialExpr);
+SyntaxPrinterSHL(Program);
+SyntaxPrinterSHL(AProgram);
+SyntaxPrinterSHL(ListExpr);
 
 const SyntaxPrinter& operator<<(const SyntaxPrinter& p, std::string_view s) {
     p.out << s;
     return p;
 }
 
-}
+}  // namespace LC

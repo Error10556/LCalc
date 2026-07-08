@@ -2,7 +2,7 @@
  * The default PrettyPrinter implementation makes a number of assumptions about
  * the target language. Namely:
  *
- * * All tokens are separated from each other by a space, except for commas ',',
+ * * All tokens are separated from each other by a space, except for commas ','
  *   and semicolons ';', which are only separated from the right, and brackets
  *  '[]' or parentheses '()', which are not separated from the enclosed text.
  *
@@ -22,7 +22,6 @@
 
 #include "PrettyPrinter.hpp"
 
-#include "Absyn.hpp"
 #include "PrinterCommon.hpp"
 
 namespace LC {
@@ -57,69 +56,16 @@ PrettyPrinter PrettyPrinter::Dedented(unsigned int minusIndent,
             coercionLevel};
 }
 
-void PrettyPrinter::operator()(const Program& v) const { std::visit(*this, v); }
-
-void PrettyPrinter::operator()(const ListExpr& v) const {
-    IF_BAD_COERC(ListExpr) out << '(';
-    PrettyPrinter itemprinter = WithCoercionLevel(0);
-    auto iter = v.begin();
-    auto end = v.end();
-    if (iter != end) itemprinter(*iter++);
-    for (; iter != end; ++iter) {
-        out << ";";
-        NewLine();
-        itemprinter(*iter);
-    }
-    IF_BAD_COERC(ListExpr) out << ')';
-}
-
-void PrettyPrinter::operator()(const Expr& v) const { std::visit(*this, v); }
-
-void PrettyPrinter::operator()(const AProgram& v) const {
-    IF_BAD_COERC(AProgram) out << '(';
-    WithCoercionLevel(0)(v.ListExpr_);
-    IF_BAD_COERC(AProgram) out << ')';
-}
-
-void PrettyPrinter::operator()(const Abstraction& v) const {
-    IF_BAD_COERC(Abstraction) out << '(';
-    out << "l ";
-    WithCoercionLevel(0)(v.Ident_);
-    out << " . ";
-    std::visit(WithCoercionLevel(0), *v.Expr_);
-    IF_BAD_COERC(Abstraction) out << ')';
-}
-
-void PrettyPrinter::operator()(const Application& v) const {
-    IF_BAD_COERC(Application) out << '(';
-    WithCoercionLevel(1)(*v.Expr_1);
-    out << ' ';
-    WithCoercionLevel(2)(*v.Expr_2);
-    IF_BAD_COERC(Application) out << ')';
-}
-
-void PrettyPrinter::operator()(const Variable& v) const {
-    IF_BAD_COERC(Variable) out << '(';
-    WithCoercionLevel(0)(v.Ident_);
-    IF_BAD_COERC(Variable) out << ')';
-}
-
 void PrettyPrinter::operator()(const Ident& v) const {
     IF_BAD_COERC(Ident) out << '(';
     out << v.Value;
     IF_BAD_COERC(Ident) out << ')';
 }
 
-void PrettyPrinter::operator()(const String& v) const {
-    IF_BAD_COERC(String) out << '(';
-    PrintEscapedString(out, v.Value);
-    IF_BAD_COERC(String) out << ')';
-}
-
-void PrettyPrinter::operator()(const Integer& v) const {
-    IF_BAD_COERC(Integer) out << '(';
-    out << v.Value;
-    IF_BAD_COERC(Integer) out << ')';
+void PrettyPrinter::operator()(const Char& v) const {
+    IF_BAD_COERC(Char) out << '(';
+    PrintEscapedChar(out, v.Value);
+    IF_BAD_COERC(Char) out << ')';
 }
 
 void PrettyPrinter::operator()(const Double& v) const {
@@ -128,10 +74,16 @@ void PrettyPrinter::operator()(const Double& v) const {
     IF_BAD_COERC(Double) out << ')';
 }
 
-void PrettyPrinter::operator()(const Char& v) const {
-    IF_BAD_COERC(Double) out << '(';
-    PrintEscapedChar(out, v.Value);
-    IF_BAD_COERC(Double) out << ')';
+void PrettyPrinter::operator()(const Integer& v) const {
+    IF_BAD_COERC(Integer) out << '(';
+    out << v.Value;
+    IF_BAD_COERC(Integer) out << ')';
+}
+
+void PrettyPrinter::operator()(const String& v) const {
+    IF_BAD_COERC(String) out << '(';
+    PrintEscapedString(out, v.Value);
+    IF_BAD_COERC(String) out << ')';
 }
 
 void PrettyPrinter::operator()(const SpecialBegin& v) const {
@@ -146,35 +98,62 @@ void PrettyPrinter::operator()(const SpecialEnd& v) const {
     IF_BAD_COERC(SpecialEnd) out << ')';
 }
 
-void PrettyPrinter::operator()(const StringExpr& v) const {
+void PrettyPrinter::operator()(const Expr& v) const {
+    std::visit(*this, v);
+}
+
+void PrettyPrinter::operator()(const Variable& v [[maybe_unused]]) const {
+    IF_BAD_COERC(Variable) out << '(';
+    WithCoercionLevel(0)(v.Ident_);
+    IF_BAD_COERC(Variable) out << ')';
+}
+
+void PrettyPrinter::operator()(const Application& v [[maybe_unused]]) const {
+    IF_BAD_COERC(Application) out << '(';
+    WithCoercionLevel(1)(*v.Expr_1);
+    out << " ";
+    WithCoercionLevel(2)(*v.Expr_2);
+    IF_BAD_COERC(Application) out << ')';
+}
+
+void PrettyPrinter::operator()(const Abstraction& v [[maybe_unused]]) const {
+    IF_BAD_COERC(Abstraction) out << '(';
+    out << "l ";
+    WithCoercionLevel(0)(v.Ident_);
+    out << " . ";
+    WithCoercionLevel(0)(*v.Expr_);
+    IF_BAD_COERC(Abstraction) out << ')';
+}
+
+void PrettyPrinter::operator()(const StringExpr& v [[maybe_unused]]) const {
     IF_BAD_COERC(StringExpr) out << '(';
     out << "str: ";
     WithCoercionLevel(0)(v.String_);
     IF_BAD_COERC(StringExpr) out << ')';
 }
 
-void PrettyPrinter::operator()(const IntegerExpr& v) const {
+void PrettyPrinter::operator()(const IntegerExpr& v [[maybe_unused]]) const {
     IF_BAD_COERC(IntegerExpr) out << '(';
     out << "int: ";
     WithCoercionLevel(0)(v.Integer_);
     IF_BAD_COERC(IntegerExpr) out << ')';
 }
 
-void PrettyPrinter::operator()(const DoubleExpr& v) const {
+void PrettyPrinter::operator()(const DoubleExpr& v [[maybe_unused]]) const {
     IF_BAD_COERC(DoubleExpr) out << '(';
     out << "dbl: ";
     WithCoercionLevel(0)(v.Double_);
     IF_BAD_COERC(DoubleExpr) out << ')';
 }
 
-void PrettyPrinter::operator()(const CharExpr& v) const {
+void PrettyPrinter::operator()(const CharExpr& v [[maybe_unused]]) const {
     IF_BAD_COERC(CharExpr) out << '(';
     out << "chr: ";
     WithCoercionLevel(0)(v.Char_);
     IF_BAD_COERC(CharExpr) out << ')';
 }
 
-void PrettyPrinter::operator()(const SpecialExpr& v) const {
+void PrettyPrinter::operator()(const SpecialExpr& v [[maybe_unused]]) const {
     IF_BAD_COERC(SpecialExpr) out << '(';
     WithCoercionLevel(0)(v.SpecialBegin_);
     out << " ";
@@ -184,31 +163,57 @@ void PrettyPrinter::operator()(const SpecialExpr& v) const {
     IF_BAD_COERC(SpecialExpr) out << ')';
 }
 
+void PrettyPrinter::operator()(const Program& v) const {
+    std::visit(*this, v);
+}
+
+void PrettyPrinter::operator()(const AProgram& v [[maybe_unused]]) const {
+    IF_BAD_COERC(AProgram) out << '(';
+    WithCoercionLevel(0)(v.ListExpr_);
+    IF_BAD_COERC(AProgram) out << ')';
+}
+
+void PrettyPrinter::operator()(const ListExpr& v) const {
+    IF_BAD_COERC(ListExpr) out << '(';
+    if (v.empty()) {
+    } else {
+        PrettyPrinter itemprinter = WithCoercionLevel(0);
+        auto last = std::prev(v.cend());
+        for (auto i = v.cbegin(); i != last; ++i) {
+            itemprinter(*i);
+            out << ";";
+            NewLine();
+        }
+        itemprinter(*last);
+    }
+    IF_BAD_COERC(ListExpr) out << ')';
+}
+
 #define PrettyPrinterSHL(type)                                               \
     const PrettyPrinter& operator<<(const PrettyPrinter& p, const type& v) { \
         p(v);                                                                \
         return p;                                                            \
     }
 
-PrettyPrinterSHL(Program);
-PrettyPrinterSHL(ListExpr);
-PrettyPrinterSHL(Expr);
-PrettyPrinterSHL(AProgram);
-PrettyPrinterSHL(Abstraction);
-PrettyPrinterSHL(Application);
-PrettyPrinterSHL(Variable);
 PrettyPrinterSHL(Ident);
-PrettyPrinterSHL(String);
-PrettyPrinterSHL(Integer);
-PrettyPrinterSHL(Double);
 PrettyPrinterSHL(Char);
+PrettyPrinterSHL(Double);
+PrettyPrinterSHL(Integer);
+PrettyPrinterSHL(String);
 PrettyPrinterSHL(SpecialBegin);
 PrettyPrinterSHL(SpecialEnd);
+PrettyPrinterSHL(Expr);
+PrettyPrinterSHL(Variable);
+PrettyPrinterSHL(Application);
+PrettyPrinterSHL(Abstraction);
 PrettyPrinterSHL(StringExpr);
 PrettyPrinterSHL(IntegerExpr);
 PrettyPrinterSHL(DoubleExpr);
 PrettyPrinterSHL(CharExpr);
 PrettyPrinterSHL(SpecialExpr);
+PrettyPrinterSHL(Program);
+PrettyPrinterSHL(AProgram);
+PrettyPrinterSHL(ListExpr);
 
 const PrettyPrinter& operator<<(const PrettyPrinter& p, std::string_view v) {
     p.out << v;

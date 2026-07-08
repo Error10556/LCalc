@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <cstring>
 #include <vector>
 
@@ -69,7 +68,7 @@ int main(int argc, char** argv) {
         return 0;
     }
     if (help) {
-        cerr << "Sample syntax parser.\nUsage: \n"
+        cerr << "Example syntax parser.\nUsage: \n"
              << argv[0] << " (OPTION|FILE)... [-- FILE...]\n";
         cerr << R"%(
 Options:
@@ -96,18 +95,18 @@ Options:
         }
         cout << filename << '\n';
 
-        LC::ParseProgram(file) | PatternMatch{
+        LC::Parse(file) | PatternMatch{
             [&](LC::Parser::syntax_error&& err) {
                 cout << "Could not parse!\nError: " << err.what() << "\n\n";
                 return;
             },
-            [&](LC::Program&& p) {
+            [&](auto&& ast) {
                 if (tree) {
-                    p | LC::SyntaxPrinter(cout);
+                    ast | LC::SyntaxPrinter(cout);
                     cout << '\n';
                 }
                 if (pretty) {
-                    p | LC::PrettyPrinter(cout);
+                    ast | LC::PrettyPrinter(cout);
                     cout << "\n\n";
                 }
                 if (!tree && !pretty) cout << "OK\n\n";

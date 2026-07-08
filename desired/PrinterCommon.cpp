@@ -6,7 +6,6 @@
 namespace LC {
 
 void PrintEscapedCharRaw(std::ostream& out, int32_t ch) {
-    static constexpr const char HEX_DIGITS[] = "0123456789ABCDEF";
     switch (ch) {
         case '\0':
             out << "\\0";
@@ -52,7 +51,7 @@ void PrintEscapedCharRaw(std::ostream& out, int32_t ch) {
             out << "\\U";
             digitcount = 8;
             for (int i = (digitcount - 1) * 4; i >= 0; i -= 4)
-                out << HEX_DIGITS[(ch >> i) & 0xF];
+                out << "0123456789ABCDEF"[(ch >> i) & 0xF];
             break;
     }
 }

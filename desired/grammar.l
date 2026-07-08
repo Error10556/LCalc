@@ -1,8 +1,6 @@
 %option warn nodefault
 %option 8bit reentrant
-%option noyywrap
-%option noinput
-%option nounput
+%option noyywrap noinput nounput
 %option prefix="LC"
 %option outfile="grammar.lex.cpp"
 
@@ -43,10 +41,6 @@ inline int decodeUTF8(const char* start, int len) {
     return res >= minCharForEncodedLen(len) ? res : -1;
 }
 
-inline int32_t bitSegment(int shiftr, int masklen, int32_t val) {
-    return (val >> shiftr) & ((static_cast<int32_t>(1) << masklen) - 1);
-}
-
 inline void encodeUTF8(std::string& dest, int32_t ch) {
     if (ch < 0) {
         dest.push_back(0xFF);
@@ -74,8 +68,8 @@ inline void encodeUTF8(std::string& dest, int32_t ch) {
 %}
 
 %option extra-type="std::string*"
-
-%s COMMENT STRING ESCAPE CHAR
+%s STRING ESCAPE
+%s CHAR
 
 HEXINT [0-7][0-9a-fA-F]{7}|[0-9a-fA-F]{1,7}
 HEXSHORT [0-9a-fA-F]{1,4}
@@ -89,21 +83,38 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
 
 %%
 
-<INITIAL>"/*" BEGIN(COMMENT);
-<COMMENT>[^*]+ ;
-<COMMENT>"*" ;
-<COMMENT>"*/" BEGIN(INITIAL);
-<INITIAL>"//".* ;
+<INITIAL>\/\*([^*]|\*+[^*/])*\*+?\*\/ ;
+
+<INITIAL>\/\/.* ;
+
+<INITIAL>\( return LC::Parser::make_LPAREN();
+<INITIAL>\) return LC::Parser::make_RPAREN();
+<INITIAL>\. return LC::Parser::make_DOT();
+<INITIAL>; return LC::Parser::make_SEMI();
+<INITIAL>\< return LC::Parser::make_LT();
+<INITIAL>\> return LC::Parser::make_GT();
+<INITIAL>chr\: return LC::Parser::make_SYM_4();
+<INITIAL>const return LC::Parser::make_KW_const();
+<INITIAL>dbl\: return LC::Parser::make_SYM_3();
+<INITIAL>id return LC::Parser::make_KW_id();
+<INITIAL>int\: return LC::Parser::make_SYM_2();
+<INITIAL>l return LC::Parser::make_KW_l();
+<INITIAL>str\: return LC::Parser::make_SYM_1();
 
     /* SpecialBegin */
-<INITIAL>\<:[1-9]+ return LC::Parser::make_CUSTOM_SpecialBegin(yytext);
+<INITIAL>\<\:[1-9]+ return LC::Parser::make_CUSTOM_SpecialBegin(yytext);
 
     /* SpecialEnd */
-<INITIAL>[1-9]+:\> return LC::Parser::make_CUSTOM_SpecialEnd(yytext);
+<INITIAL>[1-9]+\:\> return LC::Parser::make_CUSTOM_SpecialEnd(yytext);
 
     /* String */
 <INITIAL>\" BEGIN(STRING); yyextra->clear();
-<STRING>\" BEGIN(INITIAL); return LC::Parser::make_STRING(*yyextra);
+<STRING>\" {
+        BEGIN(INITIAL);
+        std::string result;
+        result.swap(*yyextra);
+        return LC::Parser::make_STRING(result);
+    }
 <STRING>\\ BEGIN(ESCAPE);
 <STRING>. yyextra->push_back(*yytext);
 <ESCAPE>0 BEGIN(STRING); yyextra->push_back('\0');
@@ -126,29 +137,6 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
     }
 <ESCAPE>. BEGIN(STRING); yyextra->push_back(*yytext);
 
-    /* Integer (must be above Double) */
-<INITIAL>[+\-]?[0-9]+ {
-        const char* const start = yytext + (*yytext == '+');
-        const char* const end = yytext + yyleng;
-        long num;
-        auto res = std::from_chars(start, end, num);
-        if (res.ec == std::errc() && res.ptr == end)
-            return LC::Parser::make_INTEGER(num);
-        else
-            return LC::Parser::make_YYerror();
-    }
-
-    /* Double */
-<INITIAL>[+\-]?[0-9]+(\.[0-9]+)?([eE][+\-]?[0-9]+)? {
-        const char* const start = yytext + (*yytext == '+');
-        const char* const end = yytext + yyleng;
-        double num;
-        auto res = std::from_chars(start, end, num);
-        if (res.ec == std::errc() && res.ptr == end)
-            return LC::Parser::make_DOUBLE(num);
-        else
-            return LC::Parser::make_YYerror();
-    }
 
     /* Char in UTF-8 */
 <INITIAL>' BEGIN(CHAR);
@@ -160,9 +148,9 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
 <CHAR>\\r' BEGIN(INITIAL); return LC::Parser::make_CHAR('\r');
 <CHAR>\\t' BEGIN(INITIAL); return LC::Parser::make_CHAR('\t');
 <CHAR>\\v' BEGIN(INITIAL); return LC::Parser::make_CHAR('\v');
-<CHAR>\\x{HEXBYTE}'  |
-<CHAR>\\u{HEXSHORT}' |
-<CHAR>\\U{HEXINT}' {
+<CHAR>\x{HEXBYTE}'  |
+<CHAR>\u{HEXSHORT}' |
+<CHAR>\U{HEXINT}' {
         BEGIN(INITIAL);
         return LC::Parser::make_CHAR(hexInt32(yytext + 2, yyleng - 2));
     }
@@ -179,18 +167,32 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
         return LC::Parser::make_CHAR(charcode);
     }
 
-<INITIAL>"l" return LC::Parser::make_KW_l();
-<INITIAL>[_a-zA-Z][_a-zA-Z0-9]* return LC::Parser::make_IDENT(yytext);
-<INITIAL>"(" return LC::Parser::make_LPAREN();
-<INITIAL>")" return LC::Parser::make_RPAREN();
-<INITIAL>"." return LC::Parser::make_DOT();
-<INITIAL>";" return LC::Parser::make_SEMI();
-<INITIAL>str: return LC::Parser::make_SYM1();
-<INITIAL>int: return LC::Parser::make_SYM2();
-<INITIAL>dbl: return LC::Parser::make_SYM3();
-<INITIAL>chr: return LC::Parser::make_SYM4();
+    /* Integer (must be above Double) */
+<INITIAL>[0-9]+ {
+        const char* const end = yytext + yyleng;
+        long num;
+        auto res = std::from_chars(yytext, end, num);
+        if (res.ec == std::errc() && res.ptr == end)
+            return LC::Parser::make_INTEGER(num);
+        else
+            return LC::Parser::make_YYerror();
+    }
+
+    /* Double */
+<INITIAL>[0-9]+(\.[0-9]+)?([eE][+\-]?[0-9]+)? {
+        const char* const end = yytext + yyleng;
+        double num;
+        auto res = std::from_chars(yytext, end, num);
+        if (res.ec == std::errc() && res.ptr == end)
+            return LC::Parser::make_DOUBLE(num);
+        else
+            return LC::Parser::make_YYerror();
+    }
+
+<INITIAL>[a-zA-Z_][a-zA-Z0-9_]* return LC::Parser::make_IDENT(yytext);
+
+<INITIAL>[\t\n\f\r\x20]+ /* whitespace */;
 <INITIAL><<EOF>> return LC::Parser::make_YYEOF();
-<INITIAL>[ \n\t\f\v] ;
 
 [\x00-\xff] return LC::Parser::make_YYerror();
 
@@ -212,7 +214,7 @@ public:
 LCScanner::LCScanner() {
     int err = LClex_init_extra(new std::string(), &scanner);
     if (err) throw std::system_error(err, std::generic_category(),
-        "Cannot create LC scanner");
+        "Cannot create scanner");
 }
 
 LCScanner::LCScanner(FILE* file) : LCScanner() {
@@ -230,4 +232,4 @@ LCScanner::~LCScanner() {
     LClex_destroy(scanner);
 }
 
-}
+}  // namespace LC
