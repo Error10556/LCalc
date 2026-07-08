@@ -12,7 +12,7 @@ HaskellPrinter::HaskellPrinter(std::ostream& out)
     : HaskellPrinter(out, false) {}
 
 HaskellPrinter HaskellPrinter::PrintConstructorArg() const {
-    return {out, false};
+    return {out, true};
 }
 
 void HaskellPrinter::operator()(const Ident& v) const {
@@ -123,6 +123,7 @@ void HaskellPrinter::operator()(const Program& v) const {
 
 void HaskellPrinter::operator()(const AProgram& v [[maybe_unused]]) const {
     if (inExpression) out << '(';
+    out << "AProgram ";
     const HaskellPrinter printField = PrintConstructorArg();
     printField(v.ListExpr_);
     if (inExpression) out << ')';
