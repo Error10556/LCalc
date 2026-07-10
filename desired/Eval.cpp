@@ -228,7 +228,7 @@ int main(int argc, char** argv) {
             continue;
         }
         cerr << "Entering " << file << endl;
-        LC::ParseProgram(f) | PatternMatch{
+        LC::ParseAs<LC::Program>(f) | PatternMatch{
             [&file](LC::Parser::syntax_error&& err) {
                 cerr << "Syntax error in " << file << ": "
                     << err.what() << endl;

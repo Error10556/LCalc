@@ -62,14 +62,14 @@
     template <class T>
     std::variant<T, Parser::syntax_error>
     EnsureParsedType(ParseResultOrError&& parsed) {
-        using RetType [[maybe_unused]] = std::variant<T, Parser::syntax_error>;
-        std::visit([](auto&& v) {
+        using RetType = std::variant<T, Parser::syntax_error>;
+        return std::visit([](auto&& v) -> RetType {
             using TParsedOrError = std::decay_t<decltype(v)>;
             if constexpr
                 (std::is_same_v<TParsedOrError, Parser::syntax_error>) {
                 return std::move(v);
             } else {  // ParseResultVariant
-                std::visit([](auto&& v) {
+                return std::visit([](auto&& v) -> RetType {
                     using TParsedClass = std::decay_t<decltype(v)>;
                     if constexpr (std::is_same_v<TParsedClass, T>) {
                         return std::move(v);
@@ -80,9 +80,9 @@
                             .append(reflection::SyntaxNodeName<TParsedClass>);
                         return Parser::syntax_error(msg);
                     }
-                } -> RetType, std::move(v));
+                }, std::move(v));
             }
-        } -> RetType, std::move(parsed));
+        }, std::move(parsed));
     }
 
     template <class T>
