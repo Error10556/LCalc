@@ -3,6 +3,6 @@
 /grammar.lex.cpp
 /grammar.tab.cpp
 /grammar.tab.hpp
-/Test
+/Testgrammar
 /Eval
 /PatternMatchingTest

@@ -1,5 +1,5 @@
 VAR_CXX = clang++
-VAR_CXXFLAGS = -glldb -fsanitize=address -fsanitize=leak -Wall -Werror
+VAR_CXXFLAGS = -glldb -fsanitize=address -fsanitize=leak -Wall -Werror -Wextra
 VAR_LDFLAGS = -fsanitize=address -fsanitize=leak
 
 all: cpp-var/Test

@@ -3,13 +3,15 @@
 /Absyn.hpp
 /Makefile
 /PatternMatching.hpp
+/HaskellPrinter.hpp
+/HaskellPrinter.cpp
 /PrettyPrinter.cpp
 /PrettyPrinter.hpp
 /PrinterCommon.cpp
 /PrinterCommon.hpp
 /SyntaxPrinter.cpp
 /SyntaxPrinter.hpp
-/Test
+/Testgrammar
 /Test.cpp
 /grammar.l
 /grammar.lex.cpp

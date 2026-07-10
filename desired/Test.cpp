@@ -76,9 +76,8 @@ int main(int argc, char** argv) {
             }
         }
     }
-    if (!help && files.empty()) {
+    if (!help && files.empty())
         files.push_back("-");
-    }
     if (help) {
         cout << "Example syntax parser.\nUsage:\n"
              << argv[0] << " (OPTION|FILE)... [-- FILE...]\n";
