@@ -58,8 +58,45 @@
         std::variant<ParseResultVariant, Parser::syntax_error>;
     ParseResultOrError Parse(FILE* file);
     ParseResultOrError Parse(std::string_view str);
-    std::variant<LC::Program, Parser::syntax_error> ParseProgram(FILE* file);
-    std::variant<LC::Program, Parser::syntax_error> ParseProgram(std::string_view str);
+
+    template <class T>
+    std::variant<T, Parser::syntax_error>
+    EnsureParsedType(ParseResultOrError&& parsed) {
+        using RetType [[maybe_unused]] = std::variant<T, Parser::syntax_error>;
+        std::visit([](auto&& v) {
+            using TParsedOrError = std::decay_t<decltype(v)>;
+            if constexpr
+                (std::is_same_v<TParsedOrError, Parser::syntax_error>) {
+                return std::move(v);
+            } else {  // ParseResultVariant
+                std::visit([](auto&& v) {
+                    using TParsedClass = std::decay_t<decltype(v)>;
+                    if constexpr (std::is_same_v<TParsedClass, T>) {
+                        return std::move(v);
+                    } else {
+                        std::string msg = "Unexpected syntax: tried to parse ";
+                        msg.append(reflection::SyntaxNodeName<T>)
+                            .append(", but got ")
+                            .append(reflection::SyntaxNodeName<TParsedClass>);
+                        return Parser::syntax_error(msg);
+                    }
+                } -> RetType, std::move(v));
+            }
+        } -> RetType, std::move(parsed));
+    }
+
+    template <class T>
+    std::variant<T, Parser::syntax_error> ParseAs(FILE* file) {
+        static_assert(reflection::IsParserEntrypoint<T>,
+            "Cannot parse this class");
+        return EnsureParsedType<T>(Parse(file));
+    }
+    template <class T>
+    std::variant<T, Parser::syntax_error> ParseAs(std::string_view str) {
+        static_assert(reflection::IsParserEntrypoint<T>,
+            "Cannot parse this class");
+        return EnsureParsedType<T>(Parse(str));
+    }
 
     }  // namespace LC
 }
@@ -118,8 +155,6 @@ ListExpr
 
 %%
 
-#include "PatternMatching.hpp"
-
 namespace LC {
 
 class LCScanner {
@@ -151,38 +186,6 @@ ParseResultOrError Parse(FILE* file) {
 
 ParseResultOrError Parse(std::string_view str) {
     return Parse(LCScanner(str));
-}
-
-template <class T>
-static std::variant<T, Parser::syntax_error>
-EnsureParsedType(ParseResultOrError&& parsed) {
-    using RetType = std::variant<T, Parser::syntax_error>;
-    return std::move(parsed) | PatternMatch{
-        [](Parser::syntax_error&& err) -> RetType {
-            return std::move(err);
-        },
-        [](ParseResultVariant&& var) -> RetType {
-            return std::move(var) | PatternMatch{
-                [](T&& target) -> RetType { return std::move(target); },
-                [](auto&& node) -> RetType {
-                    using gotType = std::decay_t<decltype(node)>;
-                    std::string msg = "Unexpected syntax: tried to parse ";
-                    msg.append(reflection::SyntaxNodeName<T>)
-                        .append(", but got ")
-                        .append(reflection::SyntaxNodeName<gotType>);
-                    return Parser::syntax_error(msg);
-                }
-            };
-        }
-    };
-}
-
-std::variant<Program, Parser::syntax_error> ParseProgram(FILE* file) {
-    return EnsureParsedType<Program>(Parse(file));
-}
-
-std::variant<Program, Parser::syntax_error> ParseProgram(std::string_view str) {
-    return EnsureParsedType<Program>(Parse(str));
 }
 
 }  // namespace LC
