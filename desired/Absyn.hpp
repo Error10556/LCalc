@@ -234,6 +234,26 @@ Expr make_const(Ident&& varname);
 
 namespace reflection {
 
+template<class T> struct IsTokenStruct_t
+{ static constexpr bool value = false; };
+template<class T>
+constexpr const bool IsTokenStruct = IsTokenStruct_t<T>::value;
+
+template<class T> struct IsCategoryClass_t
+{ static constexpr bool value = false; };
+template<class T>
+constexpr const bool IsCategoryClass = IsCategoryClass_t<T>::value;
+
+template<class T> struct IsLabelClass_t
+{ static constexpr bool value = false; };
+template<class T>
+constexpr const bool IsLabelClass = IsLabelClass_t<T>::value;
+
+template<class T> struct IsParserEntrypoint_t
+{ static constexpr bool value = false; };
+template<class T>
+constexpr const bool IsParserEntrypoint = IsParserEntrypoint_t<T>::value;
+
 template<class T> struct CoercionLevel_t {};
 template<class T> constexpr int CoercionLevel = CoercionLevel_t<T>::value;
 
@@ -241,96 +261,54 @@ template<class T> struct SyntaxNodeName_t {};
 template<class T>
 constexpr const char* SyntaxNodeName = SyntaxNodeName_t<T>::value;
 
-template<> struct CoercionLevel_t<Ident>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<Ident>
-{ static constexpr const char* value = "Ident"; };
+#define REFL_KINDNAME(kind, _t) Is##kind##_t
 
-template<> struct CoercionLevel_t<Char>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<Char>
-{ static constexpr const char* value = "Char"; };
+#define REFL_NOCOERC(type, kind) \
+template<> struct REFL_KINDNAME(kind, _t)<type> \
+{ static constexpr bool value = true; }; \
+template<> struct SyntaxNodeName_t<type> \
+{ static constexpr const char* value = #type; }
 
-template<> struct CoercionLevel_t<Double>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<Double>
-{ static constexpr const char* value = "Double"; };
+#define REFL(type, kind, coerc) \
+REFL_NOCOERC(type, kind); \
+template<> struct CoercionLevel_t<type> \
+{ static constexpr int value = coerc; } \
 
-template<> struct CoercionLevel_t<Integer>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<Integer>
-{ static constexpr const char* value = "Integer"; };
+#define REFL_VAR(type) REFL_NOCOERC(type, CategoryClass)
 
-template<> struct CoercionLevel_t<String>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<String>
-{ static constexpr const char* value = "String"; };
+#define ENTRYPOINT(type) \
+template<> struct IsParserEntrypoint_t<type> \
+{ static constexpr bool value = true; } \
 
-template<> struct CoercionLevel_t<SpecialBegin>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<SpecialBegin>
-{ static constexpr const char* value = "SpecialBegin"; };
+REFL(Ident, TokenStruct, 0);
+REFL(Char, TokenStruct, 0);
+REFL(Double, TokenStruct, 0);
+REFL(Integer, TokenStruct, 0);
+REFL(String, TokenStruct, 0);
+REFL(SpecialBegin, TokenStruct, 0);
+REFL(SpecialEnd, TokenStruct, 0);
 
-template<> struct CoercionLevel_t<SpecialEnd>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<SpecialEnd>
-{ static constexpr const char* value = "SpecialEnd"; };
+REFL(SpecialExpr, LabelClass, 0);
+REFL(CharExpr, LabelClass, 0);
+REFL(DoubleExpr, LabelClass, 0);
+REFL(IntegerExpr, LabelClass, 0);
+REFL(StringExpr, LabelClass, 0);
+REFL(Abstraction, LabelClass, 0);
+REFL(Application, LabelClass, 1);
+REFL(Variable, LabelClass, 2);
+REFL(AProgram, LabelClass, 0);
+REFL(ListExpr, CategoryClass, 0);
 
-template<> struct CoercionLevel_t<SpecialExpr>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<SpecialExpr>
-{ static constexpr const char* value = "SpecialExpr"; };
+REFL_VAR(Expr);
+REFL_VAR(Program);
 
-template<> struct CoercionLevel_t<CharExpr>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<CharExpr>
-{ static constexpr const char* value = "CharExpr"; };
+ENTRYPOINT(Program);
 
-template<> struct CoercionLevel_t<DoubleExpr>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<DoubleExpr>
-{ static constexpr const char* value = "DoubleExpr"; };
-
-template<> struct CoercionLevel_t<IntegerExpr>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<IntegerExpr>
-{ static constexpr const char* value = "IntegerExpr"; };
-
-template<> struct CoercionLevel_t<StringExpr>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<StringExpr>
-{ static constexpr const char* value = "StringExpr"; };
-
-template<> struct CoercionLevel_t<Abstraction>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<Abstraction>
-{ static constexpr const char* value = "Abstraction"; };
-
-template<> struct CoercionLevel_t<Application>
-{ static constexpr int value = 1; };
-template<> struct SyntaxNodeName_t<Application>
-{ static constexpr const char* value = "Application"; };
-
-template<> struct CoercionLevel_t<Variable>
-{ static constexpr int value = 2; };
-template<> struct SyntaxNodeName_t<Variable>
-{ static constexpr const char* value = "Variable"; };
-
-template<> struct SyntaxNodeName_t<Expr>
-{ static constexpr const char* value = "Expr"; };
-
-template<> struct CoercionLevel_t<ListExpr>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<ListExpr>
-{ static constexpr const char* value = "ListExpr"; };
-
-template<> struct CoercionLevel_t<AProgram>
-{ static constexpr int value = 0; };
-template<> struct SyntaxNodeName_t<AProgram>
-{ static constexpr const char* value = "AProgram"; };
-
-template<> struct SyntaxNodeName_t<Program>
-{ static constexpr const char* value = "Program"; };
+#undef ENTRYPOINT
+#undef REFL_VAR
+#undef REFL
+#undef REFL_NOCOERC
+#undef REFL_KINDNAME
 
 }  // namespace reflection
 
