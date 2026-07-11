@@ -8,7 +8,7 @@
 
 #include "Absyn.hpp"
 #include "grammar.tab.hpp"
-#include "PrettyPrinter.hpp"
+#include "ContextFreePrettyPrinter.hpp"
 #include "PatternMatching.hpp"
 
 using namespace std;
@@ -220,7 +220,7 @@ int main(int argc, char** argv) {
     }
 
     VEvaluate eval;
-    LC::PrettyPrinter printer(cout);
+    LC::ContextFreePrettyPrinter printer(cout);
     for (char* file : files) {
         FILE* f = fopen(file, "r");
         if (!f) {

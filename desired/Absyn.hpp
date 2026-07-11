@@ -296,10 +296,9 @@ REFL(StringExpr, LabelClass, 0);
 REFL(Abstraction, LabelClass, 0);
 REFL(Application, LabelClass, 1);
 REFL(Variable, LabelClass, 2);
-REFL(AProgram, LabelClass, 0);
-REFL(ListExpr, CategoryClass, 0);
-
 REFL_VAR(Expr);
+REFL(ListExpr, CategoryClass, 0);
+REFL(AProgram, LabelClass, 0);
 REFL_VAR(Program);
 
 ENTRYPOINT(Program);

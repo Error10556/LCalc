@@ -177,8 +177,8 @@ SyntaxPrinterSHL(Program);
 SyntaxPrinterSHL(AProgram);
 SyntaxPrinterSHL(ListExpr);
 
-const SyntaxPrinter& operator<<(const SyntaxPrinter& p, std::string_view s) {
-    p.out << s;
+const SyntaxPrinter& operator<<(const SyntaxPrinter& p, std::string_view v) {
+    p.out << v;
     return p;
 }
 

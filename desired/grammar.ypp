@@ -177,7 +177,7 @@ static ParseResultOrError Parse(const LCScanner& scanner) {
     Parser parser(scanner.FlexScanner(), &res);
     parser.parse();
     if (!res) return {Parser::syntax_error("")};
-    return *res;
+    return std::move(*res);
 }
 
 ParseResultOrError Parse(FILE* file) {

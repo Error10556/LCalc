@@ -43,9 +43,11 @@ void HaskellPrinter::operator()(const SpecialEnd& v) const {
     PrintEscapedString(out, v.Value);
 }
 
-void HaskellPrinter::operator()(const Expr& v) const { std::visit(*this, v); }
+void HaskellPrinter::operator()(const Expr& v) const {
+    std::visit(*this, v);
+}
 
-void HaskellPrinter::operator()(const Variable& v [[maybe_unused]]) const {
+void HaskellPrinter::operator()(const Variable& v) const {
     if (inExpression) out << '(';
     out << "Variable ";
     const HaskellPrinter printField = PrintConstructorArg();
@@ -53,7 +55,7 @@ void HaskellPrinter::operator()(const Variable& v [[maybe_unused]]) const {
     if (inExpression) out << ')';
 }
 
-void HaskellPrinter::operator()(const Application& v [[maybe_unused]]) const {
+void HaskellPrinter::operator()(const Application& v) const {
     if (inExpression) out << '(';
     out << "Application ";
     const HaskellPrinter printField = PrintConstructorArg();
@@ -63,7 +65,7 @@ void HaskellPrinter::operator()(const Application& v [[maybe_unused]]) const {
     if (inExpression) out << ')';
 }
 
-void HaskellPrinter::operator()(const Abstraction& v [[maybe_unused]]) const {
+void HaskellPrinter::operator()(const Abstraction& v) const {
     if (inExpression) out << '(';
     out << "Abstraction ";
     const HaskellPrinter printField = PrintConstructorArg();
@@ -73,7 +75,7 @@ void HaskellPrinter::operator()(const Abstraction& v [[maybe_unused]]) const {
     if (inExpression) out << ')';
 }
 
-void HaskellPrinter::operator()(const StringExpr& v [[maybe_unused]]) const {
+void HaskellPrinter::operator()(const StringExpr& v) const {
     if (inExpression) out << '(';
     out << "StringExpr ";
     const HaskellPrinter printField = PrintConstructorArg();
@@ -81,7 +83,7 @@ void HaskellPrinter::operator()(const StringExpr& v [[maybe_unused]]) const {
     if (inExpression) out << ')';
 }
 
-void HaskellPrinter::operator()(const IntegerExpr& v [[maybe_unused]]) const {
+void HaskellPrinter::operator()(const IntegerExpr& v) const {
     if (inExpression) out << '(';
     out << "IntegerExpr ";
     const HaskellPrinter printField = PrintConstructorArg();
@@ -89,7 +91,7 @@ void HaskellPrinter::operator()(const IntegerExpr& v [[maybe_unused]]) const {
     if (inExpression) out << ')';
 }
 
-void HaskellPrinter::operator()(const DoubleExpr& v [[maybe_unused]]) const {
+void HaskellPrinter::operator()(const DoubleExpr& v) const {
     if (inExpression) out << '(';
     out << "DoubleExpr ";
     const HaskellPrinter printField = PrintConstructorArg();
@@ -97,7 +99,7 @@ void HaskellPrinter::operator()(const DoubleExpr& v [[maybe_unused]]) const {
     if (inExpression) out << ')';
 }
 
-void HaskellPrinter::operator()(const CharExpr& v [[maybe_unused]]) const {
+void HaskellPrinter::operator()(const CharExpr& v) const {
     if (inExpression) out << '(';
     out << "CharExpr ";
     const HaskellPrinter printField = PrintConstructorArg();
@@ -105,7 +107,7 @@ void HaskellPrinter::operator()(const CharExpr& v [[maybe_unused]]) const {
     if (inExpression) out << ')';
 }
 
-void HaskellPrinter::operator()(const SpecialExpr& v [[maybe_unused]]) const {
+void HaskellPrinter::operator()(const SpecialExpr& v) const {
     if (inExpression) out << '(';
     out << "SpecialExpr ";
     const HaskellPrinter printField = PrintConstructorArg();
@@ -121,7 +123,7 @@ void HaskellPrinter::operator()(const Program& v) const {
     std::visit(*this, v);
 }
 
-void HaskellPrinter::operator()(const AProgram& v [[maybe_unused]]) const {
+void HaskellPrinter::operator()(const AProgram& v) const {
     if (inExpression) out << '(';
     out << "AProgram ";
     const HaskellPrinter printField = PrintConstructorArg();
@@ -143,11 +145,9 @@ void HaskellPrinter::operator()(const ListExpr& v) const {
     out << ']';
 }
 
-#define HaskellPrinterSHL(type)                                                \
-    const HaskellPrinter& operator<<(const HaskellPrinter& p, const type& v) { \
-        p(v);                                                                  \
-        return p;                                                              \
-    }
+#define HaskellPrinterSHL(type)                                              \
+    const HaskellPrinter& operator<<(const HaskellPrinter& p, const type& v) \
+    { p(v); return p; }
 
 HaskellPrinterSHL(Ident);
 HaskellPrinterSHL(Char);

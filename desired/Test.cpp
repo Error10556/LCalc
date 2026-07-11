@@ -2,12 +2,11 @@
 #include <vector>
 
 #include "HaskellPrinter.hpp"
-#include "PrettyPrinter.hpp"
+#include "ContextFreePrettyPrinter.hpp"
 #include "SyntaxPrinter.hpp"
 #include "grammar.tab.hpp"
 #include "PatternMatching.hpp"
 using namespace std;
-
 
 bool help = false, pretty = false, tree = false, haskell = false,
     systest = false;
@@ -84,7 +83,7 @@ int main(int argc, char** argv) {
         cout << R"%(
 Options:
   -h --help     Display this message.
-  -p --pretty   Pretty-print the abstract syntax tree.
+  -p --pretty   Pretty-print the syntax tree (using ContextFreePrettyPrinter).
   -t --tree     Print the abstract syntax tree like a tree.
   -H --haskell  Print the abstract syntax tree as a Haskell expression.
   -s --systest  For use in BNFC system tests. Overrides other options.
@@ -126,7 +125,7 @@ if every file is parsed successfully, the exit code will be 0.
                     cout << "Parse Successful!\n\n[Abstract Syntax]\n\n";
                     ast | LC::HaskellPrinter(cout);
                     cout << "\n\n[Linearized tree]\n\n";
-                    ast | LC::PrettyPrinter(cout);
+                    ast | LC::ContextFreePrettyPrinter(cout);
                     cout << endl;
                     return;
                 }
@@ -137,7 +136,7 @@ if every file is parsed successfully, the exit code will be 0.
                     printed = true;
                 }
                 if (pretty) {
-                    ast | LC::PrettyPrinter(cout);
+                    ast | LC::ContextFreePrettyPrinter(cout);
                     cout << "\n\n";
                     printed = true;
                 }
