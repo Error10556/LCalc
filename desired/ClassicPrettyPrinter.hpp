@@ -1,3 +1,5 @@
+// 
+
 #pragma once
 #include <iostream>
 #include <string_view>
@@ -29,6 +31,7 @@ public:
     ClassicPrettyPrinter& NeedSpaceHere();
     ClassicPrettyPrinter& FlushSpaceHere();
 
+    const ClassicPrettyPrinter& PutVerbatim(std::string_view) const;
     ClassicPrettyPrinter& PutVerbatim(std::string_view);
     ClassicPrettyPrinter& PutToken(std::string_view);
     ClassicPrettyPrinter& PutCharLiteral(int32_t);

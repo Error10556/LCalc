@@ -72,6 +72,12 @@ ClassicPrettyPrinter& ClassicPrettyPrinter::PutVerbatim(std::string_view s) {
     return *this;
 }
 
+const ClassicPrettyPrinter& ClassicPrettyPrinter::PutVerbatim(
+        std::string_view s) const {
+    out << s;
+    return *this;
+}
+
 static bool IsSpace(char ch) {
     switch (ch) {
         case ' ': case '\r': case '\n': case '\t': case '\v':
@@ -135,25 +141,29 @@ ClassicPrettyPrinter& ClassicPrettyPrinter::PutToken(std::string_view s) {
 }
 
 ClassicPrettyPrinter& ClassicPrettyPrinter::PutCharLiteral(int32_t ch) {
+    onEmptyLine = false;
     FlushSpaceHere();
     PrintEscapedChar(out, ch);
     return NeedSpaceHere();
 }
 
 ClassicPrettyPrinter& ClassicPrettyPrinter::PutStringLiteral(
-    std::string_view s) {
+        std::string_view s) {
+    onEmptyLine = false;
     FlushSpaceHere();
     PrintEscapedString(out, s);
     return NeedSpaceHere();
 }
 
 ClassicPrettyPrinter& ClassicPrettyPrinter::PutDoubleLiteral(double v) {
+    onEmptyLine = false;
     FlushSpaceHere();
     PrintDouble(out, v);
     return NeedSpaceHere();
 }
 
 ClassicPrettyPrinter& ClassicPrettyPrinter::PutIntegerLiteral(long v) {
+    onEmptyLine = false;
     FlushSpaceHere();
     PrintDouble(out, v);
     return NeedSpaceHere();
@@ -374,9 +384,11 @@ void ClassicPrettyPrinter::operator()(const ListExpr& v) {
     Put(v);
 }
 
-#define ClassicPrettyPrinterSHL(type)                                              \
-    const ClassicPrettyPrinter& operator<<(ClassicPrettyPrinter& p, const type& v) \
-    { return p.Put(v); }
+#define ClassicPrettyPrinterSHL(type)                               \
+    const ClassicPrettyPrinter& operator<<(ClassicPrettyPrinter& p, \
+                                           const type& v) {         \
+        return p.Put(v);                                            \
+    }
 
 #define ClassicPrettyPrinterSHL0(type)                              \
     const ClassicPrettyPrinter& operator<<(ClassicPrettyPrinter& p, \
