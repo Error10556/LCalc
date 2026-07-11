@@ -1,4 +1,4 @@
-// 
+// See ClassicPrettyPrinter.cpp for a description of the printing rules.
 
 #pragma once
 #include <iostream>

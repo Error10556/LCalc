@@ -1,3 +1,29 @@
+/*
+
+The ClassicPrettyPrinter class operates on tokens. Each syntax node is converted
+into a sequence of tokens, which are then printed in order, separated by spaces.
+However, some tokens have special effects:
+
+** Space-separation **
+    - Left brackets '[' and parentheses '(' eat the separating space after
+      themselves.
+    - Commas ',', semicolons ';', and right brackets ']' and parentheses ')'
+      eat the separating space before themselves.
+    - Tokens that start and/or end with whitespace eat the separating space on
+      the whitespace side(s).
+    - Empty tokens prevent spacing.
+
+** Layout **
+    - Left curly braces '{' are always printed on a separate line and increase
+      the indentation level. The brace itself is _not_ indented.
+    - Right curly braces '}' are always printed on a separate line and decrease
+      the indentation level. The brace itself is _also_ de-dented.
+    - Semicolons ';' cause a line break after themselves.
+
+Precedence is always resolved by enclosing a term in parentheses '()'.
+
+*/
+
 #include "ClassicPrettyPrinter.hpp"
 
 #include <string>
