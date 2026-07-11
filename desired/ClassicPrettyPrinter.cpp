@@ -29,7 +29,7 @@ int ClassicPrettyPrinter::CoercionLevel() const {
 }
 
 ClassicPrettyPrinter& ClassicPrettyPrinter::WithTabSize(unsigned int tabSize) {
-    tabSize = tabSize;
+    this->tabSize = tabSize;
     return *this;
 }
 
@@ -86,6 +86,7 @@ ClassicPrettyPrinter& ClassicPrettyPrinter::PutToken(std::string_view s) {
         SkipSpaceHere();
         return *this;
     }
+    onEmptyLine = false;
     if (s.size() == 1) {
         bool handled = true;
         switch (s.front()) {
@@ -119,6 +120,7 @@ ClassicPrettyPrinter& ClassicPrettyPrinter::PutToken(std::string_view s) {
                 SkipSpaceHere()
                     .PutVerbatim(s)
                     .NeedSpaceHere();
+                break;
             default:
                 handled = false;
                 break;
@@ -197,7 +199,7 @@ ClassicPrettyPrinter& ClassicPrettyPrinter::Put(const Expr& v, int coercLvl) {
     int cur = coercionLevel;
     coercionLevel = coercLvl;
     std::visit(*this, v);
-    coercLvl = cur;
+    coercionLevel = cur;
     return *this;
 }
 
@@ -205,7 +207,7 @@ ClassicPrettyPrinter& ClassicPrettyPrinter::Put(const Program& v, int coercLvl) 
     int cur = coercionLevel;
     coercionLevel = coercLvl;
     std::visit(*this, v);
-    coercLvl = cur;
+    coercionLevel = cur;
     return *this;
 }
 
@@ -226,7 +228,9 @@ ClassicPrettyPrinter& ClassicPrettyPrinter::Put(const Application& v) {
 
 ClassicPrettyPrinter& ClassicPrettyPrinter::Put(const Abstraction& v) {
     IF_BAD_COERC PutToken("(");
+    PutToken("l");
     Put(v.Ident_);
+    PutToken(".");
     Put(*v.Expr_, 0);
     IF_BAD_COERC PutToken(")");
     return *this;
@@ -291,6 +295,83 @@ ClassicPrettyPrinter& ClassicPrettyPrinter::Put(const ListExpr& v) {
         Put(*last, 0);
     }
     return *this;
+}
+
+void ClassicPrettyPrinter::operator()(const Ident& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const Char& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const Double& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const Integer& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const String& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const SpecialBegin& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const SpecialEnd& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const Expr& v) {
+    Put(v, 0);
+}
+
+void ClassicPrettyPrinter::operator()(const Variable& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const Application& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const Abstraction& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const StringExpr& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const IntegerExpr& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const DoubleExpr& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const CharExpr& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const SpecialExpr& v) {
+    Put(v);
+}
+
+void ClassicPrettyPrinter::operator()(const Program& v) {
+    Put(v, 0);
+}
+
+void ClassicPrettyPrinter::operator()(const AProgram& v) {
+    Put(v);
+}
+
+
+void ClassicPrettyPrinter::operator()(const ListExpr& v) {
+    Put(v);
 }
 
 #define ClassicPrettyPrinterSHL(type)                                              \
