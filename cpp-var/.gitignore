@@ -5,8 +5,8 @@
 /PatternMatching.hpp
 /HaskellPrinter.hpp
 /HaskellPrinter.cpp
-/PrettyPrinter.cpp
-/PrettyPrinter.hpp
+/ContextFreePrettyPrinter.cpp
+/ContextFreePrettyPrinter.hpp
 /PrinterCommon.cpp
 /PrinterCommon.hpp
 /SyntaxPrinter.cpp
