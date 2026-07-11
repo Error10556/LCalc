@@ -42,6 +42,25 @@ ClassicPrettyPrinter::ClassicPrettyPrinter(
     std::ostream& out, unsigned int tabSize)
     : out(out), tabSize(tabSize) {}
 
+ClassicPrettyPrinter& ClassicPrettyPrinter::FlushHere() {
+    if (needNewline) {
+        PutLinebreak(out, indentInTabs * tabSize);
+        needNewline = false;
+        needSpace = false;
+    } else if (needSpace) {
+        out << ' ';
+        needSpace = false;
+    }
+    return *this;
+}
+
+ClassicPrettyPrinter& ClassicPrettyPrinter::SimplePut(std::string_view s) {
+    FlushHere();
+    out << s;
+    needSpace = true;
+    return *this;
+}
+
 unsigned int ClassicPrettyPrinter::TabSize() const {
     return tabSize;
 }
@@ -87,23 +106,6 @@ ClassicPrettyPrinter& ClassicPrettyPrinter::NeedSpaceHere() {
     return *this;
 }
 
-ClassicPrettyPrinter& ClassicPrettyPrinter::FlushSpaceHere() {
-    if (needSpace) out << ' ';
-    needSpace = false;
-    return *this;
-}
-
-ClassicPrettyPrinter& ClassicPrettyPrinter::PutVerbatim(std::string_view s) {
-    out << s;
-    return *this;
-}
-
-const ClassicPrettyPrinter& ClassicPrettyPrinter::PutVerbatim(
-        std::string_view s) const {
-    out << s;
-    return *this;
-}
-
 static bool IsSpace(char ch) {
     switch (ch) {
         case ' ': case '\r': case '\n': case '\t': case '\v':
@@ -118,40 +120,34 @@ ClassicPrettyPrinter& ClassicPrettyPrinter::PutToken(std::string_view s) {
         SkipSpaceHere();
         return *this;
     }
-    onEmptyLine = false;
     if (s.size() == 1) {
         bool handled = true;
         switch (s.front()) {
             case '{':
                 OnNewLine()
-                    .PutVerbatim(s)
+                    .SimplePut(s)
                     .Indent()
                     .OnNewLine();
                 break;
             case '}':
-                Dedent()
-                    .OnNewLine()
-                    .PutVerbatim(s)
+                OnNewLine()
+                    .Dedent()
+                    .SimplePut(s)
                     .OnNewLine();
                 break;
             case ';':
-                PutVerbatim(s)
+                SkipSpaceHere()
+                    .SimplePut(s)
                     .OnNewLine();
                 break;
-            case ',':
+            case ',': case ')': case ']':
                 SkipSpaceHere()
-                    .PutVerbatim(s)
+                    .SimplePut(s)
                     .NeedSpaceHere();
                 break;
             case '(': case '[':
-                FlushSpaceHere()
-                    .PutVerbatim(s)
+                SimplePut(s)
                     .SkipSpaceHere();
-                break;
-            case ')': case ']':
-                SkipSpaceHere()
-                    .PutVerbatim(s)
-                    .NeedSpaceHere();
                 break;
             default:
                 handled = false;
@@ -160,46 +156,39 @@ ClassicPrettyPrinter& ClassicPrettyPrinter::PutToken(std::string_view s) {
         if (handled) return *this;
     }
     if (IsSpace(s.front())) SkipSpaceHere();
-    FlushSpaceHere();
-    out << s;
-    if (!IsSpace(s.back())) NeedSpaceHere();
+    SimplePut(s);
+    if (IsSpace(s.back())) SkipSpaceHere();
     return *this;
 }
 
 ClassicPrettyPrinter& ClassicPrettyPrinter::PutCharLiteral(int32_t ch) {
-    onEmptyLine = false;
-    FlushSpaceHere();
+    FlushHere();
     PrintEscapedChar(out, ch);
     return NeedSpaceHere();
 }
 
 ClassicPrettyPrinter& ClassicPrettyPrinter::PutStringLiteral(
         std::string_view s) {
-    onEmptyLine = false;
-    FlushSpaceHere();
+    FlushHere();
     PrintEscapedString(out, s);
     return NeedSpaceHere();
 }
 
 ClassicPrettyPrinter& ClassicPrettyPrinter::PutDoubleLiteral(double v) {
-    onEmptyLine = false;
-    FlushSpaceHere();
+    FlushHere();
     PrintDouble(out, v);
     return NeedSpaceHere();
 }
 
 ClassicPrettyPrinter& ClassicPrettyPrinter::PutIntegerLiteral(long v) {
-    onEmptyLine = false;
-    FlushSpaceHere();
+    FlushHere();
     PrintDouble(out, v);
     return NeedSpaceHere();
 }
 
 ClassicPrettyPrinter& ClassicPrettyPrinter::OnNewLine() {
-    if (onEmptyLine) return *this;
-    onEmptyLine = true;
-    PutLinebreak(out, indentInTabs * tabSize);
     needSpace = false;
+    needNewline = true;
     return *this;
 }
 

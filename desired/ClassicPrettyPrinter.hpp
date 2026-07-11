@@ -13,7 +13,9 @@ class ClassicPrettyPrinter {
     unsigned int indentInTabs = 0;
     int coercionLevel = 0;
     bool needSpace = false;
-    bool onEmptyLine = true;
+    bool needNewline = false;
+    ClassicPrettyPrinter& FlushHere();
+    ClassicPrettyPrinter& SimplePut(std::string_view);
 
 public:
     ClassicPrettyPrinter(std::ostream&, unsigned int tabSize = 4);
@@ -29,10 +31,7 @@ public:
     ClassicPrettyPrinter& WithIndent(unsigned int tabs);
     ClassicPrettyPrinter& SkipSpaceHere();
     ClassicPrettyPrinter& NeedSpaceHere();
-    ClassicPrettyPrinter& FlushSpaceHere();
 
-    const ClassicPrettyPrinter& PutVerbatim(std::string_view) const;
-    ClassicPrettyPrinter& PutVerbatim(std::string_view);
     ClassicPrettyPrinter& PutToken(std::string_view);
     ClassicPrettyPrinter& PutCharLiteral(int32_t);
     ClassicPrettyPrinter& PutStringLiteral(std::string_view);
