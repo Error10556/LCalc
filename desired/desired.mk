@@ -13,6 +13,6 @@ desired/Eval: desired/Eval.o desired/libgrammarParser.a desired/libgrammarPrinte
 desired/Eval.o: desired/Eval.cpp \
 	desired/Absyn.hpp \
 	desired/grammar.tab.hpp \
-	desired/PrettyPrinter.hpp \
+	desired/ContextFreePrettyPrinter.hpp \
 	desired/PatternMatching.hpp
 	cd desired && $(DESIRED_CXX) $(DESIRED_CXXFLAGS) -c -o Eval.o Eval.cpp
