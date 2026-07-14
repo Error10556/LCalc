@@ -45,7 +45,7 @@ ifneq ($(NO_HASKELL),)
 TEST_DFLAGS += -DNO_HASKELL
 endif
 
-LIBPRINTER_DEPS =
+LIBPRINTER_DEPS = PrinterCommon.o
 ifeq ($(NO_PRETTY),)
 LIBPRINTER_DEPS += ContextFreePrettyPrinter.o
 endif
@@ -57,9 +57,6 @@ LIBPRINTER_DEPS += SyntaxPrinter.o
 endif
 ifeq ($(NO_HASKELL),)
 LIBPRINTER_DEPS += HaskellPrinter.o
-endif
-ifneq ($(NO_PRETTY)$(NO_CPRETTY)$(NO_TREE)$(NO_HASKELL),)
-LIBPRINTER_DEPS += PrinterCommon.o
 endif
 
 TEST_PRINTER_HEADERS =
@@ -184,7 +181,7 @@ libgrammarPrinter.a: $(LIBPRINTER_DEPS)
 	$(AR_COMPILE)
 
 Test.o: Test.cpp Absyn.hpp grammar.tab.hpp PatternMatching.hpp $(TEST_HEADERS)
-	$(CXX_COMPILE)
+	$(CXX) $(CXXFLAGS) $(TEST_DFLAGS) -c -o $@ $<
 
 Testgrammar: Test.o libgrammarParser.a libgrammarPrinter.a
 	$(CXX) $(LDFLAGS) $^ -o Testgrammar
