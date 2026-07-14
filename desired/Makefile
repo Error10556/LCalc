@@ -58,6 +58,9 @@ endif
 ifeq ($(NO_HASKELL),)
 LIBPRINTER_DEPS += HaskellPrinter.o
 endif
+ifneq ($(NO_PRETTY)$(NO_CPRETTY)$(NO_TREE)$(NO_HASKELL),)
+LIBPRINTER_DEPS += PrinterCommon.o
+endif
 
 TEST_PRINTER_HEADERS =
 ifeq ($(NO_PRETTY),)
