@@ -4,23 +4,23 @@ help:
 	@echo 'Specify "core.c", "koe2.c", or "runtime.c" as a target to parse it.'
 	@echo 'Specify "clean" to remove all generated files.'
 
-core.c: C/Test
-	C/Test -p $@
+core.c: C/TestC
+	C/TestC -p $@
 
-koe2.c: C/Test C4/Test
-	C/Test -p $@
-	C4/Test -p $@
+koe2.c: C/TestC C4/TestC4
+	C/TestC -p $@
+	C4/TestC4 -p $@
 
-runtime.c: C/Test
-	C/Test -p $@
+runtime.c: C/TestC
+	C/TestC -p $@
 
-C4/Test: C4.cf
+C4/TestC4: C4.cf
 	bnfc --cpp-var -m -o C4 C4.cf
-	$(MAKE) -C C4 Test
+	$(MAKE) -C C4 TestC4
 
-C/Test: C.cf
+C/TestC: C.cf
 	bnfc --cpp-var -m -o C C.cf
-	$(MAKE) -C C Test
+	$(MAKE) -C C TestC
 
 clean:
 	test ! -d C || rm -r C
