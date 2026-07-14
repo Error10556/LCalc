@@ -31,6 +31,48 @@ BNFC_GENERATED = Absyn.cpp \
 	grammar.ypp \
 	Makefile
 
+TEST_DFLAGS =
+ifneq ($(NO_PRETTY),)
+TEST_DFLAGS += -DNO_PRETTY
+endif
+ifneq ($(NO_CPRETTY),)
+TEST_DFLAGS += -DNO_CPRETTY
+endif
+ifneq ($(NO_TREE),)
+TEST_DFLAGS += -DNO_TREE
+endif
+ifneq ($(NO_HASKELL),)
+TEST_DFLAGS += -DNO_HASKELL
+endif
+
+LIBPRINTER_DEPS =
+ifeq ($(NO_PRETTY),)
+LIBPRINTER_DEPS += ContextFreePrettyPrinter.o
+endif
+ifeq ($(NO_CPRETTY),)
+LIBPRINTER_DEPS += ClassicPrettyPrinter.o
+endif
+ifeq ($(NO_TREE),)
+LIBPRINTER_DEPS += SyntaxPrinter.o
+endif
+ifeq ($(NO_HASKELL),)
+LIBPRINTER_DEPS += HaskellPrinter.o
+endif
+
+TEST_PRINTER_HEADERS =
+ifeq ($(NO_PRETTY),)
+TEST_PRINTER_HEADERS += ContextFreePrettyPrinter.hpp
+endif
+ifeq ($(NO_CPRETTY),)
+TEST_PRINTER_HEADERS += ClassicPrettyPrinter.hpp
+endif
+ifeq ($(NO_TREE),)
+TEST_PRINTER_HEADERS += SyntaxPrinter.hpp
+endif
+ifeq ($(NO_HASKELL),)
+TEST_PRINTER_HEADERS += HaskellPrinter.hpp
+endif
+
 define HELPMESSAGE
 Phony targets:
 
@@ -53,6 +95,18 @@ grammar.lex.cpp     | Contains a lexer implementation.
 grammar.tab.{h,c}pp | Contain a syntax parser implementation.
 
 For any *.cpp file, a corresponding *.o file can be built.
+
+Variables:
+
+VARIABLE   | DESCRIPTION
+-----------|--------------------------------------------------------------------
+NO_PRETTY  | Set to a nonempty string to not use the ContextFreePrettyPrinter.
+NO_CPRETTY | Set to a nonempty string to not use the ClassicPrettyPrinter.
+NO_TREE    | Set to a nonempty string to not use the SyntaxPrinter.
+NO_HASKELL | Set to a nonempty string to not use the HaskellPrinter.
+
+The --systest option is available in the Testgrammar program when
+ClassicPrettyPrinter and HaskellPrinter are available.
 endef
 
 .PHONY: all clean mostlyclean distclean default help
@@ -123,13 +177,10 @@ AR_COMPILE = $(AR) $(ARFLAGS) $@ $^
 libgrammarParser.a: Absyn.o grammar.lex.o grammar.tab.o
 	$(AR_COMPILE)
 
-libgrammarPrinter.a: HaskellPrinter.o PrinterCommon.o ClassicPrettyPrinter.o \
-	ContextFreePrettyPrinter.o SyntaxPrinter.o
+libgrammarPrinter.a: $(LIBPRINTER_DEPS)
 	$(AR_COMPILE)
 
-Test.o: Test.cpp Absyn.hpp grammar.tab.hpp \
-	HaskellPrinter.hpp ClassicPrettyPrinter.hpp \
-	ContextFreePrettyPrinter.hpp SyntaxPrinter.hpp PatternMatching.hpp
+Test.o: Test.cpp Absyn.hpp grammar.tab.hpp PatternMatching.hpp $(TEST_HEADERS)
 	$(CXX_COMPILE)
 
 Testgrammar: Test.o libgrammarParser.a libgrammarPrinter.a
