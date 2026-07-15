@@ -1,0 +1,8 @@
+/*.o
+/lib*.a
+/grammar.lex.cpp
+/grammar.tab.cpp
+/grammar.tab.hpp
+/Testgrammar
+/Eval
+/PatternMatchingTest

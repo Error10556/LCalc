@@ -4,7 +4,7 @@ DESIRED_LDFLAGS = -fsanitize=address -fsanitize=leak -fstandalone-debug -glldb
 
 all: desired/Test desired/Eval
 
-desired/Test desired/libgrammarParser.a desired/libgrammarPrinter.a desired/grammar.tab.hpp &:
+desired/Testgrammar desired/libgrammarParser.a desired/libgrammarPrinter.a desired/grammar.tab.hpp &:
 	cd desired && $(MAKE) CXX=$(DESIRED_CXX) CXXFLAGS='$(DESIRED_CXXFLAGS)' LDFLAGS='$(DESIRED_LDFLAGS)' all
 
 desired/Eval: desired/Eval.o desired/libgrammarParser.a desired/libgrammarPrinter.a
