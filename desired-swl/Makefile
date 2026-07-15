@@ -1,4 +1,4 @@
-CXXFLAGS = -std=c++17 -Wall -Wextra
+CXXFLAGS = -std=c++20 -Wall -Wextra
 CXXFLAGS_BISON = $(CXXFLAGS) -Wno-unused-but-set-variable
 
 OBJECTS = Absyn.o \
