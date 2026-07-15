@@ -1,5 +1,5 @@
 DESIRED_SWL_CXX = clang++
-DESIRED_SWL_CXXFLAGS = -std=c++20 -Wall -Wextra -Wno-unused-but-set-variable -fsanitize=address -fsanitize=leak -fstandalone-debug -glldb
+DESIRED_SWL_CXXFLAGS = -std=c++20 -Wall -Wextra -fsanitize=address -fsanitize=leak -fstandalone-debug -glldb
 DESIRED_SWL_LDFLAGS = -fsanitize=address -fsanitize=leak -fstandalone-debug -glldb
 
 all: desired-swl/Testgrammar desired-swl/Eval

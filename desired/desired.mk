@@ -1,5 +1,5 @@
 DESIRED_CXX = clang++
-DESIRED_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-but-set-variable -fsanitize=address -fsanitize=leak -fstandalone-debug -glldb
+DESIRED_CXXFLAGS = -std=c++17 -Wall -Wextra -fsanitize=address -fsanitize=leak -fstandalone-debug -glldb
 DESIRED_LDFLAGS = -fsanitize=address -fsanitize=leak -fstandalone-debug -glldb
 
 all: desired/Testgrammar desired/Eval
