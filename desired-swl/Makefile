@@ -27,6 +27,9 @@ BNFC_GENERATED = Absyn.cpp \
 	SyntaxPrinter.cpp \
 	SyntaxPrinter.hpp \
 	Test.cpp \
+	variant_detail.hpp \
+	variant.hpp \
+	variant_visit.hpp \
 	grammar.l \
 	grammar.ypp \
 	Makefile
