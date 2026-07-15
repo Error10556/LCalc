@@ -2,7 +2,7 @@ DESIRED_SWL_CXX = clang++
 DESIRED_SWL_CXXFLAGS = -std=c++20 -Wall -Wextra -Wno-unused-but-set-variable -fsanitize=address -fsanitize=leak -fstandalone-debug -glldb
 DESIRED_SWL_LDFLAGS = -fsanitize=address -fsanitize=leak -fstandalone-debug -glldb
 
-all: desired-swl/Test desired-swl/Eval
+all: desired-swl/Testgrammar desired-swl/Eval
 
 desired-swl/Testgrammar desired-swl/libgrammarParser.a desired-swl/libgrammarPrinter.a desired-swl/grammar.tab.hpp &:
 	cd desired-swl && $(MAKE) CXX=$(DESIRED_SWL_CXX) CXXFLAGS='$(DESIRED_SWL_CXXFLAGS)' LDFLAGS='$(DESIRED_SWL_LDFLAGS)' all

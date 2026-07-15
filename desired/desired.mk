@@ -2,7 +2,7 @@ DESIRED_CXX = clang++
 DESIRED_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-but-set-variable -fsanitize=address -fsanitize=leak -fstandalone-debug -glldb
 DESIRED_LDFLAGS = -fsanitize=address -fsanitize=leak -fstandalone-debug -glldb
 
-all: desired/Test desired/Eval
+all: desired/Testgrammar desired/Eval
 
 desired/Testgrammar desired/libgrammarParser.a desired/libgrammarPrinter.a desired/grammar.tab.hpp &:
 	cd desired && $(MAKE) CXX=$(DESIRED_CXX) CXXFLAGS='$(DESIRED_CXXFLAGS)' LDFLAGS='$(DESIRED_LDFLAGS)' all
