@@ -34,6 +34,8 @@ BNFC_GENERATED = Absyn.cpp \
 	grammar.ypp \
 	Makefile
 
+SWL_HEADERS = variant_detail.hpp variant.hpp variant_visit.hpp
+
 TEST_DFLAGS =
 ifneq ($(NO_PRETTY),)
 TEST_DFLAGS += -DNO_PRETTY
@@ -147,11 +149,11 @@ grammar.tab.hpp grammar.tab.cpp &: grammar.ypp
 	bison grammar.ypp
 
 CXX_COMPILE = $(CXX) $(CXXFLAGS) -c -o $@ $<
-Absyn.o: Absyn.cpp Absyn.hpp
+Absyn.o: Absyn.cpp Absyn.hpp $(SWL_HEADERS)
 	$(CXX_COMPILE)
 
 grammar.tab.o: grammar.tab.cpp grammar.tab.hpp \
-	Absyn.hpp PatternMatching.hpp
+	Absyn.hpp $(SWL_HEADERS) PatternMatching.hpp
 	$(CXX) $(CXXFLAGS_BISON) -c -o $@ $<
 
 grammar.lex.o: grammar.lex.cpp grammar.tab.hpp
@@ -161,19 +163,19 @@ PrinterCommon.o: PrinterCommon.cpp PrinterCommon.hpp
 	$(CXX_COMPILE)
 
 HaskellPrinter.o: HaskellPrinter.cpp HaskellPrinter.hpp \
-	Absyn.hpp PrinterCommon.hpp
+	Absyn.hpp $(SWL_HEADERS) PrinterCommon.hpp
 	$(CXX_COMPILE)
 
 ClassicPrettyPrinter.o: ClassicPrettyPrinter.cpp \
-	ClassicPrettyPrinter.hpp Absyn.hpp PrinterCommon.hpp
+	ClassicPrettyPrinter.hpp Absyn.hpp $(SWL_HEADERS) PrinterCommon.hpp
 	$(CXX_COMPILE)
 
 ContextFreePrettyPrinter.o: ContextFreePrettyPrinter.cpp \
-	ContextFreePrettyPrinter.hpp Absyn.hpp PrinterCommon.hpp
+	ContextFreePrettyPrinter.hpp Absyn.hpp $(SWL_HEADERS) PrinterCommon.hpp
 	$(CXX_COMPILE)
 
 SyntaxPrinter.o: SyntaxPrinter.cpp SyntaxPrinter.hpp \
-	Absyn.hpp PrinterCommon.hpp
+	Absyn.hpp $(SWL_HEADERS) PrinterCommon.hpp
 	$(CXX_COMPILE)
 
 AR_COMPILE = $(AR) $(ARFLAGS) $@ $^
@@ -183,7 +185,8 @@ libgrammarParser.a: Absyn.o grammar.lex.o grammar.tab.o
 libgrammarPrinter.a: $(LIBPRINTER_DEPS)
 	$(AR_COMPILE)
 
-Test.o: Test.cpp Absyn.hpp grammar.tab.hpp PatternMatching.hpp $(TEST_HEADERS)
+Test.o: Test.cpp Absyn.hpp $(SWL_HEADERS) grammar.tab.hpp \
+	PatternMatching.hpp $(TEST_HEADERS)
 	$(CXX) $(CXXFLAGS) $(TEST_DFLAGS) -c -o $@ $<
 
 Testgrammar: Test.o libgrammarParser.a libgrammarPrinter.a
