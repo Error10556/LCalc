@@ -15,8 +15,20 @@ HaskellPrinter HaskellPrinter::PrintConstructorArg() const {
     return {out, true};
 }
 
+void HaskellPrinter::operator()(const location& loc) const {
+    out << "((" << loc.begin.line << ',' << loc.begin.column << "),("
+        << loc.end.line << ',' << loc.end.column << "))";
+}
+
+void HaskellPrinter::operator()(const position& pos) const {
+    out << '(' << pos.line << ',' << pos.column << ')';
+}
+
 void HaskellPrinter::operator()(const Ident& v) const {
+    if (inExpression) out << '(';
+    out << "Ident ";
     PrintEscapedString(out, v.Value);
+    if (inExpression) out << ')';
 }
 
 void HaskellPrinter::operator()(const Char& v) const {
@@ -36,11 +48,19 @@ void HaskellPrinter::operator()(const String& v) const {
 }
 
 void HaskellPrinter::operator()(const SpecialBegin& v) const {
+    if (inExpression) out << '(';
+    out << "SpecialBegin ";
     PrintEscapedString(out, v.Value);
+    if (inExpression) out << ')';
 }
 
 void HaskellPrinter::operator()(const SpecialEnd& v) const {
+    if (inExpression) out << '(';
+    out << "SpecialEnd (Just ";
+    (*this)(v.loc);
+    out << ") ";
     PrintEscapedString(out, v.Value);
+    if (inExpression) out << ')';
 }
 
 void HaskellPrinter::operator()(const Expr& v) const {
@@ -49,7 +69,9 @@ void HaskellPrinter::operator()(const Expr& v) const {
 
 void HaskellPrinter::operator()(const Variable& v) const {
     if (inExpression) out << '(';
-    out << "Variable ";
+    out << "Variable (Just ";
+    (*this)(v.loc);
+    out << ") ";
     const HaskellPrinter printField = PrintConstructorArg();
     printField(v.Ident_);
     if (inExpression) out << ')';
@@ -57,7 +79,9 @@ void HaskellPrinter::operator()(const Variable& v) const {
 
 void HaskellPrinter::operator()(const Application& v) const {
     if (inExpression) out << '(';
-    out << "Application ";
+    out << "Application (Just ";
+    (*this)(v.loc);
+    out << ") ";
     const HaskellPrinter printField = PrintConstructorArg();
     printField(*v.Expr_1);
     out << ' ';
@@ -67,7 +91,9 @@ void HaskellPrinter::operator()(const Application& v) const {
 
 void HaskellPrinter::operator()(const Abstraction& v) const {
     if (inExpression) out << '(';
-    out << "Abstraction ";
+    out << "Abstraction (Just ";
+    (*this)(v.loc);
+    out << ") ";
     const HaskellPrinter printField = PrintConstructorArg();
     printField(v.Ident_);
     out << ' ';
@@ -77,7 +103,9 @@ void HaskellPrinter::operator()(const Abstraction& v) const {
 
 void HaskellPrinter::operator()(const StringExpr& v) const {
     if (inExpression) out << '(';
-    out << "StringExpr ";
+    out << "StringExpr (Just ";
+    (*this)(v.loc);
+    out << ") ";
     const HaskellPrinter printField = PrintConstructorArg();
     printField(v.String_);
     if (inExpression) out << ')';
@@ -85,7 +113,9 @@ void HaskellPrinter::operator()(const StringExpr& v) const {
 
 void HaskellPrinter::operator()(const IntegerExpr& v) const {
     if (inExpression) out << '(';
-    out << "IntegerExpr ";
+    out << "IntegerExpr (Just ";
+    (*this)(v.loc);
+    out << ") ";
     const HaskellPrinter printField = PrintConstructorArg();
     printField(v.Integer_);
     if (inExpression) out << ')';
@@ -93,7 +123,9 @@ void HaskellPrinter::operator()(const IntegerExpr& v) const {
 
 void HaskellPrinter::operator()(const DoubleExpr& v) const {
     if (inExpression) out << '(';
-    out << "DoubleExpr ";
+    out << "DoubleExpr (Just ";
+    (*this)(v.loc);
+    out << ") ";
     const HaskellPrinter printField = PrintConstructorArg();
     printField(v.Double_);
     if (inExpression) out << ')';
@@ -101,7 +133,9 @@ void HaskellPrinter::operator()(const DoubleExpr& v) const {
 
 void HaskellPrinter::operator()(const CharExpr& v) const {
     if (inExpression) out << '(';
-    out << "CharExpr ";
+    out << "CharExpr (Just ";
+    (*this)(v.loc);
+    out << ") ";
     const HaskellPrinter printField = PrintConstructorArg();
     printField(v.Char_);
     if (inExpression) out << ')';
@@ -109,7 +143,9 @@ void HaskellPrinter::operator()(const CharExpr& v) const {
 
 void HaskellPrinter::operator()(const SpecialExpr& v) const {
     if (inExpression) out << '(';
-    out << "SpecialExpr ";
+    out << "SpecialExpr (Just ";
+    (*this)(v.loc);
+    out << ") ";
     const HaskellPrinter printField = PrintConstructorArg();
     printField(v.SpecialBegin_);
     out << ' ';
@@ -125,7 +161,9 @@ void HaskellPrinter::operator()(const Program& v) const {
 
 void HaskellPrinter::operator()(const AProgram& v) const {
     if (inExpression) out << '(';
-    out << "AProgram ";
+    out << "AProgram (Just ";
+    (*this)(v.loc);
+    out << ") ";
     const HaskellPrinter printField = PrintConstructorArg();
     printField(v.ListExpr_);
     if (inExpression) out << ')';
@@ -148,6 +186,9 @@ void HaskellPrinter::operator()(const ListExpr& v) const {
 #define HaskellPrinterSHL(type)                                              \
     const HaskellPrinter& operator<<(const HaskellPrinter& p, const type& v) \
     { p(v); return p; }
+
+HaskellPrinterSHL(location);
+HaskellPrinterSHL(position);
 
 HaskellPrinterSHL(Ident);
 HaskellPrinterSHL(Char);

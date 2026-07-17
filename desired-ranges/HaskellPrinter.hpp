@@ -15,6 +15,8 @@ class HaskellPrinter {
 
 public:
     explicit HaskellPrinter(std::ostream& out);
+    void operator()(const location&) const;
+    void operator()(const position&) const;
     void operator()(const Ident&) const;
     void operator()(const Char&) const;
     void operator()(const Double&) const;
@@ -36,6 +38,8 @@ public:
     void operator()(const ListExpr&) const;
 };
 
+const HaskellPrinter& operator<<(const HaskellPrinter&, const location&);
+const HaskellPrinter& operator<<(const HaskellPrinter&, const position&);
 const HaskellPrinter& operator<<(const HaskellPrinter&, const Ident&);
 const HaskellPrinter& operator<<(const HaskellPrinter&, const Char&);
 const HaskellPrinter& operator<<(const HaskellPrinter&, const Double&);
