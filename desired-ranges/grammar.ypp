@@ -122,7 +122,7 @@ Expr
     | /* IntegerExpr */ SYM_2 INTEGER { $$.emplace<IntegerExpr>(@$, std::move($2)); }
     | /* DoubleExpr */ SYM_3 DOUBLE { $$.emplace<DoubleExpr>(@$, std::move($2)); }
     | /* CharExpr */ SYM_4 CHAR { $$.emplace<CharExpr>(@$, std::move($2)); }
-    | /* SpecialExpr */ CUSTOM_SpecialBegin Expr CUSTOM_SpecialEnd { $$.emplace<SpecialExpr>(@$, std::move($1), std::move($2), std::move($3)); }
+    | /* SpecialExpr */ CUSTOM_SpecialBegin Expr CUSTOM_SpecialEnd { $$.emplace<SpecialExpr>(@$, std::move($1), std::move($2), SpecialEnd(@3, std::move($3))); }
     ;
 
 Program
@@ -171,16 +171,19 @@ static ParseResultOrError Parse(const LCScanner& scanner, std::string* optFilena
     std::optional<ParseResultOrError> res;
     Parser parser(scanner.FlexScanner(), &res);
     parser.parse();
-    if (!res) return {Parser::syntax_error("")};
+    if (!res)
+        return ParseResultOrError(std::in_place_type_t<Parser::syntax_error>(),
+            location(position(optFilename, 1, 1), position(optFilename, 1, 1)),
+            "Unknown parser error");
     return std::move(*res);
 }
 
 ParseResultOrError Parse(FILE* file, std::string* optFilename) {
-    return Parse(LCScanner(file, optFilename));
+    return Parse(LCScanner(file, optFilename), optFilename);
 }
 
 ParseResultOrError Parse(std::string_view str, std::string* optFilename) {
-    return Parse(LCScanner(str, optFilename));
+    return Parse(LCScanner(str, optFilename), optFilename);
 }
 
 std::string_view ParsedNodeName(const ParseResultVariant& var) {
