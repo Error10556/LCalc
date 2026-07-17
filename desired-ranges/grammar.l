@@ -94,7 +94,7 @@ inline void encodeUTF8(std::string& dest, int32_t ch) {
 
 %}
 
-%option extra-type="std::string*"
+%option extra-type="Extra*"
 %s STRING ESCAPE
 %s CHAR
 
