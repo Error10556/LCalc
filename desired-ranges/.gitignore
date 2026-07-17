@@ -3,4 +3,5 @@
 /grammar.lex.cpp
 /grammar.tab.cpp
 /grammar.tab.hpp
+/grammar.loc.hpp
 /Testgrammar
