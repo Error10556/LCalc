@@ -182,25 +182,30 @@ if every file is parsed successfully, the exit code will be 0.
     int errorcount = 0;
     for (const char* filename : files) {
         FILE* file; bool needclose;
+        std::string sfilename;
         if (strcmp(filename, "-") == 0) {
             file = stdin;
             needclose = false;
             cerr << "Reading from stdin..." << endl;
+            sfilename = "<stdin>";
         }
         else {
             file = fopen(filename, "r");
             if (!file) {
                 cerr << "Cannot open file ";
                 perror(filename);
-                return 1;
+                errorcount += errorcount != 0x7FFFFFFF;
+                continue;
             }
+            sfilename = filename;
             needclose = true;
         }
         if (printFilenames) cerr << filename << endl;
 
-        LC::Parse(file) | PatternMatch{
+        LC::Parse(file, &sfilename) | PatternMatch{
             [&](LC::Parser::syntax_error&& err) {
-                cerr << "Could not parse!\nError: " << err.what() << "\n\n";
+                cerr << "Could not parse!\nError: " << err.what() << '\n';
+                cerr << "At " << err.location << "\n\n";
                 errorcount += errorcount != 0x7FFFFFFF;
             },
             [](LC::ParseResultVariant&& ast) {
