@@ -64,7 +64,7 @@
 
     template <class T>
     std::variant<T, Parser::syntax_error>
-    EnsureParsedType(ParseResultOrError&& parsed, std::string* optFilename, optFilename) {
+    EnsureParsedType(ParseResultOrError&& parsed, std::string* optFilename) {
         if (auto* err = std::get_if<Parser::syntax_error>(&parsed))
             return std::move(*err);
         auto& var = std::get<ParseResultVariant>(parsed);
@@ -75,7 +75,7 @@
             .append(reflection::SyntaxNodeName<T>)
             .append(", but got ")
             .append(ParsedNodeName(var));
-        return Parser::syntax_error(location({optFilename, 1, 1}, {optFilename, 1, 1}), msg);
+        return Parser::syntax_error(location(position{optFilename, 1, 1}, position{optFilename, 1, 1}), msg);
     }
 
     template <class T>
