@@ -68,6 +68,8 @@ void SyntaxPrinter::operator()(const SpecialEnd& v [[maybe_unused]]) const {
     out << "SpecialEnd ";
     PrintEscapedString(out, v.Value);
     out << '\n';
+    PrintIndentAsIs();
+    out << "  @ " << v.loc << '\n';
 }
 
 void SyntaxPrinter::operator()(const Expr& v [[maybe_unused]]) const {
@@ -77,12 +79,16 @@ void SyntaxPrinter::operator()(const Expr& v [[maybe_unused]]) const {
 void SyntaxPrinter::operator()(const Variable& v [[maybe_unused]]) const {
     PrintIndentForHeader();
     out << "Variable\n";
+    PrintIndentAsIs();
+    out << "| @ " << v.loc << '\n';
     SyntaxPrinter(this, false)(v.Ident_);
 }
 
 void SyntaxPrinter::operator()(const Application& v [[maybe_unused]]) const {
     PrintIndentForHeader();
     out << "Application\n";
+    PrintIndentAsIs();
+    out << "| @ " << v.loc << '\n';
     SyntaxPrinter nonlast(this, true);
     nonlast(*v.Expr_1);
     SyntaxPrinter(this, false)(*v.Expr_2);
@@ -91,6 +97,8 @@ void SyntaxPrinter::operator()(const Application& v [[maybe_unused]]) const {
 void SyntaxPrinter::operator()(const Abstraction& v [[maybe_unused]]) const {
     PrintIndentForHeader();
     out << "Abstraction\n";
+    PrintIndentAsIs();
+    out << "| @ " << v.loc << '\n';
     SyntaxPrinter nonlast(this, true);
     nonlast(v.Ident_);
     SyntaxPrinter(this, false)(*v.Expr_);
@@ -99,30 +107,40 @@ void SyntaxPrinter::operator()(const Abstraction& v [[maybe_unused]]) const {
 void SyntaxPrinter::operator()(const StringExpr& v [[maybe_unused]]) const {
     PrintIndentForHeader();
     out << "StringExpr\n";
+    PrintIndentAsIs();
+    out << "| @ " << v.loc << '\n';
     SyntaxPrinter(this, false)(v.String_);
 }
 
 void SyntaxPrinter::operator()(const IntegerExpr& v [[maybe_unused]]) const {
     PrintIndentForHeader();
     out << "IntegerExpr\n";
+    PrintIndentAsIs();
+    out << "| @ " << v.loc << '\n';
     SyntaxPrinter(this, false)(v.Integer_);
 }
 
 void SyntaxPrinter::operator()(const DoubleExpr& v [[maybe_unused]]) const {
     PrintIndentForHeader();
     out << "DoubleExpr\n";
+    PrintIndentAsIs();
+    out << "| @ " << v.loc << '\n';
     SyntaxPrinter(this, false)(v.Double_);
 }
 
 void SyntaxPrinter::operator()(const CharExpr& v [[maybe_unused]]) const {
     PrintIndentForHeader();
     out << "CharExpr\n";
+    PrintIndentAsIs();
+    out << "| @ " << v.loc << '\n';
     SyntaxPrinter(this, false)(v.Char_);
 }
 
 void SyntaxPrinter::operator()(const SpecialExpr& v [[maybe_unused]]) const {
     PrintIndentForHeader();
     out << "SpecialExpr\n";
+    PrintIndentAsIs();
+    out << "| @ " << v.loc << '\n';
     SyntaxPrinter nonlast(this, true);
     nonlast(v.SpecialBegin_);
     nonlast(*v.Expr_);
@@ -136,6 +154,8 @@ void SyntaxPrinter::operator()(const Program& v [[maybe_unused]]) const {
 void SyntaxPrinter::operator()(const AProgram& v [[maybe_unused]]) const {
     PrintIndentForHeader();
     out << "AProgram\n";
+    PrintIndentAsIs();
+    out << "| @ " << v.loc << '\n';
     SyntaxPrinter(this, false)(v.ListExpr_);
 }
 
@@ -143,6 +163,9 @@ void SyntaxPrinter::operator()(const ListExpr& v [[maybe_unused]]) const {
     PrintIndentForHeader();
     size_t n = v.size();
     out << "ListExpr [" << n << "]\n";
+    PrintIndentAsIs();
+    out << (n ? "| " : "  ");
+    out << "@ " << v.loc << '\n';
     if (!n) return;
     if (n > 1) {
         SyntaxPrinter nonlast(this, true);
