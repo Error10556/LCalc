@@ -19,7 +19,7 @@ DoubleExpr. Expr ::= "dbl:" Double;
 CharExpr. Expr ::= "chr:" Char;
 
 token SpecialBegin {"<:"} (digit - '0')+;
-token SpecialEnd (digit - '0')+ {":>"};
+position token SpecialEnd (digit - '0')+ {":>"};
 SpecialExpr. Expr ::= SpecialBegin Expr SpecialEnd;
 
 define id varname = Abstraction varname (Variable varname);
