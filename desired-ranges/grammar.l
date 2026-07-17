@@ -19,8 +19,8 @@ struct Extra {
     position end;
 
     Extra(std::string* optFilename)
-        : start(1, 1, optFilename)
-        , end(1, 1, optFilename) {}
+        : start(optFilename, 1, 1)
+        , end(optFilename, 1, 1) {}
     inline location TakeLoc() {
         location res = {start, end};
         start = end;
@@ -31,14 +31,15 @@ struct Extra {
 }  // namespace LC
 
 #define YY_DECL LC::Parser::symbol_type LClex(yyscan_t yyscanner)
-#define YY_USER_ACTION                      \
-    do {                                    \
-        for (size_t i = 0; i < yyleng; i++) \
-            if (yytext[i] == '\n')          \
-                yyextra->end.lines();       \
-            else                            \
-                yyextra->end.columns();     \
-    } while (0)
+#define YY_USER_ACTION                   \
+    {                                    \
+        for (int i = 0; i < yyleng; i++) \
+            if (yytext[i] == '\n')       \
+                yyextra->end.lines();    \
+            else                         \
+                yyextra->end.columns();  \
+    }
+#define yyterminate() return LC::Parser::make_YYEOF(yyextra->TakeLoc())
 
 inline int hexDigitValue(char ch) {
     if ('0' <= ch && ch <= '9') return ch - '0';
@@ -94,7 +95,7 @@ inline void encodeUTF8(std::string& dest, int32_t ch) {
 
 %}
 
-%option extra-type="Extra*"
+%option extra-type="LC::Extra*"
 %s STRING ESCAPE
 %s CHAR
 
@@ -129,10 +130,10 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
 <INITIAL>str\: return LC::Parser::make_SYM_1(yyextra->TakeLoc());
 
     /* SpecialBegin */
-<INITIAL>\<\:[1-9]+ return LC::Parser::make_CUSTOM_SpecialBegin(yyextra->TakeLoc(), yytext);
+<INITIAL>\<\:[1-9]+ return LC::Parser::make_CUSTOM_SpecialBegin(yytext, yyextra->TakeLoc());
 
     /* SpecialEnd */
-<INITIAL>[1-9]+\:\> return LC::Parser::make_CUSTOM_SpecialEnd(yyextra->TakeLoc(), yytext);
+<INITIAL>[1-9]+\:\> return LC::Parser::make_CUSTOM_SpecialEnd(yytext, yyextra->TakeLoc());
 
     /* String */
 <INITIAL>\" BEGIN(STRING); yyextra->parsed.clear();
@@ -140,7 +141,7 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
         BEGIN(INITIAL);
         std::string result;
         result.swap(yyextra->parsed);
-        return LC::Parser::make_STRING(yyextra->TakeLoc(), result);
+        return LC::Parser::make_STRING(result, yyextra->TakeLoc());
     }
 <STRING>\\ BEGIN(ESCAPE);
 <STRING>. yyextra->parsed.push_back(*yytext);
@@ -167,33 +168,33 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
 
     /* Char in UTF-8 */
 <INITIAL>' BEGIN(CHAR);
-<CHAR>\\0' BEGIN(INITIAL); return LC::Parser::make_CHAR('\0');
-<CHAR>\\a' BEGIN(INITIAL); return LC::Parser::make_CHAR('\a');
-<CHAR>\\b' BEGIN(INITIAL); return LC::Parser::make_CHAR('\b');
-<CHAR>\\f' BEGIN(INITIAL); return LC::Parser::make_CHAR('\f');
-<CHAR>\\n' BEGIN(INITIAL); return LC::Parser::make_CHAR('\n');
-<CHAR>\\r' BEGIN(INITIAL); return LC::Parser::make_CHAR('\r');
-<CHAR>\\t' BEGIN(INITIAL); return LC::Parser::make_CHAR('\t');
-<CHAR>\\v' BEGIN(INITIAL); return LC::Parser::make_CHAR('\v');
+<CHAR>\\0' BEGIN(INITIAL); return LC::Parser::make_CHAR('\0', yyextra->TakeLoc());
+<CHAR>\\a' BEGIN(INITIAL); return LC::Parser::make_CHAR('\a', yyextra->TakeLoc());
+<CHAR>\\b' BEGIN(INITIAL); return LC::Parser::make_CHAR('\b', yyextra->TakeLoc());
+<CHAR>\\f' BEGIN(INITIAL); return LC::Parser::make_CHAR('\f', yyextra->TakeLoc());
+<CHAR>\\n' BEGIN(INITIAL); return LC::Parser::make_CHAR('\n', yyextra->TakeLoc());
+<CHAR>\\r' BEGIN(INITIAL); return LC::Parser::make_CHAR('\r', yyextra->TakeLoc());
+<CHAR>\\t' BEGIN(INITIAL); return LC::Parser::make_CHAR('\t', yyextra->TakeLoc());
+<CHAR>\\v' BEGIN(INITIAL); return LC::Parser::make_CHAR('\v', yyextra->TakeLoc());
 <CHAR>\x{HEXBYTE}'  |
 <CHAR>\u{HEXSHORT}' |
 <CHAR>\U{HEXINT}' {
         BEGIN(INITIAL);
-        return LC::Parser::make_CHAR(yyextra->TakeLoc(), hexInt32(yytext + 2, yyleng - 2));
+        return LC::Parser::make_CHAR(hexInt32(yytext + 2, yyleng - 2), yyextra->TakeLoc());
     }
 <CHAR>\\({UTF8MULTICHAR}|.)' {
         BEGIN(INITIAL);
         int32_t charcode = decodeUTF8(yytext + 1, yyleng - 2);
         auto loc = yyextra->TakeLoc();
-        if (charcode == -1) return LC::Parser::make_YYerror();
-        return LC::Parser::make_CHAR(yyextra->TakeLoc(), charcode);
+        if (charcode == -1) return LC::Parser::make_YYerror(loc);
+        return LC::Parser::make_CHAR(charcode, loc);
     }
 <CHAR>({UTF8MULTICHAR}|[^'\\\n])' {
         BEGIN(INITIAL);
         int32_t charcode = decodeUTF8(yytext, yyleng - 1);
         auto loc = yyextra->TakeLoc();
         if (charcode == -1) return LC::Parser::make_YYerror(loc);
-        return LC::Parser::make_CHAR(loc, charcode);
+        return LC::Parser::make_CHAR(charcode, loc);
     }
 
     /* Integer (must be above Double) */
@@ -203,7 +204,7 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
         auto res = std::from_chars(yytext, end, num);
         auto loc = yyextra->TakeLoc();
         if (res.ec == std::errc() && res.ptr == end)
-            return LC::Parser::make_INTEGER(loc, num);
+            return LC::Parser::make_INTEGER(num, loc);
         return LC::Parser::make_YYerror(loc);
     }
 
@@ -214,12 +215,12 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
         auto res = std::from_chars(yytext, end, num);
         auto loc = yyextra->TakeLoc();
         if (res.ec == std::errc() && res.ptr == end)
-            return LC::Parser::make_DOUBLE(loc, num);
+            return LC::Parser::make_DOUBLE(num, loc);
         else
             return LC::Parser::make_YYerror(loc);
     }
 
-<INITIAL>[a-zA-Z_][a-zA-Z0-9_]* return LC::Parser::make_IDENT(yyextra->TakeLoc(), yytext);
+<INITIAL>[a-zA-Z_][a-zA-Z0-9_]* return LC::Parser::make_IDENT(yytext, yyextra->TakeLoc());
 
 <INITIAL>[\t\n\f\r\x20]+ /* whitespace */ yyextra->TakeLoc();
 <INITIAL><<EOF>> return LC::Parser::make_YYEOF(yyextra->TakeLoc());
