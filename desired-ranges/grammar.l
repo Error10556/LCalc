@@ -5,6 +5,7 @@
 %option outfile="grammar.lex.cpp"
 
 %{
+#undef yylex
 #include <charconv>
 #include <string>
 #include <string_view>
@@ -28,9 +29,11 @@ struct Extra {
     }
 };
 
+Parser::symbol_type yylex(yyscan_t yyscanner, Parser* thisparser);
+
 }  // namespace LC
 
-#define YY_DECL LC::Parser::symbol_type LClex(yyscan_t yyscanner)
+#define YY_DECL LC::Parser::symbol_type LC::yylex(yyscan_t yyscanner, LC::Parser* thisparser)
 #define YY_USER_ACTION                   \
     {                                    \
         for (int i = 0; i < yyleng; i++) \
@@ -41,27 +44,34 @@ struct Extra {
     }
 #define yyterminate() return LC::Parser::make_YYEOF(yyextra->TakeLoc())
 
-inline int hexDigitValue(char ch) {
+#define LEXER_ERROR(loc) LexerError(thisparser, loc)
+static inline LC::Parser::symbol_type LexerError(
+        LC::Parser* thisparser, const LC::location& loc) {
+    thisparser->error(loc, "Lexical error");
+    return LC::Parser::make_YYerror(loc);
+}
+
+static inline int hexDigitValue(char ch) {
     if ('0' <= ch && ch <= '9') return ch - '0';
     if ('a' <= ch && ch <= 'f') return ch - 'a' + 10;
     if ('A' <= ch && ch <= 'F') return ch - 'A' + 10;
     return 0;
 }
 
-inline int32_t hexInt32(const char* start, int len) {
+static inline int32_t hexInt32(const char* start, int len) {
     int32_t val = 0;
     for (int i = 0; i < len; i++) val = (val << 4) | hexDigitValue(start[i]);
     return val;
 }
 
-inline int32_t minCharForEncodedLen(int len) {
+static inline int32_t minCharForEncodedLen(int len) {
     if (len < 2) return 0;
     if (len == 2) return 0x80;
     return static_cast<int32_t>(1) << (11 + 5 * (len - 3));
 }
 
     /* returns -1 if a character uses a non-minimal # of bytes */
-inline int decodeUTF8(const char* start, int len) {
+static inline int decodeUTF8(const char* start, int len) {
     if (len == 1) return *start;
     int firstbits = 7 - len;
     int32_t res = *start & ((1 << firstbits) - 1);
@@ -69,7 +79,7 @@ inline int decodeUTF8(const char* start, int len) {
     return res >= minCharForEncodedLen(len) ? res : -1;
 }
 
-inline void encodeUTF8(std::string& dest, int32_t ch) {
+static inline void encodeUTF8(std::string& dest, int32_t ch) {
     if (ch < 0) {
         dest.push_back(0xFF);
         return;
@@ -186,14 +196,14 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
         BEGIN(INITIAL);
         int32_t charcode = decodeUTF8(yytext + 1, yyleng - 2);
         auto loc = yyextra->TakeLoc();
-        if (charcode == -1) return LC::Parser::make_YYerror(loc);
+        if (charcode != -1) return LEXER_ERROR(loc);
         return LC::Parser::make_CHAR(charcode, loc);
     }
 <CHAR>({UTF8MULTICHAR}|[^'\\\n])' {
         BEGIN(INITIAL);
         int32_t charcode = decodeUTF8(yytext, yyleng - 1);
         auto loc = yyextra->TakeLoc();
-        if (charcode == -1) return LC::Parser::make_YYerror(loc);
+        if (charcode == -1) return LEXER_ERROR(loc);
         return LC::Parser::make_CHAR(charcode, loc);
     }
 
@@ -205,7 +215,7 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
         auto loc = yyextra->TakeLoc();
         if (res.ec == std::errc() && res.ptr == end)
             return LC::Parser::make_INTEGER(num, loc);
-        return LC::Parser::make_YYerror(loc);
+        return LEXER_ERROR(loc);
     }
 
     /* Double */
@@ -217,7 +227,7 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
         if (res.ec == std::errc() && res.ptr == end)
             return LC::Parser::make_DOUBLE(num, loc);
         else
-            return LC::Parser::make_YYerror(loc);
+            return LEXER_ERROR(loc);
     }
 
 <INITIAL>[a-zA-Z_][a-zA-Z0-9_]* return LC::Parser::make_IDENT(yytext, yyextra->TakeLoc());
@@ -225,7 +235,7 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
 <INITIAL>[\t\n\f\r\x20]+ /* whitespace */ yyextra->TakeLoc();
 <INITIAL><<EOF>> return LC::Parser::make_YYEOF(yyextra->TakeLoc());
 
-[\x00-\xff] return LC::Parser::make_YYerror(yyextra->TakeLoc());
+[\x00-\xff] return LEXER_ERROR(yyextra->TakeLoc());
 
 %%
 

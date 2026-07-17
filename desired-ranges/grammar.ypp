@@ -6,8 +6,8 @@
 %define api.namespace {LC}
 %locations
 %define api.location.file "grammar.loc.hpp"
-%lex-param {yyscan_t scanner}
-%parse-param {yyscan_t scanner}
+%param {yyscan_t scanner}
+%param {Parser* thisparser}
 %parse-param {std::optional<std::variant<ParseResultVariant, syntax_error>>* result}
 %header "grammar.tab.hpp"
 
@@ -95,13 +95,9 @@
 }
 
 %code {
-    extern LC::Parser::symbol_type LClex(yyscan_t scanner);
-
     namespace LC {
 
-    static inline Parser::symbol_type yylex(yyscan_t scanner) {
-        return LClex(scanner);
-    }
+    extern Parser::symbol_type yylex(yyscan_t scanner, Parser* parser);
 
     }  // namespace LC
 }
@@ -112,7 +108,6 @@
 
 __start__
     : Program YYEOF { *result = {{ParseResultVariant(std::move($1))}}; }
-    | error YYEOF { if (!*result) *result = {{syntax_error(@1, "Lexical error")}}; }
     ;
 
 Expr
@@ -169,7 +164,7 @@ void Parser::error(const location& loc, const std::string& msg) {
 
 static ParseResultOrError Parse(const LCScanner& scanner, std::string* optFilename) {
     std::optional<ParseResultOrError> res;
-    Parser parser(scanner.FlexScanner(), &res);
+    Parser parser(scanner.FlexScanner(), &parser, &res);
     parser.parse();
     if (!res)
         return ParseResultOrError(std::in_place_type_t<Parser::syntax_error>(),
