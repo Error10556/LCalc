@@ -264,6 +264,11 @@ template<class T> struct IsCategoryClass_t
 template<class T>
 constexpr const bool IsCategoryClass = IsCategoryClass_t<T>::value;
 
+template<class T> struct IsListClass_t
+{ static constexpr bool value = false; };
+template<class T>
+constexpr const bool IsListClass = IsListClass_t<T>::value;
+
 template<class T> struct IsLabelClass_t
 { static constexpr bool value = false; };
 template<class T>
@@ -274,7 +279,8 @@ template<class T> struct IsParserEntrypoint_t
 template<class T>
 constexpr const bool IsParserEntrypoint = IsParserEntrypoint_t<T>::value;
 
-template<class T> struct SupportsLocations_t {};
+template<class T> struct SupportsLocations_t
+{ static constexpr bool value = false; };
 template<class T>
 constexpr const bool SupportsLocations = SupportsLocations_t<T>::value;
 
@@ -298,41 +304,63 @@ REFL_NOCOERC(type, kind, loc); \
 template<> struct CoercionLevel_t<type> \
 { static constexpr int value = coerc; } \
 
-#define REFL_VAR(type, loc) REFL_NOCOERC(type, CategoryClass, loc)
+#define REFL_VAR(type) REFL_NOCOERC(type, CategoryClass, true)
+#define REFL_LABEL(type, coerc) REFL(type, LabelClass, true, coerc)
+#define REFL_TOKEN(type, loc) REFL(type, TokenStruct, loc, 0)
+#define REFL_LIST(type) REFL(type, ListClass, true, 0)
 
 #define ENTRYPOINT(type) \
 template<> struct IsParserEntrypoint_t<type> \
 { static constexpr bool value = true; } \
 
-REFL(Ident, TokenStruct, false, 0);
-REFL(Char, TokenStruct, false, 0);
-REFL(Double, TokenStruct, false, 0);
-REFL(Integer, TokenStruct, false, 0);
-REFL(String, TokenStruct, false, 0);
-REFL(SpecialBegin, TokenStruct, false, 0);
-REFL(SpecialEnd, TokenStruct, true, 0);
+REFL_TOKEN(Ident, false);
+REFL_TOKEN(Char, false);
+REFL_TOKEN(Double, false);
+REFL_TOKEN(Integer, false);
+REFL_TOKEN(String, false);
+REFL_TOKEN(SpecialBegin, false);
+REFL_TOKEN(SpecialEnd, true);
 
-REFL(SpecialExpr, LabelClass, true, 0);
-REFL(CharExpr, LabelClass, true, 0);
-REFL(DoubleExpr, LabelClass, true, 0);
-REFL(IntegerExpr, LabelClass, true, 0);
-REFL(StringExpr, LabelClass, true, 0);
-REFL(Abstraction, LabelClass, true, 0);
-REFL(Application, LabelClass, true, 1);
-REFL(Variable, LabelClass, true, 2);
-REFL_VAR(Expr, true);
-REFL(ListExpr, CategoryClass, true, 0);
-REFL(AProgram, LabelClass, true, 0);
-REFL_VAR(Program, true);
+REFL_LABEL(SpecialExpr, 0);
+REFL_LABEL(CharExpr, 0);
+REFL_LABEL(DoubleExpr, 0);
+REFL_LABEL(IntegerExpr, 0);
+REFL_LABEL(StringExpr, 0);
+REFL_LABEL(Abstraction, 0);
+REFL_LABEL(Application, 1);
+REFL_LABEL(Variable, 2);
+REFL_VAR(Expr);
+REFL_LIST(ListExpr);
+REFL_LABEL(AProgram, 0);
+REFL_VAR(Program);
 
 ENTRYPOINT(Program);
 
 #undef ENTRYPOINT
+#undef REFL_LIST
+#undef REFL_TOKEN
+#undef REFL_LABEL
 #undef REFL_VAR
 #undef REFL
 #undef REFL_NOCOERC
 #undef REFL_KINDNAME
 
 }  // namespace reflection
+
+// Requires location tracking. Returns a (const) reference.
+template<class T>
+decltype(auto) LocationOf(T& node) {
+    using PureT = std::decay_t<T>;
+    static_assert(reflection::SupportsLocations<PureT>,
+        "This class does not support location tracking");
+    if constexpr (
+            reflection::IsLabelClass<PureT>
+            || reflection::IsTokenStruct<PureT>
+            || reflection::IsListClass<PureT>)
+        return (node.loc);
+    else {  // CategoryClass
+        return (node.Location());
+    }
+}
 
 }  // namespace LC
