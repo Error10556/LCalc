@@ -131,7 +131,7 @@ Program
 
 Expr1
     : /* _ */ Expr2 { $$ = std::move($1); }
-    | /* Application */ Expr1 Expr2 { $$.emplace<Application>($@, std::move($1), std::move($2)); }
+    | /* Application */ Expr1 Expr2 { $$.emplace<Application>(@$, std::move($1), std::move($2)); }
     ;
 
 Expr2
