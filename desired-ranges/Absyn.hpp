@@ -274,6 +274,10 @@ template<class T> struct IsParserEntrypoint_t
 template<class T>
 constexpr const bool IsParserEntrypoint = IsParserEntrypoint_t<T>::value;
 
+template<class T> struct SupportsLocations_t {};
+template<class T>
+constexpr const bool SupportsLocations = SupportsLocations_t<T>::value;
+
 template<class T> struct CoercionLevel_t {};
 template<class T> constexpr int CoercionLevel = CoercionLevel_t<T>::value;
 
@@ -281,45 +285,45 @@ template<class T> struct SyntaxNodeName_t {};
 template<class T>
 constexpr const char* SyntaxNodeName = SyntaxNodeName_t<T>::value;
 
-#define REFL_KINDNAME(kind, _t) Is##kind##_t
-
-#define REFL_NOCOERC(type, kind) \
-template<> struct REFL_KINDNAME(kind, _t)<type> \
+#define REFL_NOCOERC(type, kind, loc) \
+template<> struct Is##kind##_t<type> \
 { static constexpr bool value = true; }; \
 template<> struct SyntaxNodeName_t<type> \
-{ static constexpr const char* value = #type; }
+{ static constexpr const char* value = #type; }; \
+template<> struct SupportsLocations_t<type> \
+{ static constexpr bool value = loc; }
 
-#define REFL(type, kind, coerc) \
-REFL_NOCOERC(type, kind); \
+#define REFL(type, kind, loc, coerc) \
+REFL_NOCOERC(type, kind, loc); \
 template<> struct CoercionLevel_t<type> \
 { static constexpr int value = coerc; } \
 
-#define REFL_VAR(type) REFL_NOCOERC(type, CategoryClass)
+#define REFL_VAR(type, loc) REFL_NOCOERC(type, CategoryClass, loc)
 
 #define ENTRYPOINT(type) \
 template<> struct IsParserEntrypoint_t<type> \
 { static constexpr bool value = true; } \
 
-REFL(Ident, TokenStruct, 0);
-REFL(Char, TokenStruct, 0);
-REFL(Double, TokenStruct, 0);
-REFL(Integer, TokenStruct, 0);
-REFL(String, TokenStruct, 0);
-REFL(SpecialBegin, TokenStruct, 0);
-REFL(SpecialEnd, TokenStruct, 0);
+REFL(Ident, TokenStruct, false, 0);
+REFL(Char, TokenStruct, false, 0);
+REFL(Double, TokenStruct, false, 0);
+REFL(Integer, TokenStruct, false, 0);
+REFL(String, TokenStruct, false, 0);
+REFL(SpecialBegin, TokenStruct, false, 0);
+REFL(SpecialEnd, TokenStruct, true, 0);
 
-REFL(SpecialExpr, LabelClass, 0);
-REFL(CharExpr, LabelClass, 0);
-REFL(DoubleExpr, LabelClass, 0);
-REFL(IntegerExpr, LabelClass, 0);
-REFL(StringExpr, LabelClass, 0);
-REFL(Abstraction, LabelClass, 0);
-REFL(Application, LabelClass, 1);
-REFL(Variable, LabelClass, 2);
-REFL_VAR(Expr);
-REFL(ListExpr, CategoryClass, 0);
-REFL(AProgram, LabelClass, 0);
-REFL_VAR(Program);
+REFL(SpecialExpr, LabelClass, true, 0);
+REFL(CharExpr, LabelClass, true, 0);
+REFL(DoubleExpr, LabelClass, true, 0);
+REFL(IntegerExpr, LabelClass, true, 0);
+REFL(StringExpr, LabelClass, true, 0);
+REFL(Abstraction, LabelClass, true, 0);
+REFL(Application, LabelClass, true, 1);
+REFL(Variable, LabelClass, true, 2);
+REFL_VAR(Expr, true);
+REFL(ListExpr, CategoryClass, true, 0);
+REFL(AProgram, LabelClass, true, 0);
+REFL_VAR(Program, true);
 
 ENTRYPOINT(Program);
 
