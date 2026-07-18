@@ -302,7 +302,7 @@ template<> struct SupportsLocations_t<type> \
 #define REFL(type, kind, loc, coerc) \
 REFL_NOCOERC(type, kind, loc); \
 template<> struct CoercionLevel_t<type> \
-{ static constexpr int value = coerc; } \
+{ static constexpr int value = coerc; }
 
 #define REFL_VAR(type) REFL_NOCOERC(type, CategoryClass, true)
 #define REFL_LABEL(type, coerc) REFL(type, LabelClass, true, coerc)
@@ -311,7 +311,7 @@ template<> struct CoercionLevel_t<type> \
 
 #define ENTRYPOINT(type) \
 template<> struct IsParserEntrypoint_t<type> \
-{ static constexpr bool value = true; } \
+{ static constexpr bool value = true; }
 
 REFL_TOKEN(Ident, false);
 REFL_TOKEN(Char, false);
@@ -347,9 +347,9 @@ ENTRYPOINT(Program);
 
 }  // namespace reflection
 
-// Requires location tracking. Returns a (const) reference.
+// Requires location tracking. Returns an (optionally const) lvalue reference.
 template<class T>
-inline decltype(auto) LocationOf(T& node) {
+inline auto& LocationOf(T& node) {
     using PureT = std::decay_t<T>;
     static_assert(reflection::SupportsLocations<PureT>,
         "This class does not support location tracking");
@@ -357,10 +357,11 @@ inline decltype(auto) LocationOf(T& node) {
             reflection::IsLabelClass<PureT>
             || reflection::IsTokenStruct<PureT>
             || reflection::IsListClass<PureT>)
-        return (node.loc);
-    else {  // CategoryClass
-        return (node.Location());
-    }
+        return node.loc;
+    else if constexpr (reflection::IsCategoryClass<PureT>)
+        return node.Location();
+    else
+        static_assert(false, "Unimplemented LocationOf");
 }
 
 }  // namespace LC
