@@ -210,8 +210,9 @@ public:
     location loc;
     using deque::deque;
     template <class... TItems>
-    static inline ListExpr Create(const location&, TItems&&... items) {
+    static inline ListExpr Create(const location& loc, TItems&&... items) {
         ListExpr res;
+        res.loc = loc;
         (res.emplace_back(std::forward<TItems>(items)), ...);
         return res;
     }
