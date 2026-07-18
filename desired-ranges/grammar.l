@@ -196,7 +196,7 @@ UTF8MULTICHAR [\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-
         BEGIN(INITIAL);
         int32_t charcode = decodeUTF8(yytext + 1, yyleng - 2);
         auto loc = yyextra->TakeLoc();
-        if (charcode != -1) return LEXER_ERROR(loc);
+        if (charcode == -1) return LEXER_ERROR(loc);
         return LC::Parser::make_CHAR(charcode, loc);
     }
 <CHAR>({UTF8MULTICHAR}|[^'\\\n])' {
