@@ -349,7 +349,7 @@ ENTRYPOINT(Program);
 
 // Requires location tracking. Returns a (const) reference.
 template<class T>
-decltype(auto) LocationOf(T& node) {
+inline decltype(auto) LocationOf(T& node) {
     using PureT = std::decay_t<T>;
     static_assert(reflection::SupportsLocations<PureT>,
         "This class does not support location tracking");
