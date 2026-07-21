@@ -18,8 +18,9 @@
 /grammar.l
 /grammar.lex.cpp
 /grammar.loc.hpp
+/Locations.hpp
 /grammar.tab.cpp
-/grammar.tab.hpp
+/Parser.hpp
 /grammar.ypp
 /libgrammarParser.a
 /libgrammarPrinter.a

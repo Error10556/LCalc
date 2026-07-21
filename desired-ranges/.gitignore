@@ -2,6 +2,6 @@
 /lib*.a
 /grammar.lex.cpp
 /grammar.tab.cpp
-/grammar.tab.hpp
+/Parser.hpp
 /grammar.loc.hpp
 /Testgrammar

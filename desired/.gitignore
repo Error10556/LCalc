@@ -2,7 +2,8 @@
 /lib*.a
 /grammar.lex.cpp
 /grammar.tab.cpp
-/grammar.tab.hpp
+/grammar.loc.hpp
+/Parser.hpp
 /Testgrammar
 /Eval
 /PatternMatchingTest
