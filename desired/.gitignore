@@ -3,6 +3,7 @@
 /grammar.lex.cpp
 /grammar.tab.cpp
 /grammar.loc.hpp
+/grammar.tab.hpp
 /Parser.hpp
 /Testgrammar
 /Eval
