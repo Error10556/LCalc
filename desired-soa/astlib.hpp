@@ -152,6 +152,72 @@ struct packs_mdindex<Index, pack_of_types<Ts...>> {
 template <size_t Index, class... Packs>
 using packs_mdindex_t = packs_mdindex<Index, Packs...>::value_t;
 
+template <class... Packs>
+struct concat_packs;
+
+template <class... Ts, class... Packs>
+struct concat_packs<pack_of_types<Ts...>, Packs...> {
+private:
+    template <class Pack>
+    struct helper;
+    template <class... Us>
+    struct helper<pack_of_types<Us...>> {
+        using value_t = pack_of_types<Ts..., Us...>;
+    };
+
+public:
+    using value_t = helper<typename concat_packs<Packs...>::value_t>::value_t;
+};
+
+template <>
+struct concat_packs<> {
+    using value_t = pack_of_types<>;
+};
+
+template <class... Packs>
+using concat_packs_t = concat_packs<Packs...>::value_t;
+
+template <class Pack>
+struct pack_to_tuple;
+
+template <class... Ts>
+struct pack_to_tuple<pack_of_types<Ts...>> {
+    using value_t = std::tuple<Ts...>;
+};
+
+template <class Pack>
+using pack_to_tuple_t = pack_to_tuple<Pack>::value_t;
+
+template <size_t N, class T>
+struct repeat_pack {
+private:
+    template <class Pack>
+    struct helper;
+    template <class... Ts>
+    struct helper<pack_of_types<Ts...>> {
+        using value_t =
+            std::conditional_t<N & 1, pack_of_types<T, Ts..., Ts...>, pack_of_types<Ts..., Ts...>>;
+    };
+
+public:
+    using value_t = helper<typename repeat_pack<N / 2, T>::value_t>::value_t;
+};
+template <class T>
+struct repeat_pack<0, T> {
+    using value_t = pack_of_types<>;
+};
+template <class T>
+struct repeat_pack<1, T> {
+    using value_t = pack_of_types<T>;
+};
+template <class T>
+struct repeat_pack<2, T> {
+    using value_t = pack_of_types<T, T>;
+};
+
+template <size_t N, class T>
+using repeat_pack_t = repeat_pack<N, T>::value_t;
+
 }  // namespace detail
 
 /*******************/
@@ -262,6 +328,7 @@ template <concepts::is_ast_label TLabel>
 struct type_tag_of {
 private:
     using cat_t = bnf_category_of_t<TLabel>;
+
 public:
     static constexpr uint32_t value = detail::pack_find_v<TLabel, cat_t>;
 };
@@ -1489,14 +1556,14 @@ private:
     // }
 
 public:
-    using creation_params_t =
-        std::tuple<std::array<uint32_t, NPtrs>, std::array<std::string_view, NStrings>,
-                   std::array<Double, NDoubles>, std::array<Integer, NInts>,
-                   std::array<Char, NChars>, std::array<Bool, NBools>>;
+    using creation_params_t = pack_to_tuple_t<
+        concat_packs_t<repeat_pack_t<NPtrs, uint32_t>, repeat_pack_t<NStrings, std::string>,
+                       repeat_pack_t<NDoubles, Double>, repeat_pack_t<NInts, Integer>,
+                       repeat_pack_t<NChars, Char>, repeat_pack_t<NBools, Bool>>>;
 
 private:
     void initialize(ASTNewNodeInfo new_node_info, uint32_t tag_if_needed,
-                    const creation_params_t& vals) {
+                    creation_params_t&& vals) {
         if constexpr (TStoresTag)
             set_inline_scalar<uint32_t, layout_t::TagOffset, false>(tag_if_needed);
         if constexpr (layout_t::ExtraSpaceInts)
@@ -1506,35 +1573,40 @@ private:
             set_inline_scalar<uint32_t, layout_t::StringPtrOffset, false>(
                 new_node_info.strings_index);
         {
-            auto& pointer_values = get<0>(vals);
             [&]<size_t... Indices>(std::index_sequence<Indices...>) {
-                (pointer<Indices, false>(pointer_values.at(Indices)), ...);
+                (pointer<Indices, false>(std::get<Indices>(vals)), ...);
             }(std::make_index_sequence<NPtrs>());
         }
+        static constexpr size_t StringsStart = NPtrs;
         {
-            auto& string_values = get<1>(vals);
             std::string* mystrings =
                 AST_privates::string_tokens(ast).data() + new_node_info.strings_index;
-            for (size_t i = 0; i < NStrings; i++) {
-                mystrings[i] = string_values[i];
-            }
+            [&]<size_t... Indices>(std::index_sequence<Indices...>) {
+                ((mystrings[Indices] = std::move(std::get<StringsStart + Indices>(vals))), ...);
+            }(std::make_index_sequence<NStrings>());
         }
-        [&]<size_t... TokenKindIndices>(std::index_sequence<TokenKindIndices...>) {
+        static constexpr size_t ScalarsStart = StringsStart + NStrings;
+        static constexpr size_t ScalarKindStarts[] = {
+            ScalarsStart,
+            ScalarsStart + NDoubles,
+            ScalarsStart + NDoubles + NInts,
+            ScalarsStart + NDoubles + NInts + NChars,
+        };
+        [&]<size_t... TokenIndices>(std::index_sequence<TokenIndices...>) {
             (
                 [&]() {
-                    auto& values = get<TokenKindIndices>(vals);
-                    [&]<size_t... Indices>(std::index_sequence<Indices...>) {
-                        (
-                            [&]() {
-                                auto& value = values[Indices];
-                                set_scalar_token<std::remove_reference_t<decltype(value)>, Indices,
-                                                 false>(value);
-                            }(),
-                            ...);
-                    }(std::make_index_sequence<std::size(values)>());
+                    static constexpr size_t AbsIndex = ScalarsStart + TokenIndices;
+                    auto value = std::get<AbsIndex>(vals);
+                    static constexpr size_t KindAbsStart = []() consteval {
+                        for (size_t i = std::size(ScalarKindStarts); i; --i) {
+                            if (ScalarKindStarts[i - 1] <= AbsIndex) return ScalarKindStarts[i - 1];
+                        }
+                        return 0;
+                    }();
+                    set_scalar_token<decltype(value), AbsIndex - KindAbsStart, false>(value);
                 }(),
                 ...);
-        }(std::index_sequence<2, 3, 4, 5>());
+        }(std::make_index_sequence<NDoubles + NInts + NChars + NBools>());
         AST_privates::tree(ast)[new_node_info.node_index] =
             reinterpret_cast<ASTNodeItem&>(inline_data);
         mut_index() = new_node_info.node_index;
@@ -1603,10 +1675,10 @@ public:
               reinterpret_cast<const decltype(inline_data)&>(AST_privates::tree(ast)[index])} {
         mut_index() = index;
     }
-    Label(TAst& ast, uint32_t tag_if_needed, creation_params_t vals) : ast{ast} {
+    Label(TAst& ast, uint32_t tag_if_needed, creation_params_t&& vals) : ast{ast} {
         auto info = AST_privates::emplace_back(ast, layout_t::ExtraSpaceInts, NStrings,
                                                layout_t::Needs8ByteAlignment);
-        initialize(ast, info, tag_if_needed, vals);
+        initialize(ast, info, tag_if_needed, std::move(vals));
     }
 
     template <concepts::is_ast TNewAst>
@@ -1856,13 +1928,8 @@ private:
 public:
     Plus(TAst& ast, Expr<TAst> Expr_1, Expr<TAst> Expr_2)
         : base(ast, 0,
-               {{lib::detail::ASTPtr_privates::Index(Expr_1),
-                 lib::detail::ASTPtr_privates::Index(Expr_2)},
-                {},
-                {},
-                {},
-                {},
-                {}}) {}
+               {lib::detail::ASTPtr_privates::Index(Expr_1),
+                 lib::detail::ASTPtr_privates::Index(Expr_2)}) {}
     Expr<TAst> Expr_1() const {
         return lib::detail::ASTPtr_privates::Create<Expr>(base.template pointer<0>());
     }
