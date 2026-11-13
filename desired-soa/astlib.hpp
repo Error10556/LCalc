@@ -1833,6 +1833,8 @@ inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr
 
 // EXAMPLE
 
+/*
+
 template <class>
 class Plus;
 
@@ -1909,5 +1911,7 @@ struct label_pointer_fields<Plus<TAst>> {
 };
 }  // namespace detail
 }  // namespace lib
+
+*/
 
 }  // namespace ast
