@@ -100,6 +100,58 @@ public:
 template <class T, class... Ts>
 static constexpr int pack_find_v = pack_find<T, Ts...>::value;
 
+template <class... Ts>
+struct pack_of_types {};
+
+template <size_t Index, class Pack>
+struct pack_of_types_index {};
+
+template <size_t Index, class... Ts>
+struct pack_of_types_index<Index, pack_of_types<Ts...>> {
+    using value_t = pack_index<Index, Ts...>::value_t;
+};
+
+template <class Pack>
+struct pack_of_types_size {};
+
+template <class... Ts>
+struct pack_of_types_size<pack_of_types<Ts...>> {
+    static constexpr size_t value = sizeof...(Ts);
+};
+
+template <class Pack>
+constexpr size_t pack_of_types_size_v = pack_of_types_size<Pack>::value;
+
+template <size_t Index, class... Ts>
+using pack_of_types_index_t = pack_of_types_index<Index, Ts...>::value_t;
+
+template <size_t Index, class... Packs>
+struct packs_mdindex {};
+
+template <size_t Index, class... Ts, class... Packs>
+struct packs_mdindex<Index, pack_of_types<Ts...>, Packs...> {
+private:
+    static constexpr size_t coef = (pack_of_types_size_v<Packs> * ...);
+    using rest_t = packs_mdindex<Index % coef, Packs...>::value_t;
+    template <class, class>
+    struct Prepender {};
+    template <class L, class... Rs>
+    struct Prepender<L, pack_of_types<Rs...>> {
+        using value_t = pack_of_types<L, Rs...>;
+    };
+
+public:
+    using value_t = Prepender<pack_index_t<Index / coef, Ts...>, rest_t>::value_t;
+};
+
+template <size_t Index, class... Ts>
+struct packs_mdindex<Index, pack_of_types<Ts...>> {
+    using value_t = pack_of_types<pack_index_t<Index, Ts...>>;
+};
+
+template <size_t Index, class... Packs>
+using packs_mdindex_t = packs_mdindex<Index, Packs...>::value_t;
+
 }  // namespace detail
 
 /*******************/
@@ -197,6 +249,27 @@ template <class T>
 concept is_ast_token = is_ast_string_token<T> || is_ast_scalar_token<T>;
 
 }  // namespace concepts
+
+namespace traits {
+
+template <concepts::is_ast_label TLabel>
+struct bnf_category_of;
+
+template <concepts::is_ast_label TLabel>
+using bnf_category_of_t = bnf_category_of<TLabel>::value_t;
+
+template <concepts::is_ast_label TLabel>
+struct type_tag_of {
+private:
+    using cat_t = bnf_category_of_t<TLabel>;
+public:
+    static constexpr uint32_t value = detail::pack_find_v<TLabel, cat_t>;
+};
+
+template <concepts::is_ast_label TLabel>
+constexpr uint32_t type_tag_of_v = type_tag_of<TLabel>::value;
+
+}  // namespace traits
 
 /************************/
 /* Abstract Syntax Tree */
@@ -465,6 +538,41 @@ struct ASTPtr_privates {
 /* Variant Node Pointer */
 /************************/
 
+namespace detail {
+
+template <size_t Index, class... Ts>
+struct pack_of_types_index<Index, ASTPtr<Ts...>> {
+    using value_t = pack_index<Index, Ts...>::value_t;
+};
+
+template <class... Ts>
+struct pack_of_types_size<ASTPtr<Ts...>> {
+    static constexpr size_t value = sizeof...(Ts);
+};
+
+template <size_t Index, class... Ts, class... Packs>
+struct packs_mdindex<Index, ASTPtr<Ts...>, Packs...> {
+private:
+    static constexpr size_t coef = (pack_of_types_size_v<Packs> * ...);
+    using rest_t = packs_mdindex<Index % coef, Packs...>::value_t;
+    template <class, class>
+    struct Prepender {};
+    template <class L, class... Rs>
+    struct Prepender<L, pack_of_types<Rs...>> {
+        using value_t = pack_of_types<L, Rs...>;
+    };
+
+public:
+    using value_t = Prepender<pack_index_t<Index / coef, Ts...>, rest_t>::value_t;
+};
+
+template <size_t Index, class... Ts>
+struct packs_mdindex<Index, ASTPtr<Ts...>> {
+    using value_t = pack_of_types<pack_index_t<Index, Ts...>>;
+};
+
+}  // namespace detail
+
 template <concepts::is_ast_label... Ts>
     requires(sizeof...(Ts) > 1)
 class ASTPtr<Ts...> {
@@ -534,92 +642,6 @@ public:
         return (*this)(std::forward<Visitor>(visitor));
     }
 };
-
-namespace detail {
-template <class... Ts>
-struct pack_of_types {};
-
-template <size_t Index, class Pack>
-struct pack_of_types_index {};
-
-template <size_t Index, class... Ts>
-struct pack_of_types_index<Index, pack_of_types<Ts...>> {
-    using value_t = pack_index<Index, Ts...>::value_t;
-};
-
-template <size_t Index, class... Ts>
-struct pack_of_types_index<Index, ASTPtr<Ts...>> {
-    using value_t = pack_index<Index, Ts...>::value_t;
-};
-
-template <class Pack>
-struct pack_of_types_size {};
-
-template <class... Ts>
-struct pack_of_types_size<pack_of_types<Ts...>> {
-    static constexpr size_t value = sizeof...(Ts);
-};
-
-template <class... Ts>
-struct pack_of_types_size<ASTPtr<Ts...>> {
-    static constexpr size_t value = sizeof...(Ts);
-};
-
-template <class Pack>
-constexpr size_t pack_of_types_size_v = pack_of_types_size<Pack>::value;
-
-template <size_t Index, class... Ts>
-using pack_of_types_index_t = pack_of_types_index<Index, Ts...>::value_t;
-
-template <size_t Index, class... Packs>
-struct packs_mdindex {};
-
-template <size_t Index, class... Ts, class... Packs>
-struct packs_mdindex<Index, pack_of_types<Ts...>, Packs...> {
-private:
-    static constexpr size_t coef = (pack_of_types_size_v<Packs> * ...);
-    using rest_t = packs_mdindex<Index % coef, Packs...>::value_t;
-    template <class, class>
-    struct Prepender {};
-    template <class L, class... Rs>
-    struct Prepender<L, pack_of_types<Rs...>> {
-        using value_t = pack_of_types<L, Rs...>;
-    };
-
-public:
-    using value_t = Prepender<pack_index_t<Index / coef, Ts...>, rest_t>::value_t;
-};
-
-template <size_t Index, class... Ts, class... Packs>
-struct packs_mdindex<Index, ASTPtr<Ts...>, Packs...> {
-private:
-    static constexpr size_t coef = (pack_of_types_size_v<Packs> * ...);
-    using rest_t = packs_mdindex<Index % coef, Packs...>::value_t;
-    template <class, class>
-    struct Prepender {};
-    template <class L, class... Rs>
-    struct Prepender<L, pack_of_types<Rs...>> {
-        using value_t = pack_of_types<L, Rs...>;
-    };
-
-public:
-    using value_t = Prepender<pack_index_t<Index / coef, Ts...>, rest_t>::value_t;
-};
-
-template <size_t Index, class... Ts>
-struct packs_mdindex<Index, pack_of_types<Ts...>> {
-    using value_t = pack_of_types<pack_index_t<Index, Ts...>>;
-};
-
-template <size_t Index, class... Ts>
-struct packs_mdindex<Index, ASTPtr<Ts...>> {
-    using value_t = pack_of_types<pack_index_t<Index, Ts...>>;
-};
-
-template <size_t Index, class... Packs>
-using packs_mdindex_t = packs_mdindex<Index, Packs...>::value_t;
-
-}  // namespace detail
 
 template <class TAst, class... TASTPtr, class Visitor>
 auto operator|(Visit<TAst, TASTPtr...>&& visited, Visitor&& f) {
@@ -1063,9 +1085,9 @@ public:
             new_ast, this->fields, this->myindex);
     }
 
-    using base_t::iterator;
-    using base_t::ItemRefWrapper;
     using base_t::at;
+    using base_t::ItemRefWrapper;
+    using base_t::iterator;
     using base_t::operator[];
     using base_t::begin;
     using base_t::end;
@@ -1873,6 +1895,10 @@ namespace traits {
 template <class TAst>
 struct ast_class_type<Plus<TAst>> {
     static constexpr ASTClassType value = ASTClassType::Label;
+};
+template <class TAst>
+struct bnf_category_of<Plus<TAst>> {
+    using value_t = Expr<TAst>;
 };
 }  // namespace traits
 
