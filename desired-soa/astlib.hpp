@@ -1,3 +1,267 @@
+/*******************/
+/*  DOCUMENTATION  */
+/*******************/
+
+/* Overview of the ast namespace:
+ * ('detail' namespaces contain internal implementation details and are therefore omitted)
+ *
+ * namespace ast
+ * │ Contains classes encapsulating the AST data structure.
+ * │
+ * ├── using Ident = std::string
+ * │     The identifier built-in token.
+ * │
+ * ├── using String = std::string
+ * │     The UTF-8-encoded string literal built-in token.
+ * │
+ * ├── using Integer = long
+ * │     The 64-bit signed integer literal built-in token.
+ * │
+ * ├── using Double = double
+ * │     The double-precision floating point literal built-in token.
+ * │
+ * ├── using Char = char32_t
+ * │     The UTF-32-encoded (UCS-4) character literal built-in token.
+ * │
+ * ├── using Bool = bool
+ * │     The boolean value literal built-in token.
+ * │
+ * └── namespace lib
+ *     │ Abstractions accessible to the user and automatically used by the generator.
+ *     │
+ *     ├── namespace traits
+ *     │   │ Information about AST classes.
+ *     │   │
+ *     │   ├── bool is_ast_v<T>
+ *     │   │     'true' if T is an instantiation of 'ast::lib::AST<...>'.
+ *     │   │
+ *     │   ├── enum class ASTClassType
+ *     │   │   │ Kinds of objects used in this module.
+ *     │   │   ├── VariantPtr  = pointer (ASTPtr) to a polymorphic node object (LBNF category)
+ *     │   │   ├── ArrayPtr    = pointer (ASTPtr) to a list of nodes or tokens
+ *     │   │   ├── Array       = accessor representing a list of nodes or tokens
+ *     │   │   ├── Label       = accessor representing a node of known type (LBNF labelled rule)
+ *     │   │   ├── StringToken = any token represented as a std::string
+ *     │   │   └── ScalarToken = any token represented as a fundamental type
+ *     │   │
+ *     │   ├── ASTClassType ast_class_type_v<T>
+ *     │   │     Classifies the type T as one of the above.
+ *     │   │
+ *     │   ├── using bnf_category_of_t<TLabel>
+ *     │   │     The LBNF category that the labelled rule belongs to.
+ *     │   │
+ *     │   └── uint32_t type_tag_of_v<TLabel>
+ *     │         The rule index in the LBNF category that the labelled rule belongs to.
+ *     │         Internally used as the tag for dynamic dispatch.
+ *     │
+ *     ├── namespace concepts
+ *     │   │ Contains useful concepts for template definitions.
+ *     │   │
+ *     │   ├── is_ast<T>
+ *     │   │     T must be an ast::lib::AST<...> instantiation.
+ *     │   │
+ *     │   ├── is_ast_variant_ptr<T>
+ *     │   │     T must be a pointer (ASTPtr) to a polymorphic node object (LBNF category).
+ *     │   │
+ *     │   ├── is_ast_array_ptr<T>
+ *     │   │     T must be a pointer (ASTPtr) to a list of syntax nodes or token values.
+ *     │   │
+ *     │   ├── is_ast_ptr<T>
+ *     │   │     T must be an AST object pointer (ASTPtr).
+ *     │   │
+ *     │   ├── is_ast_label<T>
+ *     │   │     T must be an accessor to a polymorphic node object (LBNF category).
+ *     │   │
+ *     │   ├── is_ast_array<T>
+ *     │   │     T must be an accessor to a list of syntax nodes or token values.
+ *     │   │
+ *     │   ├── is_ast_node<T>
+ *     │   │     T must be an accessor to a list or label.
+ *     │   │
+ *     │   ├── is_ast_scalar_token<T>
+ *     │   │     T must be a token value represented as a fundamental type.
+ *     │   │
+ *     │   ├── is_ast_string_token<T>
+ *     │   │     T must be a token value represented as a std::string.
+ *     │   │
+ *     │   └── is_ast_token<T>
+ *     │         T must be a token value.
+ *     │
+ *     ├── class AST<TAnnotations...>
+ *     │   │ Represents the entire Abstract Syntax Tree. Encapsulates node access. If annotation
+ *     │   │ structs are specified, creates one of each for every syntax node.
+ *     │   │ Token values are not syntax nodes and cannot be annotated.
+ *     │   │
+ *     │   ├── AST()
+ *     │   │     New empty syntax tree.
+ *     │   │
+ *     │   ├── AST(AST<TOtherAnnots...>&& rvalue_old_tree)
+ *     │   │     Changes the annotation list: default-constructs new annotations and keeps
+ *     │   │     existing ones. The argument must be discarded after the call.
+ *     │   │
+ *     │   ├── AST<TAnnotations..., TMore...> annotate<TMore...>() &&
+ *     │   │     Adds more annotations, returns a new tree with all existing and additional
+ *     │   │     annotations. Annotation objects are default-constructed for each node.
+ *     │   │     Must be called on an rvalue.
+ *     │   │
+ *     │   ├── TAnnot&       annotation<TAnnot>(TPtr node_pointer)
+ *     │   ├── const TAnnot& annotation<TAnnot>(TPtr node_pointer) const
+ *     │   │     Accesses an annotation object of a syntax node identified by node_pointer.
+ *     │   │
+ *     │   ├── Visit<AST, TPtr...> visit(TPtr... ptrs)
+ *     │   │     Allows dynamic dispatch on one or more polymorphic syntax nodes.
+ *     │   │     (see operator|(Visit, Visitor)).
+ *     │   │
+ *     │   ├── TLabel unchecked_get<TLabel>(TPtr ptr)
+ *     │   │     Returns a node accessor for a labelled rule object without checking if TLabel is
+ *     │   │     the correct type for it. If the type does not match, the behavior is undefined!!
+ *     │   │
+ *     │   ├── std::optional<TLabel> checked_get<TLabel>(TPtr ptr)
+ *     │   │     Returns a node accessor for a labelled rule object, checking if TLabel is
+ *     │   │     the correct type for it. If the type does not match, returns an empty optional.
+ *     │   │
+ *     │   ├── TLabel get(ASTPtr<TLabel> ptr)
+ *     │   │     Returns a node accessor for a labelled rule object. Only defined for pointers
+ *     │   │     representing LBNF categories with exactly one rule.
+ *     │   │
+ *     │   ├── TArray get(ASTPtr<TArray> ptr)
+ *     │   │     Returns a list accessor.
+ *     │   │
+ *     │   └── std::pair<AST, TPtr> preorder(TPtr ptr)
+ *     │         Returns a subtree of this tree rooted at the node identified by ptr, with the nodes
+ *     │         ordered in depth-first pre-order.
+ *     │         If called on an lvalue, copies values of involved string literals.
+ *     │         If called on an rvalue, moves the values of string literals; the current AST
+ *     │         object must be discarded after the call.
+ *     │         The returned pair contains the subtree as a separate object and
+ *     │         the root node pointer for the returned tree.
+ *     │
+ *     ├── class ASTPtr<...>
+ *     │   │ Has several specializations:
+ *     │   │ 1. ASTPtr<TLabels...> (with 2 or more type parameters)
+ *     │   │    A polymorphic syntax node generated from an LBNF category with 2 or more labelled
+ *     │   │    rules. To access the node, use dynamic dispatch via visitation
+ *     │   │    (see operator|(Visit, Visitor)).
+ *     │   │ 2. ASTPtr<TLabel>
+ *     │   │    A syntax node pointer generated from an LBNF category with only 1 labelled rule.
+ *     │   │    However, traits::ast_class_type_v<> still gives ASTClassType::VariantPtr.
+ *     │   │
+ *     │   ├── Visit<TAst, ASTPtr> visit(TAst& ast) const  (if specialization 1 or 2)
+ *     │   ├── Visit<TAst, ASTPtr> visit(TAst& ast) const  (if specialization 1 or 2)
+ *     │   │     Allows dynamic dispatch.
+ *     │   │
+ *     │   ├── TLabel unchecked_get<TLabel>(TAst& ast)     (if specialization 1)
+ *     │   │     Returns a node accessor for a labelled rule object without checking if TLabel is
+ *     │   │     the correct type for it. If the type does not match, the behavior is undefined!!
+ *     │   │
+ *     │   ├── std::optional<TLabel> checked_get<TLabel>(TAst& ast)  (if specialization 1)
+ *     │   │     Returns a node accessor for a labelled rule object, checking if TLabel is
+ *     │   │     the correct type for it. If the type does not match, returns an empty optional.
+ *     │   │
+ *     │   ├── TLabel get(TAst& ast)  (if specialization 2)
+ *     │   │     Returns a node accessor to the labelled rule object.
+ *     │   │
+ *     │   ├── TArray get(TAst& ast)  (if specialization 3)
+ *     │   │     Returns a node accessor to the list object.
+ *     │   │
+ *     │   ├── TAnnot&       annotation<TAnnot>(      AST<TAnnotations...>&)
+ *     │   ├── const TAnnot& annotation<TAnnot>(const AST<TAnnotations...>&)
+ *     │   │     Returns an annotation of this node.
+ *     │   │
+ *     │   ├── ASTPtr<...> update_annotations<TNewAst>() const
+ *     │   └── ASTPtr<...> update_annotations(const TNewAst&) const
+ *     │         Returns the same pointer for the AST with new annotations.
+ *     │
+ *     ├── class Visit<TAst, TVariantPtr...>
+ *     │   │ Contains the AST object reference and the pointers.
+ *     │   │ Used to dynamically dispatch visitation of one or several polymorphic nodes.
+ *     │   │
+ *     │   ├── Visit(TAst& ast, TVariantPtr... pointers)
+ *     │   │     Stores the reference and the node addresses;
+ *     │   │     does not determine dynamic types of nodes.
+ *     │   │
+ *     │   ├── decltype(auto) operator()(Visitor&& visitor_forwarding_reference)
+ *     │   │     Performs dynamic dispatch (similarly to std::visit).
+ *     │   │
+ *     │   └── decltype(auto) visit(Visitor&& visitor_forwarding_reference)
+ *     │         Performs dynamic dispatch (similarly to std::visit).
+ *     │
+ *     ├── decltype(auto) operator|(Visit&& visited_fwd_ref, Visitor&& visitor_fwd_ref)
+ *     │     Performs dynamic dispatch (similarly to std::visit).
+ *     │
+ *     ├── class Array<TAst, TItem>
+ *     │   │ Accesses a list of syntax node pointers or token values.
+ *     │   │ TItem can be an ASTPtr or any token value type.
+ *     │   │ The list size cannot be changed, hence the name.
+ *     │   │
+ *     │   ├── Array(TAst&, TItem...)
+ *     │   │     Creates a new array syntax node in the tree with the provided items.
+ *     │   │     In particular, Array(TAst&) creates an empty array.
+ *     │   │
+ *     │   ├── Array(TAst&, Range&& container_fwd_ref)
+ *     │   ├── Array(TAst&, std::initializer_list<TItem>)
+ *     │   ├── Array(TAst&, std::initializer_list<std::string_view>)  (if TItem == std::string)
+ *     │   ├── Array(TAst&, std::initializer_list<const char*>)       (if TItem == std::string)
+ *     │   │     Creates a new array syntax node in the tree with the items taken from the range.
+ *     │   │     Use ranges::subrange(make_move_iterator(begin), make_move_iterator(end))
+ *     │   │     to avoid copying strings from a container.
+ *     │   │
+ *     │   ├── uint32_t size() const
+ *     │   │     Returns the number of elements in the array.
+ *     │   │
+ *     │   ├── ASTPtr<Array> pointer() const
+ *     │   │     Returns the pointer.
+ *     │   │
+ *     │   ├── Array<TNewAst, ...> update_annotations(TNewAst& ast) const
+ *     │   │     Changes the stored AST reference. Use after calling the method AST::annotate or
+ *     │   │     the constructor AST(std::move(old_ast)).
+ *     │   │
+ *     │   ├── struct iterator
+ *     │   │     A random access read-write iterator.
+ *     │   │     If TItem != std::string, implements all operators except operator->().
+ *     │   │
+ *     │   ├── struct ItemRefWrapper  (provided if TItem != std::string)
+ *     │   │     Returned instead of item references.
+ *     │   │     Invalidated after any change has been made to the AST structure!
+ *     │   │
+ *     │   ├── ItemRefWrapper     at(uint32_t index)        (if TItem != std::string)
+ *     │   ├── TItem              at(uint32_t index) const  (if TItem != std::string)
+ *     │   ├── std::string&       at(uint32_t index)        (if TItem == std::string)
+ *     │   ├── const std::string& at(uint32_t index) const  (if TItem == std::string)
+ *     │   │     Performs bounds checking and returns an element or throws std::range_error.
+ *     │   │
+ *     │   ├── ItemRefWrapper     operator[](uint32_t index)        (if TItem != std::string)
+ *     │   ├── TItem              operator[](uint32_t index) const  (if TItem != std::string)
+ *     │   ├── std::string&       operator[](uint32_t index)        (if TItem == std::string)
+ *     │   ├── const std::string& operator[](uint32_t index) const  (if TItem == std::string)
+ *     │   │     Returns an element. Does not perform bounds checking.
+ *     │   │     Out-of-bounds errors can be catastrophic and/or difficult to
+ *     │   │     debug since all objects are packed together contiguously in memory.
+ *     │   │
+ *     │   ├── iterator begin()
+ *     │   │     Creates an iterator pointing to the first element; if the container is empty,
+ *     │   │     equivalent to end().
+ *     │   │
+ *     │   └── iterator end()
+ *     │         Creates an iterator pointing to past-the-last element. Dereferencing it has
+ *     │         undefined behavior (see warning for operator[]).
+ *     │
+ *     └── class LabelledRuleObject<TAst>
+ *         │ Accesses a concrete node variant corresponding to a grammar rule.
+ *         │ Not part of the library; generated from definitions in the grammar file.
+ *         │
+ *         ├── ASTPtr<LabelledRuleObject> pointer() const
+ *         │     Returns the pointer to this object.
+ *         │
+ *         ├── LabelledRuleObject<TNewAst> update_annotations(TNewAst& ast) const
+ *         │     Changes the stored AST reference. Use after calling the method AST::annotate or
+ *         │     the constructor AST(std::move(old_ast)).
+ *         │
+ *         ├── MemberType Member_() const
+ *         └── void Member_(MemberType)
+ *               Gets/sets a field.
+ */
+
 #pragma once
 // we assume read-write access to the AST (TODO: implement read-only labels)
 #include <algorithm>
@@ -244,7 +508,7 @@ enum class ASTClassType {
 };
 
 template <class T>
-struct ast_class_type {};
+struct ast_class_type;
 
 template <class T>
 static constexpr ASTClassType ast_class_type_v = ast_class_type<T>::value;
@@ -393,6 +657,7 @@ struct NodeMemoryPosition {
 }  // namespace detail
 
 template <concepts::is_ast TAst, concepts::is_ast_variant_ptr... TASTPtr>
+    requires(sizeof...(TASTPtr) > 0)
 class Visit;
 template <class...>
 class ASTPtr;
@@ -638,6 +903,18 @@ struct packs_mdindex<Index, ASTPtr<Ts...>> {
     using value_t = pack_of_types<pack_index_t<Index, Ts...>>;
 };
 
+template <concepts::is_ast_ptr TPtr, concepts::is_ast TAst>
+struct astptr_with_updated_annotations;
+
+template <class... Ts, concepts::is_ast TAst>
+struct astptr_with_updated_annotations<TAst, ASTPtr<Ts...>> {
+    using value_t =
+        ASTPtr<decltype(std::declval<Ts>().update_annotations(std::declval<TAst&>()))...>;
+};
+
+template <concepts::is_ast_ptr TPtr, concepts::is_ast TAst>
+using astptr_with_updated_annotations_t = astptr_with_updated_annotations<TPtr, TAst>::value_t;
+
 }  // namespace detail
 
 template <concepts::is_ast_label... Ts>
@@ -660,6 +937,16 @@ public:
     TLabel unchecked_get(TAst& ast) const {
         return ast.unchecked_get(*this);
     }
+    template <concepts::is_ast TNewAst>
+    detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations() const {
+        return detail::ASTPtr_privates::Create<
+            detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst>>(index);
+    }
+    template <concepts::is_ast TNewAst>
+    detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations(
+        const TNewAst&) const {
+        return update_annotations<TNewAst>();
+    }
 };
 
 template <concepts::is_ast_label TLabel>
@@ -676,6 +963,26 @@ public:
     template <concepts::is_ast TAst>
     TLabel get(TAst& ast) const {
         return ast.get(*this);
+    }
+    template <concepts::detail::default_constructible TAnnot, class... TAnnots>
+        requires concepts::detail::same_as_any_of<TAnnot, TAnnots...>
+    TAnnot& annotation(AST<TAnnots...>& ast) {
+        return ast.template annotation<TAnnot>(*this);
+    }
+    template <concepts::detail::default_constructible TAnnot, class... TAnnots>
+        requires concepts::detail::same_as_any_of<TAnnot, TAnnots...>
+    const TAnnot& annotation(const AST<TAnnots...>& ast) {
+        return ast.template annotation<TAnnot>(*this);
+    }
+    template <concepts::is_ast TNewAst>
+    detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations() const {
+        return detail::ASTPtr_privates::Create<
+            detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst>>(index);
+    }
+    template <concepts::is_ast TNewAst>
+    detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations(
+        const TNewAst&) const {
+        return update_annotations<TNewAst>();
     }
 };
 
@@ -695,6 +1002,7 @@ template <class... Funcs>
 Cases(Funcs&&...) -> Cases<Funcs...>;
 
 template <concepts::is_ast TAst, concepts::is_ast_variant_ptr... TASTPtr>
+    requires(sizeof...(TASTPtr) > 0)
 class Visit {
     TAst& ast;
     std::array<uint32_t, sizeof...(TASTPtr)> indices;
@@ -703,15 +1011,15 @@ public:
     constexpr Visit(TAst& ast, TASTPtr... ptrs)
         : ast{ast}, indices{detail::ASTPtr_privates::Index(ptrs)...} {}
     template <class Visitor>
-    auto operator()(Visitor&&);
+    decltype(auto) operator()(Visitor&&);
     template <class Visitor>
-    auto visit(Visitor&& visitor) {
+    decltype(auto) visit(Visitor&& visitor) {
         return (*this)(std::forward<Visitor>(visitor));
     }
 };
 
 template <class TAst, class... TASTPtr, class Visitor>
-auto operator|(Visit<TAst, TASTPtr...>&& visited, Visitor&& f) {
+decltype(auto) operator|(Visit<TAst, TASTPtr...>&& visited, Visitor&& f) {
     return std::move(visited)(f);
 }
 
@@ -741,16 +1049,17 @@ struct AnyAstNode_privates {
 }  // namespace detail
 
 template <concepts::is_ast TAst, concepts::is_ast_variant_ptr... TASTPtr>
+    requires(sizeof...(TASTPtr) > 0)
 template <class Visitor>
-inline auto Visit<TAst, TASTPtr...>::operator()(Visitor&& visitor) {
+inline decltype(auto) Visit<TAst, TASTPtr...>::operator()(Visitor&& visitor) {
     using namespace detail;
     constexpr size_t npacks = sizeof...(TASTPtr);
-    using proxy_t = std::invoke_result_t<Visitor, pack_of_types_index_t<0ULL, TASTPtr>...> (*)(
-        Visitor, AST_privates&, const std::array<uint32_t, npacks>&);
+    using proxy_t = std::invoke_result_t<Visitor&&, pack_of_types_index_t<0ULL, TASTPtr>...> (*)(
+        Visitor&&, AST_privates&, const std::array<uint32_t, npacks>&);
     static constexpr std::array vtable = []<size_t... TIndices>(
                                              std::integer_sequence<size_t, TIndices...>) {
         return std::array<proxy_t, sizeof...(TIndices)>{
-            [](Visitor vis, AST_privates& ast, const std::array<uint32_t, npacks>& indices) {
+            [](Visitor&& vis, AST_privates& ast, const std::array<uint32_t, npacks>& indices) {
                 using MyTypesPack = packs_mdindex<TIndices, TASTPtr...>;
                 return [&]<class... MyTypes, size_t... MyTypeIndices>(
                            pack_of_types<MyTypes...>,
@@ -912,10 +1221,16 @@ public:
     };
 
     uint32_t size() const { return fields.info; }
-    ItemRefWrapper at(uint32_t index) { return {get_by_index_transparent(index)}; }
-    ItemRefWrapper operator[](uint32_t index) { return at(index); }
-    T at(uint32_t index) const { return get_by_index(index); }
-    T operator[](uint32_t index) const { return at(index); }
+    ItemRefWrapper at(uint32_t index) {
+        if (index >= size()) return std::range_error("AST List access: index out of range");
+        return (*this)[index];
+    }
+    ItemRefWrapper operator[](uint32_t index) { return {get_by_index_transparent(index)}; }
+    T at(uint32_t index) const {
+        if (index >= size()) return std::range_error("AST List access: index out of range");
+        return (*this)[index];
+    }
+    T operator[](uint32_t index) const { return get_by_index(index); }
 
     struct iterator {
         using iterator_category = std::random_access_iterator_tag;
@@ -1033,9 +1348,11 @@ public:
         return detail::ASTPtr_privates::Create<ASTPtr<Array>>(this->myindex);
     }
     template <lib::concepts::is_ast NewAst>
-    Array<NewAst, Item> with_ast(NewAst& new_ast) {
-        return detail::AnyAstNode_privates::create_array<Array<NewAst, Item>>(new_ast, this->fields,
-                                                                              this->myindex);
+    Array<NewAst, detail::astptr_with_updated_annotations_t<Item, NewAst>> update_annotations(
+        NewAst& new_ast) const {
+        return detail::AnyAstNode_privates::create_array<
+            Array<NewAst, detail::astptr_with_updated_annotations_t<Item, NewAst>>>(
+            new_ast, this->fields, this->myindex);
     }
 
     struct iterator;
@@ -1112,8 +1429,10 @@ public:
         return detail::ASTPtr_privates::Create<Item>(base_t::at(index));
     }
     ItemRefWrapper at(uint32_t index) { return {base_t::at(index)}; }
-    Item operator[](uint32_t index) const { return at(index); }
-    ItemRefWrapper operator[](uint32_t index) { return at(index); }
+    Item operator[](uint32_t index) const {
+        return detail::ASTPtr_privates::Create<Item>(base_t::operator[](index));
+    }
+    ItemRefWrapper operator[](uint32_t index) { return {base_t::operator[](index)}; }
     iterator begin() { return {base_t::begin()}; }
     iterator end() { return {base_t::end()}; }
 
@@ -1147,7 +1466,7 @@ public:
         return detail::ASTPtr_privates::Create<ASTPtr<Array>>(this->myindex);
     }
     template <lib::concepts::is_ast NewAst>
-    Array<NewAst, Token> with_ast(NewAst& new_ast) {
+    Array<NewAst, Token> update_annotations(NewAst& new_ast) const {
         return detail::AnyAstNode_privates::create_array<Array<NewAst, Token>>(
             new_ast, this->fields, this->myindex);
     }
@@ -1191,10 +1510,18 @@ public:
     using const_iterator = std::vector<std::string>::const_iterator;
 
     uint32_t size() const { return size_; }
-    std::string& at(uint32_t index) { return strings()[index]; }
-    const std::string& at(uint32_t index) const { return strings()[index]; }
-    std::string& operator[](uint32_t index) { return at(index); }
-    const std::string& operator[](uint32_t index) const { return at(index); }
+    std::string& at(uint32_t index) {
+        if (index >= size())
+            throw std::range_error("Array<*, std::string> access: index out of range");
+        return strings()[index];
+    }
+    const std::string& at(uint32_t index) const {
+        if (index >= size())
+            throw std::range_error("Array<*, std::string> access: index out of range");
+        return strings()[index];
+    }
+    std::string& operator[](uint32_t index) { return strings()[index]; }
+    const std::string& operator[](uint32_t index) const { return strings()[index]; }
 
     iterator begin() { return strings(); }
     iterator end() { return strings() + size(); }
@@ -1211,7 +1538,7 @@ public:
         return this->ast.template annotation<T>(pointer());
     }
     template <lib::concepts::is_ast NewAst>
-    Array<NewAst, std::string> with_ast(NewAst& new_ast) {
+    Array<NewAst, std::string> update_annotations(NewAst& new_ast) const {
         return detail::AnyAstNode_privates::create_array<Array<NewAst, std::string>>(
             new_ast, size_, strings_ptr, myindex);
     }
@@ -1236,11 +1563,13 @@ private:
         using container_t = std::vector<std::string>;
         container_t v;
 
-        MovableStrings(std::initializer_list<std::string_view> svs) {
-            v.reserve(svs.size());
-            for (auto sv : svs) v.emplace_back(sv);
+        template <std::ranges::sized_range Range>
+        MovableStrings(Range&& range) {
+            v.reserve(std::ranges::size(range));
+            v.insert(v.end(), std::forward<Range>(range).begin(), std::forward<Range>(range).end());
         }
-        template <class Range>
+        template <std::ranges::range Range>
+            requires(!std::ranges::sized_range<Range>)
         MovableStrings(Range&& range)
             : v(std::forward<Range>(range).begin(), std::forward<Range>(range).end()) {}
 
@@ -1285,6 +1614,16 @@ public:
         requires concepts::detail::same_as_any_of<TAnnot, TAnnots...>
     const TAnnot& annotation(const AST<TAnnots...>& ast) {
         return ast.template annotation<TAnnot>(*this);
+    }
+    template <concepts::is_ast TNewAst>
+    detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations() const {
+        return detail::ASTPtr_privates::Create<
+            detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst>>(index);
+    }
+    template <concepts::is_ast TNewAst>
+    detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations(
+        const TNewAst&) const {
+        return update_annotations<TNewAst>();
     }
 };
 
@@ -1501,7 +1840,8 @@ private:
             return cond_index.separately_stored_index();
         else
             // return get_inline_scalar<uint32_t, layout_t::PlaceToStoreNodeIndex>();
-            return *reinterpret_cast<uint32_t*>(inline_data.data() + layout_t::PlaceToStoreNodeIndex);
+            return *reinterpret_cast<uint32_t*>(inline_data.data() +
+                                                layout_t::PlaceToStoreNodeIndex);
     }
 
     template <class TScalar, LabelFieldBytePos Pos>
@@ -1684,8 +2024,8 @@ public:
     }
 
     template <concepts::is_ast TNewAst>
-    Label<TNewAst, TStoresTag, NPtrs, NStrings, NDoubles, NInts, NChars, NBools> with_ast(
-        TNewAst& new_ast) {
+    Label<TNewAst, TStoresTag, NPtrs, NStrings, NDoubles, NInts, NChars, NBools> update_annotations(
+        TNewAst& new_ast) const {
         return AnyAstNode_privates::create_label<
             Label<TNewAst, TStoresTag, NPtrs, NStrings, NDoubles, NInts, NChars, NBools>>(
             new_ast, inline_data, cond_index);
@@ -1956,8 +2296,9 @@ public:
         return base.ast.template annotation<T>(pointer());
     }
     template <lib::concepts::is_ast NewAst>
-    Plus<NewAst> with_ast(NewAst& new_ast) const {
-        return lib::detail::AnyAstNode_privates::create_label<Plus<NewAst>>(base.with_ast(new_ast));
+    Plus<NewAst> update_annotations(NewAst& new_ast) const {
+        return
+lib::detail::AnyAstNode_privates::create_label<Plus<NewAst>>(base.update_annotations(new_ast));
     }
 };
 
