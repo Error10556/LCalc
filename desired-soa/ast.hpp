@@ -481,7 +481,7 @@ struct label_pointer_fields<CharExpr<TAst>> {
 template <lib::concepts::is_ast TAst>
 class CharExpr final {
     friend lib::detail::AnyAstNode_privates;
-    using base_t = lib::detail::Label<TAst, true, 0, 0, 1, 0, 0, 0>;
+    using base_t = lib::detail::Label<TAst, true, 0, 0, 0, 0, 1, 0>;
     base_t base;
 
     lib::detail::NodeMemoryPosition position_in_memory() const { return base.position_in_memory(); }

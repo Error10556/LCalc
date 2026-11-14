@@ -1268,6 +1268,7 @@ public:
 template <concepts::is_ast_array TArray>
 class ASTPtr<TArray> {
     uint32_t index;
+    ASTPtr(uint32_t index) : index{index} {}
     friend detail::ASTPtr_privates;
 
 public:
@@ -1566,12 +1567,12 @@ private:
     void initialize(ASTNewNodeInfo new_node_info, uint32_t tag_if_needed,
                     creation_params_t&& vals) {
         if constexpr (TStoresTag)
-            set_inline_scalar<uint32_t, layout_t::TagOffset, false>(tag_if_needed);
+            set_inline_scalar<uint32_t, layout_t::TagOffset(), false>(tag_if_needed);
         if constexpr (layout_t::ExtraSpaceInts)
-            set_inline_scalar<uint32_t, layout_t::ExtraPtrOffset, false>(
+            set_inline_scalar<uint32_t, layout_t::ExtraPtrOffset(), false>(
                 new_node_info.extras_index);
         if constexpr (NStrings)
-            set_inline_scalar<uint32_t, layout_t::StringPtrOffset, false>(
+            set_inline_scalar<uint32_t, layout_t::StringPtrOffset(), false>(
                 new_node_info.strings_index);
         {
             [&]<size_t... Indices>(std::index_sequence<Indices...>) {
@@ -1602,7 +1603,7 @@ private:
                         for (size_t i = std::size(ScalarKindStarts); i; --i) {
                             if (ScalarKindStarts[i - 1] <= AbsIndex) return ScalarKindStarts[i - 1];
                         }
-                        return 0;
+                        return 0UL;
                     }();
                     set_scalar_token<decltype(value), AbsIndex - KindAbsStart, false>(value);
                 }(),
