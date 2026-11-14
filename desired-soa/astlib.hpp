@@ -451,7 +451,7 @@ public:
           string_tokens{std::move(detail::AST_privates::string_tokens(other))},
           extra{std::move(detail::AST_privates::extra(other))},
           annots{transform_annotations(std::move(other).annots, tree.size())} {}
-    uint32_t size() { return tree.size(); }
+    uint32_t size() const { return tree.size(); }
     template <concepts::detail::default_constructible... T>
         requires(sizeof...(T) > 0)
     AST<TAnnotations..., T...> annotate() && {
@@ -514,8 +514,8 @@ private:
         res.extra.reserve(extra.size() / 2);
         res.string_tokens.reserve(string_tokens.size() / 2);
         [halfn = n / 2, res]<size_t... Indices>(std::index_sequence<Indices...>) {
-            (std::get<Indices>(res.annots).reserve(n), ...);
-        }(std::make_index_sequence<std::size(annots)>());
+            (std::get<Indices>(res.annots).reserve(halfn), ...);
+        }(std::make_index_sequence<sizeof...(TAnnotations)>());
         return res;
     }
 
@@ -596,7 +596,7 @@ struct ASTPtr_privates {
     }
     template <concepts::is_ast_ptr TPtr>
     static TPtr Create(uint32_t index) {
-        return TPtr{index};
+        return TPtr(index);
     }
 };
 }  // namespace detail
@@ -1499,7 +1499,8 @@ private:
         if constexpr (layout_t::PlaceToStoreNodeIndex == -1)
             return cond_index.separately_stored_index();
         else
-            return get_inline_scalar<uint32_t, layout_t::PlaceToStoreNodeIndex>();
+            // return get_inline_scalar<uint32_t, layout_t::PlaceToStoreNodeIndex>();
+            return *reinterpret_cast<uint32_t*>(inline_data.data() + layout_t::PlaceToStoreNodeIndex);
     }
 
     template <class TScalar, LabelFieldBytePos Pos>
@@ -1640,7 +1641,7 @@ public:
         return get_scalar<TScalar, layout_t::template ScalarPos<TScalar>(Index)>();
     }
     template <class TScalar, size_t Index, bool Commit = true>
-    void set_scalar_token(TScalar value) const {
+    void set_scalar_token(TScalar value) {
         set_scalar<TScalar, layout_t::template ScalarPos<TScalar>(Index), Commit>(value);
     }
 
@@ -1678,7 +1679,7 @@ public:
     Label(TAst& ast, uint32_t tag_if_needed, creation_params_t&& vals) : ast{ast} {
         auto info = AST_privates::emplace_back(ast, layout_t::ExtraSpaceInts, NStrings,
                                                layout_t::Needs8ByteAlignment);
-        initialize(ast, info, tag_if_needed, std::move(vals));
+        initialize(info, tag_if_needed, std::move(vals));
     }
 
     template <concepts::is_ast TNewAst>

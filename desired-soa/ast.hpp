@@ -1,3 +1,4 @@
+#pragma once
 #include "astlib.hpp"
 
 namespace ast {
@@ -47,6 +48,10 @@ namespace traits {
 template <class TAst>
 struct bnf_category_of<AProgram<TAst>> {
     using value_t = Program<TAst>;
+};
+template <class TAst>
+struct ast_class_type<AProgram<TAst>> {
+    static constexpr ASTClassType value = ASTClassType::Label;
 };
 }  // namespace traits
 namespace detail {
@@ -104,6 +109,10 @@ namespace traits {
 template <class TAst>
 struct bnf_category_of<Abstraction<TAst>> {
     using value_t = Expr<TAst>;
+};
+template <class TAst>
+struct ast_class_type<Abstraction<TAst>> {
+    static constexpr ASTClassType value = ASTClassType::Label;
 };
 }  // namespace traits
 namespace detail {
@@ -164,6 +173,10 @@ namespace traits {
 template <class TAst>
 struct bnf_category_of<Application<TAst>> {
     using value_t = Expr<TAst>;
+};
+template <class TAst>
+struct ast_class_type<Application<TAst>> {
+    static constexpr ASTClassType value = ASTClassType::Label;
 };
 }  // namespace traits
 namespace detail {
@@ -228,6 +241,10 @@ template <class TAst>
 struct bnf_category_of<Variable<TAst>> {
     using value_t = Expr<TAst>;
 };
+template <class TAst>
+struct ast_class_type<Variable<TAst>> {
+    static constexpr ASTClassType value = ASTClassType::Label;
+};
 }  // namespace traits
 namespace detail {
 template <class TAst>
@@ -280,6 +297,10 @@ namespace traits {
 template <class TAst>
 struct bnf_category_of<StringExpr<TAst>> {
     using value_t = Expr<TAst>;
+};
+template <class TAst>
+struct ast_class_type<StringExpr<TAst>> {
+    static constexpr ASTClassType value = ASTClassType::Label;
 };
 }  // namespace traits
 namespace detail {
@@ -334,6 +355,10 @@ template <class TAst>
 struct bnf_category_of<IntegerExpr<TAst>> {
     using value_t = Expr<TAst>;
 };
+template <class TAst>
+struct ast_class_type<IntegerExpr<TAst>> {
+    static constexpr ASTClassType value = ASTClassType::Label;
+};
 }  // namespace traits
 namespace detail {
 template <class TAst>
@@ -384,6 +409,10 @@ namespace traits {
 template <class TAst>
 struct bnf_category_of<DoubleExpr<TAst>> {
     using value_t = Expr<TAst>;
+};
+template <class TAst>
+struct ast_class_type<DoubleExpr<TAst>> {
+    static constexpr ASTClassType value = ASTClassType::Label;
 };
 }  // namespace traits
 namespace detail {
@@ -436,6 +465,10 @@ template <class TAst>
 struct bnf_category_of<CharExpr<TAst>> {
     using value_t = Expr<TAst>;
 };
+template <class TAst>
+struct ast_class_type<CharExpr<TAst>> {
+    static constexpr ASTClassType value = ASTClassType::Label;
+};
 }  // namespace traits
 namespace detail {
 template <class TAst>
@@ -485,6 +518,10 @@ namespace traits {
 template <class TAst>
 struct bnf_category_of<SpecialExpr<TAst>> {
     using value_t = Expr<TAst>;
+};
+template <class TAst>
+struct ast_class_type<SpecialExpr<TAst>> {
+    static constexpr ASTClassType value = ASTClassType::Label;
 };
 }  // namespace traits
 namespace detail {
