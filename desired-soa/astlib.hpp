@@ -2276,14 +2276,35 @@ inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr
     return res;
 }
 
-auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast, concepts::is_ast_ptr auto ptr) -> decltype(ptr) {
+namespace detail {
+
+template <concepts::is_ast_ptr TPtr>
+void copy_annots_for_node(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast,
+                          TPtr source_ptr, TPtr dest_ptr) {
+    [&]<class... SourceTypes, class... DestTypes>(const AST<SourceTypes...>&,
+                                                  const AST<DestTypes...>&) {
+        (
+            [&] {
+                if constexpr (pack_find_v<DestTypes, SourceTypes...> != -1) {
+                    dest_ast.template annotation<DestTypes>(dest_ptr) =
+                        source_ast.template annotation<DestTypes>(source_ptr);
+                }
+            }(),
+            ...);
+    }(source_ast, dest_ast);
+}
+
+}  // namespace detail
+
+auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast,
+               concepts::is_ast_ptr auto ptr) -> decltype(ptr) {
     auto rec_copy = [&](auto&& obj) -> decltype(auto) {
         if constexpr (concepts::is_ast_ptr<std::remove_cvref_t<decltype(obj)>>)
             return deep_copy(source_ast, dest_ast, obj);
         else
             return obj;
     };
-    return source_ast.visit(ptr)([&](auto obj) {
+    auto res = source_ast.visit(ptr)([&](auto obj) {
         using obj_t = decltype(obj);
         if constexpr (concepts::is_ast_label<obj_t>) {
             static constexpr size_t argcount = std::tuple_size_v<obj_t>;
@@ -2294,10 +2315,12 @@ auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_as
             return obj_t(dest_ast, obj | std::views::transform(rec_copy)).pointer();
         }
     });
+    detail::copy_annots_for_node(source_ast, dest_ast, ptr, res);
+    return res;
 }
 
 auto shallow_copy(concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr) -> decltype(ptr) {
-    return ast.visit(ptr)([&](auto obj) {
+    auto res = ast.visit(ptr)([&](auto obj) {
         using obj_t = decltype(obj);
         if constexpr (concepts::is_ast_label<obj_t>) {
             static constexpr size_t argcount = std::tuple_size_v<obj_t>;
@@ -2308,6 +2331,8 @@ auto shallow_copy(concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr) -> 
             return obj_t(ast, obj).pointer();
         }
     });
+    detail::copy_annots_for_node(ast, ast, ptr, res);
+    return res;
 }
 
 }  // namespace lib
