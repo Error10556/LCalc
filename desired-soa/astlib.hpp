@@ -391,12 +391,23 @@ template <class... Ts>
 struct pack_of_types {};
 
 template <size_t Index, class Pack>
-struct pack_of_types_index {};
+struct pack_of_types_index;
 
 template <size_t Index, class... Ts>
 struct pack_of_types_index<Index, pack_of_types<Ts...>> {
     using value_t = pack_index<Index, Ts...>::value_t;
 };
+
+template <class T, class Pack>
+struct pack_of_types_find;
+
+template <class T, class... Ts>
+struct pack_of_types_find<T, pack_of_types<Ts...>> {
+    static constexpr int value = pack_find<T, Ts...>::value;
+};
+
+template <class T, class Pack>
+constexpr int pack_of_types_find_v = pack_of_types_find<T, Pack>::value;
 
 template <class Pack>
 struct pack_of_types_size {};
@@ -618,9 +629,11 @@ template <concepts::is_ast_label TLabel>
 struct type_tag_of {
 private:
     using cat_t = bnf_category_of_t<TLabel>;
+    static constexpr int signed_val = detail::pack_of_types_find_v<TLabel, cat_t>;
+    static_assert(signed_val >= 0);
 
 public:
-    static constexpr uint32_t value = detail::pack_find_v<TLabel, cat_t>;
+    static constexpr uint32_t value = signed_val;
 };
 
 template <concepts::is_ast_label TLabel>
@@ -726,6 +739,7 @@ class AST {
     detail::ASTNewNodeInfo emplace_back(uint32_t nextra, uint32_t nstrings,
                                         bool needs_8byte_align) {
         uint32_t res_index = tree.size();
+        tree.emplace_back();
         if (needs_8byte_align && nextra && (extra.size() & 1)) {
             extra.emplace_back();
         }
@@ -909,6 +923,11 @@ struct pack_of_types_index<Index, ASTPtr<Ts...>> {
     using value_t = pack_index<Index, Ts...>::value_t;
 };
 
+template <class T, class... Ts>
+struct pack_of_types_find<T, ASTPtr<Ts...>> {
+    static constexpr int value = pack_find<T, Ts...>::value;
+};
+
 template <class... Ts>
 struct pack_of_types_size<ASTPtr<Ts...>> {
     static constexpr size_t value = sizeof...(Ts);
@@ -1087,26 +1106,26 @@ inline decltype(auto) Visit<TAst, TASTPtr...>::operator()(Visitor&& visitor) {
     using namespace detail;
     constexpr size_t npacks = sizeof...(TASTPtr);
     using proxy_t = std::invoke_result_t<Visitor&&, pack_of_types_index_t<0ULL, TASTPtr>...> (*)(
-        Visitor&&, AST_privates&, const std::array<uint32_t, npacks>&);
+        Visitor&&, TAst&, const std::array<uint32_t, npacks>&);
     static constexpr std::array vtable = []<size_t... TIndices>(
                                              std::integer_sequence<size_t, TIndices...>) {
         return std::array<proxy_t, sizeof...(TIndices)>{
-            [](Visitor&& vis, AST_privates& ast, const std::array<uint32_t, npacks>& indices) {
-                using MyTypesPack = packs_mdindex<TIndices, TASTPtr...>;
+            [](Visitor&& vis, TAst& ast, const std::array<uint32_t, npacks>& indices) {
+                using MyTypesPack = packs_mdindex_t<TIndices, TASTPtr...>;
                 return [&]<class... MyTypes, size_t... MyTypeIndices>(
                            pack_of_types<MyTypes...>,
                            std::integer_sequence<size_t, MyTypeIndices...>) {
                     return std::forward<Visitor>(vis)(
                         AnyAstNode_privates::create_label<MyTypes>(ast, indices[MyTypeIndices])...);
-                }(MyTypesPack{}, std::make_index_sequence<sizeof...(TIndices)>());
+                }(MyTypesPack(), std::make_index_sequence<pack_of_types_size_v<MyTypesPack>>());
             }...};
     }(std::make_index_sequence<(pack_of_types_size_v<TASTPtr> * ...)>());
     static constexpr std::array<size_t, npacks> coefs{pack_of_types_size_v<TASTPtr>...};
     size_t totalindex = 0;
-    const auto& treenodes = ast.tree;
-    for (uint32_t i : indices) {
+    const auto& treenodes = detail::AST_privates::tree(ast);
+    for (size_t i = 0; i < std::size(indices); i++) {
         if (coefs[i] == 1) continue;  // Must not access treenodes[i].info of a singleton variant
-        totalindex = totalindex * coefs[i] + treenodes[i].info;
+        totalindex = totalindex * coefs[i] + treenodes[indices[i]].info;
     }
     return vtable[totalindex](std::forward<Visitor>(visitor), ast, indices);
 }
@@ -1222,7 +1241,8 @@ private:
     }
 
 public:
-    ArrayOfScalars(TAst& ast, uint32_t index) : ast{ast}, fields{ast.tree[index]}, myindex{index} {}
+    ArrayOfScalars(TAst& ast, uint32_t index)
+        : ast{ast}, fields{AST_privates::tree(ast)[index]}, myindex{index} {}
     ArrayOfScalars(TAst& ast, detail::ASTNodeItem fields, uint32_t index)
         : ast{ast}, fields{fields}, myindex{index} {}
     detail::NodeMemoryPosition position_in_memory() const {
@@ -2308,17 +2328,20 @@ auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_as
         if constexpr (concepts::is_ast_ptr<std::remove_cvref_t<decltype(obj)>>)
             return deep_copy(source_ast, dest_ast, obj);
         else
-            return obj;
+            return std::forward<decltype(obj)>(obj);
     };
     auto res = source_ast.visit(ptr)([&](auto obj) {
         using obj_t = decltype(obj);
         if constexpr (concepts::is_ast_label<obj_t>) {
             static constexpr size_t argcount = std::tuple_size_v<obj_t>;
-            [&]<size_t... Indices>(std::index_sequence<Indices...>) {
+            return [&]<size_t... Indices>(std::index_sequence<Indices...>) {
                 // copies_or_refs is evaluated in the correct order
                 std::tuple<decltype(rec_copy(obj.template get<Indices>()))...> copies_or_refs{
                     rec_copy(obj.template get<Indices>())...};
-                return obj_t(dest_ast, std::get<Indices>(copies_or_refs)...).pointer();
+                return obj_t(dest_ast,
+                             std::forward<std::tuple_element_t<Indices, decltype(copies_or_refs)>>(
+                                 std::get<Indices>(copies_or_refs))...)
+                    .pointer();
             }(std::make_index_sequence<argcount>());
         } else {  // array
             return obj_t(dest_ast, obj | std::views::transform(rec_copy)).pointer();
