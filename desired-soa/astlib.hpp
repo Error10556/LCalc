@@ -528,10 +528,13 @@ enum class ASTClassType {
     Label,
     StringToken,
     ScalarToken,
+    Unknown,
 };
 
 template <class T>
-struct ast_class_type;
+struct ast_class_type {
+    static constexpr ASTClassType value = ASTClassType::Unknown;
+};
 
 template <class T>
 static constexpr ASTClassType ast_class_type_v = ast_class_type<T>::value;
