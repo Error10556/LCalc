@@ -778,7 +778,7 @@ private:
         res.tree.reserve(n / 2);
         res.extra.reserve(extra.size() / 2);
         res.string_tokens.reserve(string_tokens.size() / 2);
-        [halfn = n / 2, res]<size_t... Indices>(std::index_sequence<Indices...>) {
+        [halfn = n / 2, &res]<size_t... Indices>(std::index_sequence<Indices...>) {
             (std::get<Indices>(res.annots).reserve(halfn), ...);
         }(std::make_index_sequence<sizeof...(TAnnotations)>());
         return res;
