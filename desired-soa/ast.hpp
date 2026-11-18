@@ -59,6 +59,10 @@ template <class TAst>
 struct label_pointer_fields<AProgram<TAst>> {
     using value_t = pack_of_types<ASTPtr<Array<TAst, Expr<TAst>>>>;
 };
+template <class TAst>
+struct label_tuple_size<AProgram<TAst>> {
+    static constexpr size_t value = 1;
+};
 }  // namespace detail
 }  // namespace lib
 
@@ -102,6 +106,12 @@ public:
         return lib::detail::AnyAstNode_privates::create_label<AProgram<NewAst>>(
             base.with_ast(new_ast));
     }
+
+    template <size_t I>
+        requires(I < 1)
+    lib::ASTPtr<lib::Array<TAst, Expr<TAst>>> get() const {
+        return ListExpr_();
+    }
 };
 
 namespace lib {
@@ -119,6 +129,10 @@ namespace detail {
 template <class TAst>
 struct label_pointer_fields<Abstraction<TAst>> {
     using value_t = pack_of_types<Expr<TAst>>;
+};
+template <class TAst>
+struct label_tuple_size<Abstraction<TAst>> {
+    static constexpr size_t value = 2;
 };
 }  // namespace detail
 }  // namespace lib
@@ -166,6 +180,15 @@ public:
         return lib::detail::AnyAstNode_privates::create_label<Abstraction<NewAst>>(
             base.with_ast(new_ast));
     }
+
+    template <size_t I>
+        requires(I < 2)
+    auto get() const {
+        if constexpr (I == 0)
+            return Ident_();
+        else
+            return Expr_();
+    }
 };
 
 namespace lib {
@@ -183,6 +206,10 @@ namespace detail {
 template <class TAst>
 struct label_pointer_fields<Application<TAst>> {
     using value_t = pack_of_types<Expr<TAst>>;
+};
+template <class TAst>
+struct label_tuple_size<Application<TAst>> {
+    static constexpr size_t value = 2;
 };
 }  // namespace detail
 }  // namespace lib
@@ -233,6 +260,15 @@ public:
         return lib::detail::AnyAstNode_privates::create_label<Application<NewAst>>(
             base.with_ast(new_ast));
     }
+
+    template <size_t I>
+        requires(I < 2)
+    auto get() const {
+        if constexpr (I == 0)
+            return Expr_1();
+        else
+            return Expr_2();
+    }
 };
 
 namespace lib {
@@ -250,6 +286,10 @@ namespace detail {
 template <class TAst>
 struct label_pointer_fields<Variable<TAst>> {
     using value_t = pack_of_types<Expr<TAst>>;
+};
+template <class TAst>
+struct label_tuple_size<Variable<TAst>> {
+    static constexpr size_t value = 1;
 };
 }  // namespace detail
 }  // namespace lib
@@ -290,6 +330,12 @@ public:
         return lib::detail::AnyAstNode_privates::create_label<Variable<NewAst>>(
             base.with_ast(new_ast));
     }
+
+    template <size_t I>
+        requires(I < 1)
+    auto get() const {
+        return Ident_();
+    }
 };
 
 namespace lib {
@@ -307,6 +353,10 @@ namespace detail {
 template <class TAst>
 struct label_pointer_fields<StringExpr<TAst>> {
     using value_t = pack_of_types<>;
+};
+template <class TAst>
+struct label_tuple_size<StringExpr<TAst>> {
+    static constexpr size_t value = 1;
 };
 }  // namespace detail
 }  // namespace lib
@@ -347,6 +397,12 @@ public:
         return lib::detail::AnyAstNode_privates::create_label<StringExpr<NewAst>>(
             base.with_ast(new_ast));
     }
+
+    template <size_t I>
+        requires(I < 1)
+    auto get() const {
+        return String_();
+    }
 };
 
 namespace lib {
@@ -364,6 +420,10 @@ namespace detail {
 template <class TAst>
 struct label_pointer_fields<IntegerExpr<TAst>> {
     using value_t = pack_of_types<>;
+};
+template <class TAst>
+struct label_tuple_size<IntegerExpr<TAst>> {
+    static constexpr size_t value = 1;
 };
 }  // namespace detail
 }  // namespace lib
@@ -402,6 +462,12 @@ public:
         return lib::detail::AnyAstNode_privates::create_label<IntegerExpr<NewAst>>(
             base.with_ast(new_ast));
     }
+
+    template <size_t I>
+        requires(I < 1)
+    auto get() const {
+        return Integer_();
+    }
 };
 
 namespace lib {
@@ -419,6 +485,10 @@ namespace detail {
 template <class TAst>
 struct label_pointer_fields<DoubleExpr<TAst>> {
     using value_t = pack_of_types<>;
+};
+template <class TAst>
+struct label_tuple_size<DoubleExpr<TAst>> {
+    static constexpr size_t value = 1;
 };
 }  // namespace detail
 }  // namespace lib
@@ -457,6 +527,12 @@ public:
         return lib::detail::AnyAstNode_privates::create_label<DoubleExpr<NewAst>>(
             base.with_ast(new_ast));
     }
+
+    template <size_t I>
+        requires(I < 1)
+    auto get() const {
+        return Double_();
+    }
 };
 
 namespace lib {
@@ -474,6 +550,10 @@ namespace detail {
 template <class TAst>
 struct label_pointer_fields<CharExpr<TAst>> {
     using value_t = pack_of_types<>;
+};
+template <class TAst>
+struct label_tuple_size<CharExpr<TAst>> {
+    static constexpr size_t value = 1;
 };
 }  // namespace detail
 }  // namespace lib
@@ -511,6 +591,12 @@ public:
         return lib::detail::AnyAstNode_privates::create_label<CharExpr<NewAst>>(
             base.with_ast(new_ast));
     }
+
+    template <size_t I>
+        requires(I < 1)
+    auto get() const {
+        return Char_();
+    }
 };
 
 namespace lib {
@@ -528,6 +614,10 @@ namespace detail {
 template <class TAst>
 struct label_pointer_fields<SpecialExpr<TAst>> {
     using value_t = pack_of_types<>;
+};
+template <class TAst>
+struct label_tuple_size<SpecialExpr<TAst>> {
+    static constexpr size_t value = 3;
 };
 }  // namespace detail
 }  // namespace lib
@@ -579,6 +669,17 @@ public:
     SpecialExpr<NewAst> with_ast(NewAst& new_ast) const {
         return lib::detail::AnyAstNode_privates::create_label<SpecialExpr<NewAst>>(
             base.with_ast(new_ast));
+    }
+
+    template <size_t I>
+        requires(I < 3)
+    auto get() const {
+        if constexpr (I == 0)
+            return SpecialBegin_();
+        else if constexpr (I == 1)
+            return Expr_();
+        else
+            return SpecialEnd_();
     }
 };
 

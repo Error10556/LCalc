@@ -2073,6 +2073,9 @@ struct label_pointer_fields;
 template <concepts::is_ast_label TLabel>
 using label_pointer_fields_t = label_pointer_fields<TLabel>::value_t;
 
+template <concepts::is_ast_label TLabel>
+struct label_tuple_size;
+
 }  // namespace detail
 
 /**************************/
@@ -2338,6 +2341,18 @@ auto shallow_copy(concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr) -> 
 }  // namespace lib
 
 }  // namespace ast
+
+namespace std {
+
+template <ast::lib::concepts::is_ast_label TLabel>
+struct tuple_size<TLabel>
+    : public integral_constant<size_t, ast::lib::detail::label_tuple_size<TLabel>::value> {};
+template <size_t I, ast::lib::concepts::is_ast_label TLabel>
+struct tuple_element<I, TLabel> {
+    using type = decltype(std::declval<const TLabel>().template get<I>());
+};
+
+}  // namespace std
 
 // EXAMPLE
 
