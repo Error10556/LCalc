@@ -14,29 +14,29 @@ using SpecialEnd = String;
 /*  Categories  */
 /****************/
 
-template <lib::concepts::is_ast TAst>
+template <lib::concepts::is_ast TAst = lib::AST<>>
 class Abstraction;
-template <lib::concepts::is_ast TAst>
+template <lib::concepts::is_ast TAst = lib::AST<>>
 class Application;
-template <lib::concepts::is_ast TAst>
+template <lib::concepts::is_ast TAst = lib::AST<>>
 class Variable;
-template <lib::concepts::is_ast TAst>
+template <lib::concepts::is_ast TAst = lib::AST<>>
 class StringExpr;
-template <lib::concepts::is_ast TAst>
+template <lib::concepts::is_ast TAst = lib::AST<>>
 class IntegerExpr;
-template <lib::concepts::is_ast TAst>
+template <lib::concepts::is_ast TAst = lib::AST<>>
 class DoubleExpr;
-template <lib::concepts::is_ast TAst>
+template <lib::concepts::is_ast TAst = lib::AST<>>
 class CharExpr;
-template <lib::concepts::is_ast TAst>
+template <lib::concepts::is_ast TAst = lib::AST<>>
 class SpecialExpr;
-template <lib::concepts::is_ast TAst>
+template <lib::concepts::is_ast TAst = lib::AST<>>
 using Expr = lib::ASTPtr<Abstraction<TAst>, Application<TAst>, Variable<TAst>, StringExpr<TAst>,
                          IntegerExpr<TAst>, DoubleExpr<TAst>, CharExpr<TAst>, SpecialExpr<TAst>>;
 
-template <lib::concepts::is_ast TAst>
+template <lib::concepts::is_ast TAst = lib::AST<>>
 class AProgram;
-template <lib::concepts::is_ast TAst>
+template <lib::concepts::is_ast TAst = lib::AST<>>
 using Program = lib::ASTPtr<AProgram<TAst>>;
 
 /*****************/
