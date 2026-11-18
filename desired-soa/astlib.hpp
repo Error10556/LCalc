@@ -887,8 +887,8 @@ class ASTPtr {
 
 namespace detail {
 struct ASTPtr_privates {
-    template <class... T>
-    static uint32_t Index(const ASTPtr<T...> ptr) {
+    template <concepts::is_ast_ptr TPtr>
+    static uint32_t Index(TPtr ptr) {
         return ptr.index;
     }
     template <concepts::is_ast_ptr TPtr>
@@ -1372,9 +1372,9 @@ class Array<TAst, Item> : private detail::ArrayOfScalars<TAst, uint32_t> {
     using base_t = detail::ArrayOfScalars<TAst, uint32_t>;
 
 private:
-    using base_t::ArrayOfScalars;
     using base_t::on_moved;
     using base_t::position_in_memory;
+    using typename base_t::ArrayOfScalars;
     friend detail::AnyAstNode_privates;
 
 public:
@@ -2315,7 +2315,10 @@ auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_as
         if constexpr (concepts::is_ast_label<obj_t>) {
             static constexpr size_t argcount = std::tuple_size_v<obj_t>;
             [&]<size_t... Indices>(std::index_sequence<Indices...>) {
-                return obj_t(dest_ast, rec_copy(obj.template get<Indices>())...).pointer();
+                // copies_or_refs is evaluated in the correct order
+                std::tuple<decltype(rec_copy(obj.template get<Indices>()))...> copies_or_refs{
+                    rec_copy(obj.template get<Indices>())...};
+                return obj_t(dest_ast, std::get<Indices>(copies_or_refs)...).pointer();
             }(std::make_index_sequence<argcount>());
         } else {  // array
             return obj_t(dest_ast, obj | std::views::transform(rec_copy)).pointer();

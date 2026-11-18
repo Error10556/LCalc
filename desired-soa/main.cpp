@@ -1,24 +1,19 @@
-#include "annotation.hpp"
-#include "astinst.hpp"
-#include "ast.hpp"
 #include <variant>
 
-using ast::lib::AST;
+#include "annotation.hpp"
+#include "ast.hpp"
+#include "astinst.hpp"
+#include "astlib.hpp"
 
-template <ast::lib::concepts::is_ast TAst = AST<>>
-auto clone(TAst& ast, ast::lib::concepts::is_ast_ptr auto ptr) {
-    return ast.visit(ptr)([](auto obj) {
-        using label_t = decltype(obj);
-        // TODO after decomposition
-    });
-}
+using ast::lib::AST;
 
 /*
 
 FILE:
 
-// (power (3) (3)) (successor) (0)
-(l a. l b. l s. l z. a b s z) (l s. l z. s (s (s z))) (l s. l z. s (s (s z)))(l b. l f. f (l a. a) b) (l z. z);
+// (power (3) (3)) (prepend 'id') ([])
+(l a. l b. l s. l z. a b s z) (l s. l z. s (s (s z))) (l s. l z. s (s (s z)))
+(l b. l f. f (l a. a) b) (l z. z);
 
 str: "Привет!\x21\U0001F525";
 chr: '🔥';
@@ -39,7 +34,7 @@ const <a>;
 
 */
 
-std::pair<ast::lib::AST<>, ast::Program<ast::lib::AST<>>> pseudo_parse() {
+std::pair<AST<>, ast::Program<>> pseudo_parse() {
     using std::literals::operator""s;
     AST<> ast;
     // l a. l b. l s. l z. a b s z
@@ -62,8 +57,51 @@ std::pair<ast::lib::AST<>, ast::Program<ast::lib::AST<>>> pseudo_parse() {
         return la;
     }();
 
+    // l s. l z. s (s (s z))
+    auto p3 = [&ast] {
+        auto z = ast::Variable<>(ast, "z").pointer();
+        auto inner_app = z;
+        for (int i = 0; i < 3; i++)
+            inner_app =
+                ast::Application(ast, ast::Variable(ast, "s").pointer(), inner_app).pointer();
+        auto lz = ast::Abstraction(ast, "z", inner_app).pointer();
+        auto ls = ast::Abstraction(ast, "s", lz).pointer();
+        return ls;
+    }();
+
+    auto p3_right = ast::lib::deep_copy(ast, ast, p3);
+
+    // l b. l f. f (l a. a) b
+    auto prepender = [&ast] {
+        auto f = ast::Variable(ast, "f").pointer();
+        auto id = ast::Abstraction(ast, "a", ast::Variable(ast, "a").pointer()).pointer();
+        auto b = ast::Variable(ast, "b").pointer();
+        auto lf = ast::Abstraction(
+                      ast, "f",
+                      ast::Application(ast, ast::Application(ast, f, id).pointer(), b).pointer())
+                      .pointer();
+        auto lb = ast::Abstraction(ast, "b", lf).pointer();
+        return lb;
+    }();
+
+    // l z. z
+    auto nul = ast::Abstraction(ast, "z", ast::Variable(ast, "z").pointer()).pointer();
+
+    auto powerexpr =
+        ast::Application(
+            ast,
+            ast::Application(
+                ast,
+                ast::Application(ast, ast::Application(ast, ppower, p3).pointer(), p3_right)
+                    .pointer(),
+                prepender)
+                .pointer(),
+            nul)
+            .pointer();
+    auto prog = ast::AProgram(ast, ast::lib::Array<AST<>, ast::Expr<>>(ast, powerexpr).pointer()).pointer();
+    return {std::move(ast), prog};
 }
 
 int main() {
-    
+    auto res = pseudo_parse();
 }
