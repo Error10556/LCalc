@@ -50,9 +50,12 @@
  *     │   ├── using bnf_category_of_t<TLabel>
  *     │   │     The LBNF category that the labelled rule belongs to.
  *     │   │
- *     │   └── uint32_t type_tag_of_v<TLabel>
- *     │         The rule index in the LBNF category that the labelled rule belongs to.
- *     │         Internally used as the tag for dynamic dispatch.
+ *     │   ├── uint32_t type_tag_of_v<TLabel>
+ *     │   │     The rule index in the LBNF category that the labelled rule belongs to.
+ *     │   │     Internally used as the tag for dynamic dispatch.
+ *     │   │
+ *     │   └── using ast_array_value_t<TArray>
+ *     │         The type of items in the array.
  *     │
  *     ├── namespace concepts
  *     │   │ Contains useful concepts for template definitions.
@@ -246,20 +249,40 @@
  *     │         Creates an iterator pointing to past-the-last element. Dereferencing it has
  *     │         undefined behavior (see warning for operator[]).
  *     │
- *     └── class LabelledRuleObject<TAst>
- *         │ Accesses a concrete node variant corresponding to a grammar rule.
- *         │ Not part of the library; generated from definitions in the grammar file.
- *         │
- *         ├── ASTPtr<LabelledRuleObject> pointer() const
- *         │     Returns the pointer to this object.
- *         │
- *         ├── LabelledRuleObject<TNewAst> update_annotations(TNewAst& ast) const
- *         │     Changes the stored AST reference. Use after calling the method AST::annotate or
- *         │     the constructor AST(std::move(old_ast)).
- *         │
- *         ├── MemberType Member_() const
- *         └── void Member_(MemberType)
- *               Gets/sets a field.
+ *     ├── class LabelledRuleObject<TAst>
+ *     │   │ Accesses a concrete node variant corresponding to a grammar rule.
+ *     │   │ Not part of the library; generated from definitions in the grammar file.
+ *     │   │
+ *     │   ├── LabelledRuleObject(TAst&, ...args)
+ *     │   │     Creates a new rule object in the AST from the values of its subtree pointers and/or
+ *     │   │     token values. The order of arguments is the same as in the grammar production.
+ *     │   │
+ *     │   ├── ASTPtr<LabelledRuleObject> pointer() const
+ *     │   │     Returns the pointer to this object.
+ *     │   │
+ *     │   ├── LabelledRuleObject<TNewAst> update_annotations(TNewAst& ast) const
+ *     │   │     Changes the stored AST reference. Use after calling the method AST::annotate or
+ *     │   │     the constructor AST(std::move(old_ast)).
+ *     │   │
+ *     │   ├── MemberType Member_() const
+ *     │   ├── void Member_(MemberType)
+ *     │   │     Gets/sets a field.
+ *     │   │
+ *     │   └── const auto& [new_variables] = labelledRuleObject;
+ *     │         Decomposes the object into its constructor arguments (without the AST&
+ *     │         reference).
+ *     │
+ *     ├── auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast,
+ *     │       concepts::is_ast_ptr auto ptr) -> decltype(ptr)
+ *     │     Copies the subtree. The source and destination AST data structures may be the same.
+ *     │     New nodes will be stored in depth-first post-order.
+ *     │     Returns the pointer to the cloned subtree root in dest_ast.
+ *     │
+ *     └── auto shallow_copy(concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr)
+ *             -> decltype(ptr)
+ *           Copies just the node identified by ptr, re-using the pointers used by that node.
+ *           Token values, however, will be copied.
+ *           Returns the pointer to the cloned node.
  */
 
 #pragma once
@@ -599,6 +622,12 @@ public:
 
 template <concepts::is_ast_label TLabel>
 constexpr uint32_t type_tag_of_v = type_tag_of<TLabel>::value;
+
+template <concepts::is_ast_array TArray>
+struct ast_array_value;
+
+template <concepts::is_ast_array TArray>
+using ast_array_value_t = ast_array_value<TArray>::value_t;
 
 }  // namespace traits
 
@@ -1092,6 +1121,10 @@ namespace traits {
 template <class TAst, class Item>
 struct ast_class_type<Array<TAst, Item>> {
     static constexpr ASTClassType value = ASTClassType::Array;
+};
+template <concepts::is_ast TAst, class T>
+struct ast_array_value<Array<TAst, T>> {
+    using value_t = T;
 };
 }  // namespace traits
 
@@ -2243,12 +2276,49 @@ inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr
     return res;
 }
 
+auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast, concepts::is_ast_ptr auto ptr) -> decltype(ptr) {
+    auto rec_copy = [&](auto&& obj) -> decltype(auto) {
+        if constexpr (concepts::is_ast_ptr<std::remove_cvref_t<decltype(obj)>>)
+            return deep_copy(source_ast, dest_ast, obj);
+        else
+            return obj;
+    };
+    return source_ast.visit(ptr)([&](auto obj) {
+        using obj_t = decltype(obj);
+        if constexpr (concepts::is_ast_label<obj_t>) {
+            static constexpr size_t argcount = std::tuple_size_v<obj_t>;
+            [&]<size_t... Indices>(std::index_sequence<Indices...>) {
+                return obj_t(dest_ast, rec_copy(obj.template get<Indices>())...).pointer();
+            }(std::make_index_sequence<argcount>());
+        } else {  // array
+            return obj_t(dest_ast, obj | std::views::transform(rec_copy)).pointer();
+        }
+    });
+}
+
+auto shallow_copy(concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr) -> decltype(ptr) {
+    return ast.visit(ptr)([&](auto obj) {
+        using obj_t = decltype(obj);
+        if constexpr (concepts::is_ast_label<obj_t>) {
+            static constexpr size_t argcount = std::tuple_size_v<obj_t>;
+            [&]<size_t... Indices>(std::index_sequence<Indices...>) {
+                return obj_t(ast, obj.template get<Indices>()...).pointer();
+            }(std::make_index_sequence<argcount>());
+        } else {  // array
+            return obj_t(ast, obj).pointer();
+        }
+    });
+}
+
 }  // namespace lib
+
+}  // namespace ast
 
 // EXAMPLE
 
 /*
 
+namespace ast {
 template <class>
 class Plus;
 
@@ -2271,7 +2341,7 @@ public:
     Plus(TAst& ast, Expr<TAst> Expr_1, Expr<TAst> Expr_2)
         : base(ast, 0,
                {lib::detail::ASTPtr_privates::Index(Expr_1),
-                 lib::detail::ASTPtr_privates::Index(Expr_2)}) {}
+                lib::detail::ASTPtr_privates::Index(Expr_2)}) {}
     Expr<TAst> Expr_1() const {
         return lib::detail::ASTPtr_privates::Create<Expr>(base.template pointer<0>());
     }
@@ -2297,8 +2367,17 @@ public:
     }
     template <lib::concepts::is_ast NewAst>
     Plus<NewAst> update_annotations(NewAst& new_ast) const {
-        return
-lib::detail::AnyAstNode_privates::create_label<Plus<NewAst>>(base.update_annotations(new_ast));
+        return lib::detail::AnyAstNode_privates::create_label<Plus<NewAst>>(
+            base.update_annotations(new_ast));
+    }
+
+    template <size_t I>
+        requires(I < 2)
+    Expr<TAst> get() const {
+        if constexpr (I == 0)
+            return Expr_1();
+        else
+            return Expr_2();
     }
 };
 
@@ -2321,7 +2400,18 @@ struct label_pointer_fields<Plus<TAst>> {
 };
 }  // namespace detail
 }  // namespace lib
+}  // namespace ast
+namespace std {
+template <class TAst>
+struct tuple_size<ast::Plus<TAst>> : public integral_constant<size_t, 2> {};
+template <class TAst>
+struct tuple_element<0UL, ast::Plus<TAst>> {
+    using type = ast::Expr<TAst>;
+};
+template <class TAst>
+struct tuple_element<1UL, ast::Plus<TAst>> {
+    using type = ast::Expr<TAst>;
+};
+}  // namespace std
 
 */
-
-}  // namespace ast
