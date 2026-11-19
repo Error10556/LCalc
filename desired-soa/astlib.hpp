@@ -831,6 +831,7 @@ private:
     }
 
 public:
+    // TODO rework as deep_copy
     template <concepts::is_ast_ptr TPtr>
     std::pair<AST, TPtr> preorder(TPtr root) &;
     // template <concepts::is_ast_ptr TPtr>

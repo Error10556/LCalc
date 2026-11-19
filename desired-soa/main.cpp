@@ -112,7 +112,5 @@ int main() {
         .unchecked_get<ast::Application<>>(ast)
         .Expr_2()
         .unchecked_get<ast::Abstraction<>>(ast).Expr_().unchecked_get<ast::Variable<>>(ast);
-    const auto& [str] = var;
-    std::cout << str << '\n';
     ast::lib::debug::ASTDump(ast).interact(std::cin, std::cout);
 }
