@@ -1,0 +1,75 @@
+#define BNFC_ASTLIB_PREDEF_LABEL(name)                 \
+    template <lib::concepts::is_ast TAst = lib::AST<>> \
+    class name
+#define BNFC_ASTLIB_DEFINE_CAT(name, ...)              \
+    template <lib::concepts::is_ast TAst = lib::AST<>> \
+    using name = lib::ASTPtr<__VA_ARGS__>;             \
+    namespace lib::traits {                            \
+    template <class TAst>                              \
+    struct lbnf_name<name<TAst>> {                     \
+        static constexpr std::string value = #name;    \
+    };                                                 \
+    }
+
+#define BNFC_ASTLIB_DEFINE_LABEL_TRAITS(name, cat, coercion_level, tuplesize, ...) \
+    namespace lib {                                                                \
+    namespace traits {                                                             \
+    template <class TAst>                                                          \
+    struct bnf_category_of<name<TAst>> {                                           \
+        using value_t = cat<TAst>;                                                 \
+    };                                                                             \
+    template <class TAst>                                                          \
+    struct ast_class_type<name<TAst>> {                                            \
+        static constexpr ASTClassType value = ASTClassType::Label;                 \
+    };                                                                             \
+    template <class TAst>                                                          \
+    struct lbnf_name<name<TAst>> {                                                 \
+        static constexpr std::string value = #name;                                \
+    };                                                                             \
+    template <class TAst>                                                          \
+    struct lbnf_coercion_level<name<TAst>> {                                       \
+        static constexpr int value = coercion_level;                               \
+    };                                                                             \
+    }                                                                              \
+    namespace detail {                                                             \
+    template <class TAst>                                                          \
+    struct label_pointer_fields<name<TAst>> {                                      \
+        using value_t = pack_of_types<__VA_ARGS__>;                                \
+    };                                                                             \
+    template <class TAst>                                                          \
+    struct label_tuple_size<name<TAst>> {                                          \
+        static constexpr size_t value = tuplesize;                                 \
+    };                                                                             \
+    }                                                                              \
+    }
+
+#define BNFC_ASTLIB_IMPLEMENT_LABEL(name, cat, contains_tag, nptrs, nstrings, ndoubles, nints,    \
+                                    nchars, nbools)                                               \
+    friend lib::detail::AnyAstNode_privates;                                                      \
+    using base_t =                                                                                \
+        lib::detail::Label<TAst, contains_tag, nptrs, nstrings, ndoubles, nints, nchars, nbools>; \
+    base_t base;                                                                                  \
+    lib::detail::NodeMemoryPosition position_in_memory() const {                                  \
+        return base.position_in_memory();                                                         \
+    }                                                                                             \
+    name(TAst& ast, uint32_t index) : base{ast, index} {}                                         \
+    name(base_t base) : base{base} {}                                                             \
+                                                                                                  \
+public:                                                                                           \
+    TAst& ast() const { return base.ast; }                                                        \
+    cat<TAst> pointer() const {                                                                   \
+        return lib::detail::ASTPtr_privates::Create<cat<TAst>>(base.index());                     \
+    }                                                                                             \
+    template <class T>                                                                            \
+    T& annotation() {                                                                             \
+        return base.ast.template annotation<T>(pointer());                                        \
+    }                                                                                             \
+    template <class T>                                                                            \
+    const T& annotation() const {                                                                 \
+        return base.ast.template annotation<T>(pointer());                                        \
+    }                                                                                             \
+    template <lib::concepts::is_ast NewAst>                                                       \
+    name<NewAst> with_ast(NewAst& new_ast) const {                                                \
+        return lib::detail::AnyAstNode_privates::create_label<name<NewAst>>(                      \
+            base.with_ast(new_ast));                                                              \
+    }

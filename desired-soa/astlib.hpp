@@ -651,6 +651,51 @@ struct ast_array_value;
 template <concepts::is_ast_array TArray>
 using ast_array_value_t = ast_array_value<TArray>::value_t;
 
+template <concepts::is_ast_node T>
+struct lbnf_coercion_level;
+
+template <concepts::is_ast_array T>
+struct lbnf_coercion_level<T> {
+    static constexpr int value = 0;
+};
+
+template <concepts::is_ast_node T>
+constexpr int lbnf_coercion_level_v = lbnf_coercion_level<T>::value;
+
+template <class T>
+    requires(ast_class_type_v<T> != ASTClassType::Unknown)
+struct lbnf_name;
+
+template <>
+struct lbnf_name<std::string> {
+    static constexpr std::string get_name() { return "Stringlike"; }
+};
+
+template <>
+struct lbnf_name<Integer> {
+    static constexpr std::string get_name() { return "Integer"; }
+};
+
+template <>
+struct lbnf_name<Double> {
+    static constexpr std::string get_name() { return "Double"; }
+};
+
+template <>
+struct lbnf_name<Char> {
+    static constexpr std::string get_name() { return "Char"; }
+};
+
+template <>
+struct lbnf_name<Bool> {
+    static constexpr std::string get_name() { return "Bool"; }
+};
+
+// lbnf_name<Array<>> after Array definition
+
+template <concepts::is_ast_node T>
+constexpr std::string lbnf_name_v = lbnf_name<T>::value;
+
 }  // namespace traits
 
 /************************/
@@ -1155,6 +1200,12 @@ template <concepts::is_ast TAst, class T>
 struct ast_array_value<Array<TAst, T>> {
     using value_t = T;
 };
+template <concepts::is_ast TAst, class T>
+struct lbnf_name<Array<TAst, T>> {
+public:
+    static constexpr std::string value = std::string("List") + lbnf_name<T>::value;
+};
+
 }  // namespace traits
 
 namespace detail {
@@ -1406,17 +1457,15 @@ class Array<TAst, Item> : private detail::ArrayOfScalars<TAst, uint32_t> {
     using base_t = detail::ArrayOfScalars<TAst, uint32_t>;
 
 private:
+    using base_t::base_t;
     using base_t::on_moved;
     using base_t::position_in_memory;
-    using base_t::base_t;
     friend detail::AnyAstNode_privates;
 
 public:
     using base_t::size;
 
-    TAst& ast() const {
-        return base_t::ast;
-    }
+    TAst& ast() const { return base_t::ast; }
 
     ASTPtr<Array> pointer() const {
         return detail::ASTPtr_privates::Create<ASTPtr<Array>>(this->myindex);
@@ -1536,9 +1585,7 @@ private:
     friend detail::AnyAstNode_privates;
 
 public:
-    TAst& ast() const {
-        return base_t::ast;
-    }
+    TAst& ast() const { return base_t::ast; }
 
     ASTPtr<Array> pointer() const {
         return detail::ASTPtr_privates::Create<ASTPtr<Array>>(this->myindex);
@@ -1572,7 +1619,9 @@ class Array<TAst, std::string> {
     uint32_t m_size;
     uint32_t strings_ptr;
     uint32_t myindex;
-    auto strings() const { return detail::AST_privates::string_tokens(m_ast).begin() + strings_ptr; }
+    auto strings() const {
+        return detail::AST_privates::string_tokens(m_ast).begin() + strings_ptr;
+    }
     Array(TAst& ast, uint32_t index) : Array(ast, ast.tree[index], index) {}
     Array(TAst& ast, detail::ASTNodeItem data, uint32_t index)
         : m_ast{ast}, m_size{data.info}, strings_ptr{data.children[0]}, myindex{index} {}
@@ -1584,9 +1633,7 @@ class Array<TAst, std::string> {
     friend detail::AnyAstNode_privates;
 
 public:
-    TAst& ast() const {
-        return m_ast;
-    }
+    TAst& ast() const { return m_ast; }
 
     using iterator = std::vector<std::string>::iterator;
     using const_iterator = std::vector<std::string>::const_iterator;
