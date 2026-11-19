@@ -1,8 +1,11 @@
+#include <iostream>
+#include <string_view>
 #include <variant>
 
 #include "annotation.hpp"
 #include "ast.hpp"
 #include "astinst.hpp"
+#include "astlib-debug.hpp"
 #include "astlib.hpp"
 
 using ast::lib::AST;
@@ -102,6 +105,8 @@ std::pair<AST<>, ast::Program<>> pseudo_parse() {
     return {std::move(ast), prog};
 }
 
-int main() {
+int main(int argc, char** argv) {
     auto res = pseudo_parse();
+    // if (argc == 2 && std::string_view(argv[1]) == "--inspect")
+        ast::lib::debug::ASTDump(res.first).interact(std::cin, std::cout);
 }
