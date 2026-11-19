@@ -1,5 +1,7 @@
 /astinst.o
 /astinstdb.o
+/printer-common.o
+/printer-commondb.o
 /main
 /maindb
 /.vscode

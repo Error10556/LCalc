@@ -2,7 +2,7 @@
 #include <charconv>
 #include <system_error>
 
-namespace LC {
+namespace ast::printing {
 
 void print_escaped_char_raw(std::ostream& out, int32_t ch) {
     switch (ch) {
@@ -87,4 +87,4 @@ void print_double(std::ostream& out, double val) {
     out << std::string_view(buf, res.ptr - buf);
 }
 
-}  // namespace LC
+}  // namespace ast::printing
