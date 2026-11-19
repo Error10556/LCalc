@@ -209,6 +209,9 @@
  *     │   │     Use ranges::subrange(make_move_iterator(begin), make_move_iterator(end))
  *     │   │     to avoid copying strings from a container.
  *     │   │
+ *     │   ├── TAst& ast() const
+ *     │   │     Returns the owning AST data structure.
+ *     │   │
  *     │   ├── uint32_t size() const
  *     │   │     Returns the number of elements in the array.
  *     │   │
@@ -256,6 +259,9 @@
  *     │   ├── LabelledRuleObject(TAst&, ...args)
  *     │   │     Creates a new rule object in the AST from the values of its subtree pointers and/or
  *     │   │     token values. The order of arguments is the same as in the grammar production.
+ *     │   │
+ *     │   ├── TAst& ast() const
+ *     │   │     Returns the owning AST data structure.
  *     │   │
  *     │   ├── ASTPtr<LabelledRuleObject> pointer() const
  *     │   │     Returns the pointer to this object.
@@ -1207,10 +1213,10 @@ class ArrayOfScalars {
     //         : (N - LongListInlineTs) * ((sizeof(T) + sizeof(uint32_t) - 1) / sizeof(uint32_t));
     // static constexpr size_t InlineItems = IsShortList ? ShortListInlineTs : LongListInlineTs;
 
-    TAst& ast;
     detail::ASTNodeItem fields alignas(8);  // {size, {data|extra_ptr, data, data}}
 
 protected:
+    TAst& ast;
     uint32_t myindex;
 
 private:
@@ -1405,6 +1411,10 @@ private:
 public:
     using base_t::size;
 
+    TAst& ast() const {
+        return base_t::ast;
+    }
+
     ASTPtr<Array> pointer() const {
         return detail::ASTPtr_privates::Create<ASTPtr<Array>>(this->myindex);
     }
@@ -1523,6 +1533,10 @@ private:
     friend detail::AnyAstNode_privates;
 
 public:
+    TAst& ast() const {
+        return base_t::ast;
+    }
+
     ASTPtr<Array> pointer() const {
         return detail::ASTPtr_privates::Create<ASTPtr<Array>>(this->myindex);
     }
@@ -1551,26 +1565,30 @@ public:
 template <concepts::is_ast TAst>
 class Array<TAst, std::string> {
     // ast node: {size, {strings_ptr, 0, 0}}
-    TAst& ast;
-    uint32_t size_;
+    TAst& m_ast;
+    uint32_t m_size;
     uint32_t strings_ptr;
     uint32_t myindex;
-    auto strings() const { return detail::AST_privates::string_tokens(ast).begin() + strings_ptr; }
+    auto strings() const { return detail::AST_privates::string_tokens(m_ast).begin() + strings_ptr; }
     Array(TAst& ast, uint32_t index) : Array(ast, ast.tree[index], index) {}
     Array(TAst& ast, detail::ASTNodeItem data, uint32_t index)
-        : ast{ast}, size_{data.info}, strings_ptr{data.children[0]}, myindex{index} {}
+        : m_ast{ast}, m_size{data.info}, strings_ptr{data.children[0]}, myindex{index} {}
     Array(TAst& ast, uint32_t size, uint32_t strings_ptr, uint32_t index)
-        : ast{ast}, size_{size}, strings_ptr{strings_ptr}, myindex{index} {}
+        : m_ast{ast}, m_size{size}, strings_ptr{strings_ptr}, myindex{index} {}
     void on_moved(uint32_t /*new_extras_ptr*/, uint32_t new_strings_ptr) {
-        detail::AST_privates::tree(ast)[myindex].children[0] = strings_ptr = new_strings_ptr;
+        detail::AST_privates::tree(m_ast)[myindex].children[0] = strings_ptr = new_strings_ptr;
     }
     friend detail::AnyAstNode_privates;
 
 public:
+    TAst& ast() const {
+        return m_ast;
+    }
+
     using iterator = std::vector<std::string>::iterator;
     using const_iterator = std::vector<std::string>::const_iterator;
 
-    uint32_t size() const { return size_; }
+    uint32_t size() const { return m_size; }
     std::string& at(uint32_t index) {
         if (index >= size())
             throw std::range_error("Array<*, std::string> access: index out of range");
@@ -1592,16 +1610,16 @@ public:
     ASTPtr<Array> pointer() const { return lib::detail::ASTPtr_privates::Create<Array>(myindex); }
     template <class T>
     T& annotation() {
-        return this->ast.template annotation<T>(pointer());
+        return this->m_ast.template annotation<T>(pointer());
     }
     template <class T>
     const T& annotation() const {
-        return this->ast.template annotation<T>(pointer());
+        return this->m_ast.template annotation<T>(pointer());
     }
     template <lib::concepts::is_ast NewAst>
     Array<NewAst, std::string> update_annotations(NewAst& new_ast) const {
         return detail::AnyAstNode_privates::create_array<Array<NewAst, std::string>>(
-            new_ast, size_, strings_ptr, myindex);
+            new_ast, m_size, strings_ptr, myindex);
     }
 
 private:
@@ -1609,7 +1627,7 @@ private:
 
     template <std::ranges::sized_range Range>
         requires(std::same_as<std::ranges::range_value_t<Range>, std::string>)
-    Array(TAst& ast, Range&& range, private_tag_t) : ast{ast}, size_{std::size(range)} {
+    Array(TAst& ast, Range&& range, private_tag_t) : m_ast{ast}, m_size{std::size(range)} {
         detail::ASTNewNodeInfo new_node_info =
             detail::AST_privates::emplace_back(ast, 0, size(), false);
         myindex = new_node_info.node_index;
