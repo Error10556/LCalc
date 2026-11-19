@@ -81,6 +81,7 @@ public:
     AProgram(TAst& ast, lib::ASTPtr<lib::Array<TAst, Expr<TAst>>> ListExpr_)
         : base(ast, lib::traits::type_tag_of_v<AProgram>,
                {lib::detail::ASTPtr_privates::Index(ListExpr_)}) {}
+    TAst& ast() const { return base.ast; }
 
     lib::ASTPtr<lib::Array<TAst, Expr<TAst>>> ListExpr_() const {
         return lib::detail::ASTPtr_privates::Create<lib::ASTPtr<lib::Array<TAst, Expr<TAst>>>>(
@@ -152,6 +153,7 @@ public:
     Abstraction(TAst& ast, Ident Ident_, Expr<TAst> Expr_)
         : base(ast, lib::traits::type_tag_of_v<Abstraction>,
                {lib::detail::ASTPtr_privates::Index(Expr_), std::move(Ident_)}) {}
+    TAst& ast() const { return base.ast; }
 
     const Ident& Ident_() const { return base.template string<0>(); }
     Ident& Ident_() { return base.template string<0>(); }
@@ -230,6 +232,7 @@ public:
         : base(ast, lib::traits::type_tag_of_v<Application>,
                {lib::detail::ASTPtr_privates::Index(Expr_1),
                 lib::detail::ASTPtr_privates::Index(Expr_2)}) {}
+    TAst& ast() const { return base.ast; }
 
     Expr<TAst> Expr_1() const {
         return lib::detail::ASTPtr_privates::Create<Expr<TAst>>(base.template pointer<0>());
@@ -308,6 +311,7 @@ class Variable final {
 public:
     Variable(TAst& ast, Ident Ident_)
         : base(ast, lib::traits::type_tag_of_v<Variable>, {std::move(Ident_)}) {}
+    TAst& ast() const { return base.ast; }
 
     const Ident& Ident_() const { return base.template string<0>(); }
     Ident& Ident_() { return base.template string<0>(); }
@@ -375,6 +379,7 @@ class StringExpr final {
 public:
     StringExpr(TAst& ast, String String_)
         : base(ast, lib::traits::type_tag_of_v<StringExpr>, {std::move(String_)}) {}
+    TAst& ast() const { return base.ast; }
 
     const String& String_() const { return base.template string<0>(); }
     String& String_() { return base.template string<0>(); }
@@ -442,6 +447,7 @@ class IntegerExpr final {
 public:
     IntegerExpr(TAst& ast, Integer Integer_)
         : base(ast, lib::traits::type_tag_of_v<IntegerExpr>, {Integer_}) {}
+    TAst& ast() const { return base.ast; }
 
     Integer Integer_() const { return base.template get_scalar_token<Integer, 0>(); }
     void Integer_(Integer value) { base.template set_scalar_token<Integer, 0>(value); }
@@ -507,6 +513,7 @@ class DoubleExpr final {
 public:
     DoubleExpr(TAst& ast, Double Double_)
         : base(ast, lib::traits::type_tag_of_v<DoubleExpr>, {Double_}) {}
+    TAst& ast() const { return base.ast; }
 
     Double Double_() const { return base.template get_scalar_token<Double, 0>(); }
     void Double_(Double value) { base.template set_scalar_token<Double, 0>(value); }
@@ -571,6 +578,7 @@ class CharExpr final {
 
 public:
     CharExpr(TAst& ast, Char Char_) : base(ast, lib::traits::type_tag_of_v<CharExpr>, {Char_}) {}
+    TAst& ast() const { return base.ast; }
 
     Char Char_() const { return base.template get_scalar_token<Char, 0>(); }
     void Char_(Char value) { base.template set_scalar_token<Char, 0>(value); }
@@ -638,6 +646,7 @@ public:
         : base(ast, lib::traits::type_tag_of_v<SpecialExpr>,
                {lib::detail::ASTPtr_privates::Index(Expr_), std::move(SpecialBegin_),
                 std::move(SpecialEnd_)}) {}
+    TAst& ast() const { return base.ast; }
 
     const SpecialBegin& SpecialBegin_() const { return base.template string<0>(); }
     SpecialBegin& SpecialBegin_() { return base.template string<0>(); }
