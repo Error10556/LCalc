@@ -4,6 +4,8 @@ BISONFLAGS =
 OLD_BNFCFLAGS = --cpp-var ../grammar.cf
 BNFCFLAGS = $(OLD_BNFCFLAGS)
 
+all: main maindb
+
 astinst.o: ast.hpp astlib.hpp astinst.cpp
 	$(CXX) $(CXXFLAGS) astinst.cpp -c -o astinst.o
 

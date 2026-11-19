@@ -64,7 +64,13 @@ void write_value(std::ostream& out, const ASTDump::Blob& blob) { out << blob; }
 
 bool parse_index(std::string_view text, std::size_t& index) {
     const auto end = text.data() + text.size();
-    const auto result = std::from_chars(text.data(), end, index);
+    uint32_t radix = 10;
+    auto start = text.data();
+    if (text.starts_with("0x")) {
+        radix = 16;
+        start += 2;
+    }
+    const auto result = std::from_chars(start, end, index, radix);
     return result.ec == std::errc{} && result.ptr == end;
 }
 
@@ -88,7 +94,8 @@ void write_rows(std::istream& args, std::ostream& out, const std::vector<T>& row
     }
     if (count == 0) out << "(empty)\n";
     for (std::size_t i = first; i < first + count; ++i) {
-        out << i << ": ";
+        write_value(out, static_cast<uint32_t>(i));
+        out << ": ";
         write_value(out, rows[i]);
         out.put('\n');
     }
@@ -102,7 +109,7 @@ constexpr char help[] =
     "annots [column [index [count]]] List annotation columns or show their bytes\n"
     "help                            Show this help\n"
     "quit                            End inspection\n"
-    "Indices and column numbers are zero-based decimal numbers.\n"
+    "Indices and column numbers are zero-based decimal numbers or hexadecimal if prefixed with 0x.\n"
     "Omit the index to show all rows. With an index, the count defaults to one.\n";
 
 }  // namespace

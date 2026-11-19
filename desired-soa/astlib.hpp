@@ -982,11 +982,11 @@ public:
     }
     template <concepts::detail::same_as_any_of<Ts...> TLabel, concepts::is_ast TAst>
     std::optional<TLabel> checked_get(TAst& ast) const {
-        return ast.checked_get(*this);
+        return ast.template checked_get<TLabel>(*this);
     }
     template <concepts::detail::same_as_any_of<Ts...> TLabel, concepts::is_ast TAst>
     TLabel unchecked_get(TAst& ast) const {
-        return ast.unchecked_get(*this);
+        return ast.template unchecked_get<TLabel>(*this);
     }
     template <concepts::is_ast TNewAst>
     detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations() const {
@@ -1216,7 +1216,7 @@ private:
     uint32_t extras_index() const { return fields.children[0]; }
     uint32_t& extras_index() { return fields.children[0]; }
     T* extras() const {
-        return reinterpret_cast<T*>(detail::AST_privates::extra(ast).begin() + extras_index());
+        return reinterpret_cast<T*>(detail::AST_privates::extra(ast).data() + extras_index());
     }
     bool is_short_list() const { return is_short_list(size()); }
     static bool is_short_list(uint32_t size) { return size <= ShortListInlineTs; }
@@ -1224,13 +1224,13 @@ private:
     std::pair<T&, T*> get_by_index_transparent(uint32_t index) {
         using result_t = std::pair<T&, T*>;
         if (is_short_list())
-            return {&reinterpret_cast<T*>(&fields.children[Is8ByteAligned])[index],
+            return {reinterpret_cast<T*>(&fields.children[Is8ByteAligned])[index],
                     reinterpret_cast<T*>(&ast_tree_storage().children[Is8ByteAligned]) + index};
         else
             return index < ShortListInlineTs
-                       ? result_t{&reinterpret_cast<T*>(&fields.children[1])[index],
-                                  reinterpret_cast<T*>(&ast_tree_storage().children[1]) + index}
-                       : result_t{extras()[index - ShortListInlineTs], nullptr};
+                       ? result_t(reinterpret_cast<T*>(&fields.children[1])[index],
+                                  reinterpret_cast<T*>(&ast_tree_storage().children[1]) + index)
+                       : result_t(extras()[index - ShortListInlineTs], nullptr);
     }
     T get_by_index(uint32_t index) const {
         if (is_short_list())
@@ -1262,11 +1262,13 @@ public:
         T& item;
         T* opt_storage_ptr;
         operator T() const { return item; }
+        T read() const { return item; }
         ItemRefWrapper& operator=(T other) {
             item = other;
             if (opt_storage_ptr) *opt_storage_ptr = other;
             return *this;
         }
+        ItemRefWrapper& assign(T other) { return *this = other; }
 
     private:
         friend ArrayOfScalars;
@@ -1281,7 +1283,9 @@ public:
         if (index >= size()) return std::range_error("AST List access: index out of range");
         return (*this)[index];
     }
-    ItemRefWrapper operator[](uint32_t index) { return {get_by_index_transparent(index)}; }
+    ItemRefWrapper operator[](uint32_t index) {
+        return ItemRefWrapper(get_by_index_transparent(index));
+    }
     T at(uint32_t index) const {
         if (index >= size()) return std::range_error("AST List access: index out of range");
         return (*this)[index];
@@ -1394,7 +1398,7 @@ class Array<TAst, Item> : private detail::ArrayOfScalars<TAst, uint32_t> {
 private:
     using base_t::on_moved;
     using base_t::position_in_memory;
-    using typename base_t::ArrayOfScalars;
+    using base_t::base_t;
     friend detail::AnyAstNode_privates;
 
 public:
@@ -1869,7 +1873,7 @@ public:
     using layout_t = LabelLayout<TStoresTag, NPtrs, NStrings, NDoubles, NInts, NChars, NBools>;
 
 private:
-    std::array<char, sizeof(detail::ASTNodeItem)> inline_data;
+    std::array<char, sizeof(detail::ASTNodeItem)> inline_data{};
     ConditionalIndex<layout_t::PlaceToStoreNodeIndex == -1> cond_index [[no_unique_address]];
 
     template <class TScalar, size_t Pos>

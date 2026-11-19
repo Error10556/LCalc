@@ -101,12 +101,18 @@ std::pair<AST<>, ast::Program<>> pseudo_parse() {
                 .pointer(),
             nul)
             .pointer();
-    auto prog = ast::AProgram(ast, ast::lib::Array<AST<>, ast::Expr<>>(ast, powerexpr).pointer()).pointer();
+    auto prog =
+        ast::AProgram(ast, ast::lib::Array<AST<>, ast::Expr<>>(ast, powerexpr).pointer()).pointer();
     return {std::move(ast), prog};
 }
 
-int main(int argc, char** argv) {
-    auto res = pseudo_parse();
-    // if (argc == 2 && std::string_view(argv[1]) == "--inspect")
-        ast::lib::debug::ASTDump(res.first).interact(std::cin, std::cout);
+int main() {
+    auto [ast, prog] = pseudo_parse();
+    auto var = static_cast<ast::Expr<>>(prog.get(ast).ListExpr_().get(ast)[0])
+        .unchecked_get<ast::Application<>>(ast)
+        .Expr_2()
+        .unchecked_get<ast::Abstraction<>>(ast).Expr_().unchecked_get<ast::Variable<>>(ast);
+    const auto& [str] = var;
+    std::cout << str << '\n';
+    ast::lib::debug::ASTDump(ast).interact(std::cin, std::cout);
 }
