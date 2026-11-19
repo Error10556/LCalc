@@ -1213,10 +1213,13 @@ class ArrayOfScalars {
     //         : (N - LongListInlineTs) * ((sizeof(T) + sizeof(uint32_t) - 1) / sizeof(uint32_t));
     // static constexpr size_t InlineItems = IsShortList ? ShortListInlineTs : LongListInlineTs;
 
+protected:
+    TAst& ast;
+
+private:
     detail::ASTNodeItem fields alignas(8);  // {size, {data|extra_ptr, data, data}}
 
 protected:
-    TAst& ast;
     uint32_t myindex;
 
 private:
