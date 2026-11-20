@@ -1157,6 +1157,14 @@ struct AnyAstNode_privates {
     static void on_node_moved(TNode& node, uint32_t new_extras_ptr, uint32_t new_strings_ptr) {
         return node.on_moved(new_extras_ptr, new_strings_ptr);
     }
+    template <concepts::is_ast TAst, concepts::is_ast_label TLabel>
+    static ASTNewNodeInfo reserve_space(TAst ast) {
+        return TLabel::base_t::reserve_space(ast);
+    }
+    template <concepts::is_ast TAst, concepts::is_ast_array TArray>
+    static ASTNewNodeInfo reserve_space(TAst ast, uint32_t size) {
+        return TArray::reserve_space(ast, size);
+    }
     template <concepts::is_ast_label TLabel>
     using label_base_t = TLabel::base_t;
 };
@@ -1283,7 +1291,7 @@ protected:
     TAst& ast;
 
 private:
-    detail::ASTNodeItem fields alignas(8);  // {size, {data|extra_ptr, data, data}}
+    detail::ASTNodeItem fields alignas(8){};  // {size, {data|extra_ptr, data, data}}
 
 protected:
     uint32_t myindex;
@@ -1295,7 +1303,7 @@ private:
         return reinterpret_cast<T*>(detail::AST_privates::extra(ast).data() + extras_index());
     }
     bool is_short_list() const { return is_short_list(size()); }
-    static bool is_short_list(uint32_t size) { return size <= ShortListInlineTs; }
+    static constexpr bool is_short_list(uint32_t size) { return size <= ShortListInlineTs; }
     detail::ASTNodeItem& ast_tree_storage() { return detail::AST_privates::tree(ast)[myindex]; }
     std::pair<T&, T*> get_by_index_transparent(uint32_t index) {
         using result_t = std::pair<T&, T*>;
@@ -1461,26 +1469,31 @@ public:
         return AST_privates::annots<U>(this->ast)[myindex];
     }
 
+    static ASTNewNodeInfo reserve_space(TAst& ast, uint32_t size) {
+        if (is_short_list(size))
+            return detail::AST_privates::emplace_back(ast, 0, 0, Is8ByteAligned);
+        return detail::AST_privates::emplace_back(ast, size - LongListInlineTs, 0, Is8ByteAligned);
+    }
+
     template <std::ranges::sized_range Range>
         requires(std::same_as<std::ranges::range_value_t<Range>, T>)
-    ArrayOfScalars(TAst& ast, Range&& range) : ast{ast} {
+    ArrayOfScalars(TAst& ast, ASTNewNodeInfo reserved_space, Range&& range) : ast{ast} {
         const uint32_t n = fields.info = std::size(range);
-        detail::ASTNewNodeInfo new_node_info;
-        if (is_short_list(n)) {
-            new_node_info = detail::AST_privates::emplace_back(ast, 0, 0, Is8ByteAligned);
-        } else {
-            new_node_info =
-                detail::AST_privates::emplace_back(ast, n - LongListInlineTs, 0, Is8ByteAligned);
-            extras_index() = new_node_info.extras_index;
-        }
-        myindex = new_node_info.node_index;
+        if (!is_short_list(n)) extras_index() = reserved_space.extras_index;
+        myindex = reserved_space.node_index;
         auto my_iter = begin();
         for (auto&& i : std::forward<Range>(range)) {
             *my_iter = i;
             ++my_iter;
         }
-        detail::AST_privates::tree(ast)[new_node_info.node_index] = fields;
+        detail::AST_privates::tree(ast)[reserved_space.node_index] = fields;
     }
+
+    template <std::ranges::sized_range Range>
+        requires(std::same_as<std::ranges::range_value_t<Range>, T>)
+    ArrayOfScalars(TAst& ast, Range&& range)
+        : ArrayOfScalars(ast, reserve_space(ast, std::ranges::size(range)),
+                         std::forward<Range>(range)) {}
     template <std::same_as<T>... Items>
     ArrayOfScalars(TAst& ast, Items... items) : ast{ast} {
         auto [fields, mempos] = detail::emplace_scalar_array(ast, items...);
@@ -1493,6 +1506,13 @@ public:
     ArrayOfScalars(TAst& ast, Range&& range)
         : ArrayOfScalars(ast, std::vector(std::forward<Range>(range).begin(),
                                           std::forward<Range>(range).end())) {}
+    template <std::ranges::range Range>
+        requires(std::same_as<std::ranges::range_value_t<Range>, T> &&
+                 !std::ranges::sized_range<Range>)
+    ArrayOfScalars(TAst& ast, ASTNewNodeInfo reserved_space, Range&& range)
+        : ArrayOfScalars(
+              ast, reserved_space,
+              std::vector(std::forward<Range>(range).begin(), std::forward<Range>(range).end())) {}
 };
 
 }  // namespace detail
@@ -1505,6 +1525,7 @@ private:
     using base_t::base_t;
     using base_t::on_moved;
     using base_t::position_in_memory;
+    using base_t::reserve_space;
     friend detail::AnyAstNode_privates;
 
 public:
@@ -1638,6 +1659,10 @@ public:
 private:
     static constexpr auto ExtractIndicesFromPointers =
         std::ranges::views::transform(detail::ASTPtr_privates::Index<Item>);
+    template <std::ranges::range Range>
+        requires(std::same_as<std::ranges::range_value_t<Range>, Item>)
+    Array(TAst& ast, detail::ASTNewNodeInfo reserved_space, Range&& range)
+        : base_t(ast, reserved_space, std::forward<Range>(range) | ExtractIndicesFromPointers) {}
 
 public:
     template <std::ranges::range Range>
@@ -1655,7 +1680,7 @@ class Array<TAst, Token> : private detail::ArrayOfScalars<TAst, Token> {
     using base_t = detail::ArrayOfScalars<TAst, Token>;
 
 private:
-    using base_t::ArrayOfScalars;
+    using base_t::base_t;
     using base_t::on_moved;
     using base_t::position_in_memory;
     friend detail::AnyAstNode_privates;
@@ -1714,6 +1739,7 @@ class Array<TAst, std::string> {
     void on_moved(uint32_t /*new_extras_ptr*/, uint32_t new_strings_ptr) {
         detail::AST_privates::tree(m_ast)[myindex].children[0] = strings_ptr = new_strings_ptr;
     }
+
     friend detail::AnyAstNode_privates;
 
 public:
@@ -1774,18 +1800,26 @@ public:
 private:
     struct private_tag_t {};
 
+    static detail::ASTNewNodeInfo reserve_space(TAst& ast, uint32_t size) {
+        return detail::AST_privates::emplace_back(ast, 0, size, false);
+    }
+
     template <std::ranges::sized_range Range>
         requires(std::same_as<std::ranges::range_value_t<Range>, std::string>)
-    Array(TAst& ast, Range&& range, private_tag_t) : m_ast{ast}, m_size{std::size(range)} {
-        detail::ASTNewNodeInfo new_node_info =
-            detail::AST_privates::emplace_back(ast, 0, size(), false);
-        myindex = new_node_info.node_index;
-        strings_ptr = new_node_info.strings_index;
+    Array(TAst& ast, detail::ASTNewNodeInfo reserved_space, Range&& range)
+        : m_ast{ast}, m_size{std::ranges::size(range)} {
+        myindex = reserved_space.node_index;
+        strings_ptr = reserved_space.strings_index;
         std::ranges::copy(
             std::forward<Range>(range),
-            detail::AST_privates::string_tokens(ast).begin() + new_node_info.strings_index);
+            detail::AST_privates::string_tokens(ast).begin() + reserved_space.strings_index);
         detail::AST_privates::tree(ast)[myindex] = {size(), {strings_ptr, 0, 0}};
     }
+
+    template <std::ranges::sized_range Range>
+        requires(std::same_as<std::ranges::range_value_t<Range>, std::string>)
+    Array(TAst& ast, Range&& range, private_tag_t)
+        : Array(ast, reserve_space(ast, std::ranges::size(range)), std::forward<Range>(range)) {}
 
     struct MovableStrings {
         using container_t = std::vector<std::string>;
@@ -2238,10 +2272,17 @@ public:
               reinterpret_cast<const decltype(inline_data)&>(AST_privates::tree(ast)[index])} {
         mut_index() = index;
     }
+    static ASTNewNodeInfo reserve_space(TAst& ast) {
+        return AST_privates::emplace_back(ast, layout_t::ExtraSpaceInts, NStrings,
+                                          layout_t::Needs8ByteAlignment);
+    }
     Label(TAst& ast, uint32_t tag_if_needed, creation_params_t&& vals) : ast{ast} {
-        auto info = AST_privates::emplace_back(ast, layout_t::ExtraSpaceInts, NStrings,
-                                               layout_t::Needs8ByteAlignment);
-        initialize(info, tag_if_needed, std::move(vals));
+        initialize(reserve_space, tag_if_needed, std::move(vals));
+    }
+    Label(TAst& ast, ASTNewNodeInfo reserved_space, uint32_t tag_if_needed,
+          creation_params_t&& vals)
+        : ast{ast} {
+        initialize(reserved_space, tag_if_needed, std::move(vals));
     }
 
     template <concepts::is_ast TNewAst>
