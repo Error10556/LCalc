@@ -48,7 +48,8 @@ class ClassicPrettyPrinter {
     }
 
 public:
-    ClassicPrettyPrinter(std::ostream&, unsigned int tabSize = 4);
+    ClassicPrettyPrinter(std::ostream& out, unsigned int tabSize = 4)
+        : out{out}, tabSize{tabSize} {}
 
     ClassicPrettyPrinter(const ClassicPrettyPrinter&) = default;
     ClassicPrettyPrinter(ClassicPrettyPrinter&&) = default;

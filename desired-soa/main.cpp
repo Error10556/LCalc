@@ -102,10 +102,13 @@ std::pair<AST<>, ast::Program<>> pseudo_parse() {
                 .pointer(),
             nul)
             .pointer();
+    auto powerexpr2 = ast::lib::deep_copy(ast, ast, powerexpr);
     auto prog =
-        ast::AProgram(ast, ast::lib::Array<AST<>, ast::Expr<>>(ast, powerexpr).pointer()).pointer();
+        ast::AProgram(ast, ast::ListExpr<>(ast, powerexpr, powerexpr2).pointer()).pointer();
     return {std::move(ast), prog};
 }
+
+static_assert(std::is_same_v<decltype(std::declval<ast::Variable<>>().template get<0>()), std::string>);
 
 int main() {
     auto [ast, prog] = pseudo_parse();
@@ -113,5 +116,10 @@ int main() {
         .unchecked_get<ast::Application<>>(ast)
         .Expr_2()
         .unchecked_get<ast::Abstraction<>>(ast).Expr_().unchecked_get<ast::Variable<>>(ast);
+    {
+        auto printer = ast::printing::ClassicPrettyPrinter<AST<>>(std::cout);
+        ast.visit(prog) | printer;
+        printer.OnNewLine().FlushWhitespace();
+    }
     ast::lib::debug::ASTDump(ast).interact(std::cin, std::cout);
 }

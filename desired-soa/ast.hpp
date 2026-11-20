@@ -29,7 +29,7 @@ BNFC_ASTLIB_DEFINE_CAT(Expr, Abstraction<TAst>, Application<TAst>, Variable<TAst
 BNFC_ASTLIB_PREDEF_LABEL(AProgram);
 BNFC_ASTLIB_DEFINE_CAT(Program, AProgram<TAst>);
 
-template <lib::concepts::is_ast TAst>
+template <lib::concepts::is_ast TAst = lib::AST<>>
 using ListExpr = lib::Array<TAst, Expr<TAst>>;
 
 /*****************/
@@ -220,7 +220,7 @@ public:
     }
 };
 
-BNFC_ASTLIB_DEFINE_LABEL_TRAITS(SpecialExpr, Expr, 0, 1);
+BNFC_ASTLIB_DEFINE_LABEL_TRAITS(SpecialExpr, Expr, 0, 3);
 
 template <lib::concepts::is_ast TAst>
 class SpecialExpr final {

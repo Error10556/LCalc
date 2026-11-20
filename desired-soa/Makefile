@@ -19,14 +19,13 @@ printer-common.o: printer-common.hpp printer-common.cpp
 printer-commondb.o: printer-common.hpp printer-common.cpp
 	clang++ $(CXXFLAGS) printer-common.cpp $(DEBUGFLAGS) -c -o printer-commondb.o
 
-PRINTER_SOURCES = classic-pretty-printer.cpp
 PRINTER_HEADERS = classic-pretty-printer.hpp printer-common.hpp
 
 main: astinst.o printer-common.o astinst.hpp ast.hpp astlib.hpp astlib-debug.hpp astlib-debug.cpp main.cpp $(PRINTER_SOURCES) $(PRINTER_HEADERS)
-	$(CXX) $(CXXFLAGS) main.cpp astlib-debug.cpp $(PRINTER_SOURCES) astinst.o printer-common.o -o main
+	$(CXX) $(CXXFLAGS) main.cpp astlib-debug.cpp astinst.o printer-common.o -o main
 
 maindb: astinstdb.o printer-commondb.o astinst.hpp ast.hpp astlib.hpp astlib-debug.hpp astlib-debug.cpp main.cpp $(PRINTER_SOURCES) $(PRINTER_HEADERS)
-	clang++ $(CXXFLAGS) main.cpp astlib-debug.cpp $(PRINTER_SOURCES) astinstdb.o printer-commondb.o $(DEBUGFLAGS) -o maindb
+	clang++ $(CXXFLAGS) main.cpp astlib-debug.cpp astinstdb.o printer-commondb.o $(DEBUGFLAGS) -o maindb
 
 clean:
 	rm -f astinst.o astinstdb.o printer-common.o printer-commondb.o main maindb

@@ -1171,11 +1171,12 @@ inline decltype(auto) Visit<TAst, TASTPtr...>::operator()(Visitor&& visitor) {
     static constexpr std::array vtable = []<size_t... TIndices>(
                                              std::integer_sequence<size_t, TIndices...>) {
         return std::array<proxy_t, sizeof...(TIndices)>{
-            [](Visitor&& vis, TAst& ast, const std::array<uint32_t, npacks>& indices) {
+            [](Visitor&& vis, TAst& ast,
+               const std::array<uint32_t, npacks>& indices) -> decltype(auto) {
                 using MyTypesPack = packs_mdindex_t<TIndices, TASTPtr...>;
                 return [&]<class... MyTypes, size_t... MyTypeIndices>(
                            pack_of_types<MyTypes...>,
-                           std::integer_sequence<size_t, MyTypeIndices...>) {
+                           std::integer_sequence<size_t, MyTypeIndices...>) -> decltype(auto) {
                     return std::forward<Visitor>(vis)(
                         AnyAstNode_privates::create_label<MyTypes>(ast, indices[MyTypeIndices])...);
                 }(MyTypesPack(), std::make_index_sequence<pack_of_types_size_v<MyTypesPack>>());
@@ -1219,9 +1220,11 @@ public:
 
 namespace detail {
 template <concepts::is_ast TAst, class... Ts>
-    requires(sizeof...(Ts) > 0) && (... && std::same_as<pack_index_t<0, Ts...>, Ts>)
+    requires(sizeof...(Ts) > 0) &&
+            (... &&
+             std::same_as<std::remove_cvref_t<pack_index_t<0, Ts...>>, std::remove_cvref_t<Ts>>)
 std::pair<ASTNodeItem, ASTNewNodeInfo> emplace_scalar_array(TAst& ast, Ts&&... args) {
-    using T = pack_index_t<0, Ts...>;
+    using T = std::remove_cvref_t<pack_index_t<0, Ts...>>;
     static constexpr bool Is8ByteAligned = sizeof(T) == 8;
     static constexpr uint32_t LongListInlineTs = sizeof(uint32_t) * 2 / sizeof(T);
     static constexpr uint32_t ShortListInlineTs =
@@ -1304,10 +1307,11 @@ private:
     }
     T get_by_index(uint32_t index) const {
         if (is_short_list())
-            return reinterpret_cast<T*>(&fields.children[Is8ByteAligned])[index];
+            return reinterpret_cast<const T*>(&fields.children[Is8ByteAligned])[index];
         else
-            return index < ShortListInlineTs ? reinterpret_cast<T*>(&fields.children[1])[index]
-                                             : extras()[index - ShortListInlineTs];
+            return index < ShortListInlineTs
+                       ? reinterpret_cast<const T*>(&fields.children[1])[index]
+                       : extras()[index - ShortListInlineTs];
     }
 
 public:
@@ -1379,7 +1383,7 @@ public:
         using iterator_category = std::random_access_iterator_tag;
         using difference_type = int32_t;
         using pointer = T*;
-        using reference = std::conditional_t<IsConst, T&&, ItemRefWrapper>;
+        using reference = std::conditional_t<IsConst, T, ItemRefWrapper>;
         using value_type = T;
 
     private:
@@ -1553,7 +1557,7 @@ public:
         using iterator_category = std::random_access_iterator_tag;
         using difference_type = uint32_t;
         using pointer = Item*;
-        using reference = std::conditional_t<IsConst, Item&&, ItemRefWrapper>;
+        using reference = std::conditional_t<IsConst, Item, ItemRefWrapper>;
         using value_type = Item;
         iterator_templated(w_t&& iter) : w_t{std::move(iter)} {}
 
@@ -2489,7 +2493,7 @@ void copy_annots_for_node(concepts::is_ast auto& source_ast, concepts::is_ast au
 
 auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast,
                concepts::is_ast_ptr auto ptr) -> decltype(ptr) {
-    auto rec_copy = [&](auto&& obj) -> decltype(auto) {
+    auto rec_copy = [&](auto&& obj) -> auto {  // return by value
         if constexpr (concepts::is_ast_ptr<std::remove_cvref_t<decltype(obj)>>)
             return deep_copy(source_ast, dest_ast, obj);
         else
@@ -2501,12 +2505,10 @@ auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_as
             static constexpr size_t argcount = std::tuple_size_v<obj_t>;
             return [&]<size_t... Indices>(std::index_sequence<Indices...>) {
                 // copies_or_refs is evaluated in the correct order
-                std::tuple<decltype(rec_copy(obj.template get<Indices>()))...> copies_or_refs{
-                    rec_copy(obj.template get<Indices>())...};
-                return obj_t(dest_ast,
-                             std::forward<std::tuple_element_t<Indices, decltype(copies_or_refs)>>(
-                                 std::get<Indices>(copies_or_refs))...)
-                    .pointer();
+                // Also makes copies of strings
+                std::tuple<std::remove_cvref_t<std::tuple_element_t<Indices, obj_t>>...>
+                    copies_or_refs{rec_copy(obj.template get<Indices>())...};
+                return obj_t(dest_ast, std::move(std::get<Indices>(copies_or_refs))...).pointer();
             }(std::make_index_sequence<argcount>());
         } else {  // array
             return obj_t(dest_ast, obj | std::views::transform(rec_copy)).pointer();
