@@ -29,31 +29,34 @@ BNFC_ASTLIB_DEFINE_CAT(Expr, Abstraction<TAst>, Application<TAst>, Variable<TAst
 BNFC_ASTLIB_PREDEF_LABEL(AProgram);
 BNFC_ASTLIB_DEFINE_CAT(Program, AProgram<TAst>);
 
+template <lib::concepts::is_ast TAst>
+using ListExpr = lib::Array<TAst, Expr<TAst>>;
+
 /*****************/
 /*  Rule Labels  */
 /*****************/
 
-BNFC_ASTLIB_DEFINE_LABEL_TRAITS(AProgram, Program, 0, 1, ASTPtr<Array<TAst, Expr<TAst>>>)
+BNFC_ASTLIB_DEFINE_LABEL_TRAITS(AProgram, Program, 0, 1, ASTPtr<ListExpr<TAst>>)
 
 template <lib::concepts::is_ast TAst>
 class AProgram final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(AProgram, Program, false, 1, 0, 0, 0, 0, 0);
 
-    AProgram(TAst& ast, lib::ASTPtr<lib::Array<TAst, Expr<TAst>>> ListExpr_)
+    AProgram(TAst& ast, lib::ASTPtr<ListExpr<TAst>> ListExpr_)
         : base(ast, lib::traits::type_tag_of_v<AProgram>,
                {lib::detail::ASTPtr_privates::Index(ListExpr_)}) {}
 
-    lib::ASTPtr<lib::Array<TAst, Expr<TAst>>> ListExpr_() const {
-        return lib::detail::ASTPtr_privates::Create<lib::ASTPtr<lib::Array<TAst, Expr<TAst>>>>(
+    lib::ASTPtr<ListExpr<TAst>> ListExpr_() const {
+        return lib::detail::ASTPtr_privates::Create<lib::ASTPtr<ListExpr<TAst>>>(
             base.template pointer<0>());
     }
-    void ListExpr_(lib::ASTPtr<lib::Array<TAst, Expr<TAst>>> value) {
+    void ListExpr_(lib::ASTPtr<ListExpr<TAst>> value) {
         base.template pointer<0>(lib::detail::ASTPtr_privates::Index(value));
     }
 
     template <size_t I>
         requires(I < 1)
-    lib::ASTPtr<lib::Array<TAst, Expr<TAst>>> get() const {
+    lib::ASTPtr<ListExpr<TAst>> get() const {
         return ListExpr_();
     }
 };

@@ -69,25 +69,25 @@ public:
     ClassicPrettyPrinter& PutIntegerLiteral(long);
     ClassicPrettyPrinter& OnNewLine();
 
-    ClassicPrettyPrinter& Put(const Ident&);
+    ClassicPrettyPrinter& PutIdent(const Ident&);
     ClassicPrettyPrinter& Put(const Char&);
     ClassicPrettyPrinter& Put(const Double&);
     ClassicPrettyPrinter& Put(const Integer&);
-    ClassicPrettyPrinter& Put(const String&);
-    ClassicPrettyPrinter& Put(const SpecialBegin&);
-    ClassicPrettyPrinter& Put(const SpecialEnd&);
-    ClassicPrettyPrinter& Put(const Expr&, int coercLvl);     // Returns with current lvl
-    ClassicPrettyPrinter& Put(const Program&, int coercLvl);  // Returns with current lvl
-    ClassicPrettyPrinter& Put(const Variable&);
-    ClassicPrettyPrinter& Put(const Application&);
-    ClassicPrettyPrinter& Put(const Abstraction&);
-    ClassicPrettyPrinter& Put(const StringExpr&);
-    ClassicPrettyPrinter& Put(const IntegerExpr&);
-    ClassicPrettyPrinter& Put(const DoubleExpr&);
-    ClassicPrettyPrinter& Put(const CharExpr&);
-    ClassicPrettyPrinter& Put(const SpecialExpr&);
-    ClassicPrettyPrinter& Put(const AProgram&);
-    ClassicPrettyPrinter& Put(const ListExpr&);
+    ClassicPrettyPrinter& PutString(const String&);
+    ClassicPrettyPrinter& PutSpecialBegin(const SpecialBegin&);
+    ClassicPrettyPrinter& PutSpecialEnd(const SpecialEnd&);
+    ClassicPrettyPrinter& Put(TAst& ast, const Expr<TAst>&, int coercLvl);     // Returns with current lvl
+    ClassicPrettyPrinter& Put(TAst& ast, const Program<TAst>&, int coercLvl);  // Returns with current lvl
+    ClassicPrettyPrinter& Put(const Variable<TAst>&);
+    ClassicPrettyPrinter& Put(const Application<TAst>&);
+    ClassicPrettyPrinter& Put(const Abstraction<TAst>&);
+    ClassicPrettyPrinter& Put(const StringExpr<TAst>&);
+    ClassicPrettyPrinter& Put(const IntegerExpr<TAst>&);
+    ClassicPrettyPrinter& Put(const DoubleExpr<TAst>&);
+    ClassicPrettyPrinter& Put(const CharExpr<TAst>&);
+    ClassicPrettyPrinter& Put(const SpecialExpr<TAst>&);
+    ClassicPrettyPrinter& Put(const AProgram<TAst>&);
+    ClassicPrettyPrinter& Put(const ListExpr<TAst>&);
     void operator()(const Ident&);
     void operator()(const Char&);
     void operator()(const Double&);
