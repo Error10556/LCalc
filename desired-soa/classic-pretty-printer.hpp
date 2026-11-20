@@ -42,7 +42,6 @@ class ClassicPrettyPrinter {
     int coercionLevel = 0;
     bool needSpace = false;
     bool needNewline = false;
-    ClassicPrettyPrinter& FlushHere();
     ClassicPrettyPrinter& SimplePut(std::string_view);
     static void PutLinebreak(std::ostream& out, unsigned int indent) {
         out << '\n' << std::string(indent, ' ');
@@ -50,27 +49,34 @@ class ClassicPrettyPrinter {
 
 public:
     ClassicPrettyPrinter(std::ostream&, unsigned int tabSize = 4);
+
+    ClassicPrettyPrinter(const ClassicPrettyPrinter&) = default;
+    ClassicPrettyPrinter(ClassicPrettyPrinter&&) = default;
+    ClassicPrettyPrinter& operator=(const ClassicPrettyPrinter&) = delete;
+    ClassicPrettyPrinter& operator=(ClassicPrettyPrinter&&) = delete;
+    ~ClassicPrettyPrinter() = default;
+
     unsigned int TabSize() const { return tabSize; }
     // In tabs
     unsigned int IndentationLevel() const { return indentInTabs; }
     int CoercionLevel() const { return coercionLevel; }
 
-    ClassicPrettyPrinter& WithTabSize(unsigned int tabSize);
-    ClassicPrettyPrinter& WithCoercionLevel(int lvl);
+    ClassicPrettyPrinter& SetTabSize(unsigned int tabSize);
+    ClassicPrettyPrinter& SetCoercionLevel(int lvl);
     ClassicPrettyPrinter& Indent(unsigned int tabs = 1);
     ClassicPrettyPrinter& Dedent(unsigned int tabs = 1);
-    ClassicPrettyPrinter& WithIndent(unsigned int tabs);
+    ClassicPrettyPrinter& SetIndent(unsigned int tabs);
     ClassicPrettyPrinter& SkipSpaceHere();
     ClassicPrettyPrinter& NeedSpaceHere();
+    ClassicPrettyPrinter& OnNewLine();
+    ClassicPrettyPrinter& FlushWhitespace();
 
     ClassicPrettyPrinter& PutToken(std::string_view);
     ClassicPrettyPrinter& PutCharLiteral(int32_t);
     ClassicPrettyPrinter& PutStringLiteral(std::string_view);
     ClassicPrettyPrinter& PutDoubleLiteral(double);
     ClassicPrettyPrinter& PutIntegerLiteral(long);
-    ClassicPrettyPrinter& OnNewLine();
 
-    ClassicPrettyPrinter& PutIdent(const Ident&);
     ClassicPrettyPrinter& Put(const Char&);
     ClassicPrettyPrinter& Put(const Double&);
     ClassicPrettyPrinter& Put(const Integer&);
@@ -223,14 +229,27 @@ public:
 
 template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::SimplePut(std::string_view s) {
-    FlushHere();
+    FlushWhitespace();
     out << s;
     needSpace = true;
     return *this;
 }
 
 template <lib::concepts::is_ast TAst>
-ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::WithTabSize(unsigned int tabSize) {
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::FlushWhitespace() {
+    if (needNewline) {
+        PutLinebreak(out, indentInTabs * tabSize);
+        needNewline = false;
+        needSpace = false;
+    } else if (needSpace) {
+        out << ' ';
+        needSpace = false;
+    }
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::SetTabSize(unsigned int tabSize) {
     this->tabSize = tabSize;
     return *this;
 }
@@ -251,7 +270,7 @@ ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Dedent(unsigned int tabs
 }
 
 template <lib::concepts::is_ast TAst>
-ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::WithIndent(unsigned int tabs) {
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::SetIndent(unsigned int tabs) {
     indentInTabs = tabs;
     return *this;
 }
@@ -309,28 +328,28 @@ ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutToken(std::string_vie
 
 template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutCharLiteral(int32_t ch) {
-    FlushHere();
+    FlushWhitespace();
     print_escaped_char(out, ch);
     return NeedSpaceHere();
 }
 
 template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutStringLiteral(std::string_view s) {
-    FlushHere();
+    FlushWhitespace();
     print_escaped_string(out, s);
     return NeedSpaceHere();
 }
 
 template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutDoubleLiteral(double v) {
-    FlushHere();
+    FlushWhitespace();
     print_double(out, v);
     return NeedSpaceHere();
 }
 
 template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutIntegerLiteral(long v) {
-    FlushHere();
+    FlushWhitespace();
     print_double(out, v);
     return NeedSpaceHere();
 }
@@ -340,11 +359,6 @@ ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::OnNewLine() {
     needSpace = false;
     needNewline = true;
     return *this;
-}
-
-template <lib::concepts::is_ast TAst>
-ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutIdent(const Ident& v) {
-    return PutToken(v);
 }
 
 template <lib::concepts::is_ast TAst>
@@ -400,7 +414,7 @@ ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(TAst& ast, const Pro
 template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const Variable<TAst>& v) {
     BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
-    PutIdent(v.Ident_);
+    PutToken(v.Ident_());
     BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
     return *this;
 }
@@ -408,8 +422,8 @@ ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const Variable<TAst>
 template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const Application<TAst>& v) {
     BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
-    Put(*v.Expr_1, 1);
-    Put(*v.Expr_2, 2);
+    Put(v.ast(), v.Expr_1(), 1);
+    Put(v.ast(), v.Expr_2(), 2);
     BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
     return *this;
 }
@@ -418,9 +432,9 @@ template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const Abstraction<TAst>& v) {
     BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
     PutToken("l");
-    Put(v.Ident_);
+    PutToken(v.Ident_());
     PutToken(".");
-    Put(*v.Expr_, 0);
+    Put(v.ast(), v.Expr_(), 0);
     BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
     return *this;
 }
@@ -429,7 +443,7 @@ template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const StringExpr<TAst>& v) {
     BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
     PutToken("str:");
-    Put(v.String_);
+    PutString(v.String_());
     BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
     return *this;
 }
@@ -438,7 +452,7 @@ template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const IntegerExpr<TAst>& v) {
     BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
     PutToken("int:");
-    Put(v.Integer_);
+    Put(v.Integer_());
     BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
     return *this;
 }
@@ -447,7 +461,7 @@ template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const DoubleExpr<TAst>& v) {
     BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
     PutToken("dbl:");
-    Put(v.Double_);
+    Put(v.Double_());
     BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
     return *this;
 }
@@ -456,7 +470,7 @@ template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const CharExpr<TAst>& v) {
     BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
     PutToken("chr:");
-    Put(v.Char_);
+    Put(v.Char_());
     BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
     return *this;
 }
@@ -464,9 +478,9 @@ ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const CharExpr<TAst>
 template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const SpecialExpr<TAst>& v) {
     BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
-    Put(v.SpecialBegin_);
-    Put(*v.Expr_, 0);
-    Put(v.SpecialEnd_);
+    PutToken(v.SpecialBegin_());
+    Put(v.ast(), v.Expr_(), 0);
+    PutToken(v.SpecialEnd_());
     BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
     return *this;
 }
@@ -474,7 +488,7 @@ ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const SpecialExpr<TA
 template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const AProgram<TAst>& v) {
     BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
-    Put(v.ListExpr_);
+    Put(v.ListExpr_().get(v.ast()));
     BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
     return *this;
 }
@@ -485,10 +499,10 @@ ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const ListExpr<TAst>
     } else {
         auto last = std::prev(v.cend());
         for (auto i = v.begin(); i != last; ++i) {
-            Put(*i, 0);
+            Put(v.ast(), *i, 0);
             PutToken(";");
         }
-        Put(*last, 0);
+        Put(v.ast(), *last, 0);
     }
     return *this;
 }

@@ -223,6 +223,9 @@
  *     │   ├── uint32_t size() const
  *     │   │     Returns the number of elements in the array.
  *     │   │
+ *     │   ├── bool empty() const
+ *     │   │     Equivalent to `size() == 0`.
+ *     │   │
  *     │   ├── ASTPtr<Array> pointer() const
  *     │   │     Returns the pointer.
  *     │   │
@@ -1324,12 +1327,12 @@ public:
         ast_tree_storage().children[0] = fields.children[0] = new_extras_ptr;
     }
 
-    template <class, bool>
+    template <bool, bool>
     struct iterator_templated;
-    using iterator = iterator_templated<ArrayOfScalars, false>;
-    using const_iterator = iterator_templated<const ArrayOfScalars, false>;
-    using reverse_iterator = iterator_templated<ArrayOfScalars, true>;
-    using const_reverse_iterator = iterator_templated<const ArrayOfScalars, true>;
+    using iterator = iterator_templated<false, false>;
+    using const_iterator = iterator_templated<true, false>;
+    using reverse_iterator = iterator_templated<false, true>;
+    using const_reverse_iterator = iterator_templated<true, true>;
 
     struct ItemRefWrapper {
         T& item;
@@ -1352,6 +1355,7 @@ public:
     };
 
     uint32_t size() const { return fields.info; }
+    bool empty() const { return !fields.info; }
     ItemRefWrapper at(uint32_t index) {
         if (index >= size()) return std::range_error("AST List access: index out of range");
         return (*this)[index];
@@ -1365,7 +1369,7 @@ public:
     }
     T operator[](uint32_t index) const { return get_by_index(index); }
 
-    template <class TOwner, bool IsReverse>
+    template <bool IsConst, bool IsReverse>
     struct iterator_templated {
         iterator_templated(const iterator_templated&) = default;
         iterator_templated(iterator_templated&&) = default;
@@ -1375,21 +1379,21 @@ public:
         using iterator_category = std::random_access_iterator_tag;
         using difference_type = int32_t;
         using pointer = T*;
-        using reference =
-            std::conditional_t<std::is_same_v<const TOwner, TOwner>, T&&, ItemRefWrapper>;
+        using reference = std::conditional_t<IsConst, T&&, ItemRefWrapper>;
         using value_type = T;
 
     private:
-        TOwner& owner;
+        using owner_t = std::conditional_t<IsConst, const ArrayOfScalars, ArrayOfScalars>;
+        owner_t& owner;
         uint32_t index;
 
         static constexpr int IndexIncrement = (!IsReverse) * 2 - 1;
 
-        iterator_templated(TOwner& owner, uint32_t index) : owner{owner}, index{index} {}
+        iterator_templated(owner_t& owner, uint32_t index) : owner{owner}, index{index} {}
         friend ArrayOfScalars;
 
     public:
-        reference operator*() const { return owner.at(index - !!IsReverse); }
+        reference operator*() const { return owner[index - !!IsReverse]; }
         iterator_templated& operator--() {
             index -= IndexIncrement;
             return *this;
@@ -1497,6 +1501,7 @@ private:
     friend detail::AnyAstNode_privates;
 
 public:
+    using base_t::empty;
     using base_t::size;
 
     TAst& ast() const { return base_t::ast; }
@@ -1512,17 +1517,18 @@ public:
             new_ast, this->fields, this->myindex);
     }
 
-    template <class, bool>
+    template <bool, bool>
     struct iterator_templated;
-    using iterator = iterator_templated<Array, false>;
-    using const_iterator = iterator_templated<const Array, false>;
-    using reverse_iterator = iterator_templated<Array, true>;
-    using const_reverse_iterator = iterator_templated<const Array, true>;
+    using iterator = iterator_templated<false, false>;
+    using const_iterator = iterator_templated<true, false>;
+    using reverse_iterator = iterator_templated<false, true>;
+    using const_reverse_iterator = iterator_templated<true, true>;
 
     struct ItemRefWrapper {
     private:
         friend Array;
         friend iterator;
+        friend reverse_iterator;
         base_t::ItemRefWrapper w;
         ItemRefWrapper(base_t::ItemRefWrapper w) : w{w} {}
 
@@ -1531,26 +1537,32 @@ public:
             w = detail::ASTPtr_privates::Index(ptr);
             return *this;
         }
-        operator Item() const {
+        operator Item() const { return read(); }
+        Item read() const {
             return detail::ASTPtr_privates::Create<Item>(static_cast<uint32_t>(w));
         }
+        void assign(Item val) { (*this) = val; }
     };
 
-    template <class TOwner, bool IsReverse>
-    struct iterator_templated : private base_t::template iterator_templated<TOwner, IsReverse> {
+    template <bool IsConst, bool IsReverse>
+    struct iterator_templated : private base_t::template iterator_templated<IsConst, IsReverse> {
     private:
-        using w_t = base_t::iterator;
+        using w_t = base_t::template iterator_templated<IsConst, IsReverse>;
 
     public:
         using iterator_category = std::random_access_iterator_tag;
         using difference_type = uint32_t;
         using pointer = Item*;
-        using reference =
-            std::conditional_t<std::is_same_v<TOwner, const TOwner>, Item&&, ItemRefWrapper>;
+        using reference = std::conditional_t<IsConst, Item&&, ItemRefWrapper>;
         using value_type = Item;
         iterator_templated(w_t&& iter) : w_t{std::move(iter)} {}
 
-        ItemRefWrapper operator*() { return {w_t::operator*()}; }
+        reference operator*() {
+            if constexpr (IsConst)
+                return detail::ASTPtr_privates::Create<Item>(w_t::operator*());
+            else
+                return ItemRefWrapper(w_t::operator*());
+        }
         iterator_templated& operator--() {
             w_t::operator--();
             return *this;
@@ -1662,6 +1674,7 @@ public:
     using base_t::cend;
     using base_t::crbegin;
     using base_t::crend;
+    using base_t::empty;
     using base_t::end;
     using base_t::rbegin;
     using base_t::rend;
@@ -1705,6 +1718,7 @@ public:
     using const_reverse_iterator = std::vector<std::string>::const_reverse_iterator;
 
     uint32_t size() const { return m_size; }
+    bool empty() const { return !m_size; }
     std::string& at(uint32_t index) {
         if (index >= size())
             throw std::range_error("Array<*, std::string> access: index out of range");

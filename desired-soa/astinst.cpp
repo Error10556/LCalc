@@ -1,4 +1,5 @@
 #include "ast.hpp"
+#include "classic-pretty-printer.hpp"
 #include "annotation.hpp"
 
 namespace ast {
@@ -13,6 +14,7 @@ template class DoubleExpr<lib::AST<>>;
 template class CharExpr<lib::AST<>>;
 template class SpecialExpr<lib::AST<>>;
 template class AProgram<lib::AST<>>;
+template class printing::ClassicPrettyPrinter<lib::AST<>>;
 
 template class lib::AST<TravTime>;
 template class Abstraction<lib::AST<TravTime>>;
@@ -24,5 +26,6 @@ template class DoubleExpr<lib::AST<TravTime>>;
 template class CharExpr<lib::AST<TravTime>>;
 template class SpecialExpr<lib::AST<TravTime>>;
 template class AProgram<lib::AST<TravTime>>;
+template class printing::ClassicPrettyPrinter<lib::AST<TravTime>>;
 
 }

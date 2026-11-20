@@ -7,10 +7,10 @@ DEBUGFLAGS = -glldb -fstandalone-debug
 
 all: main maindb
 
-astinst.o: ast.hpp astlib.hpp astinst.cpp
+astinst.o: ast.hpp astlib.hpp printer-common.hpp classic-pretty-printer.hpp astinst.cpp
 	$(CXX) $(CXXFLAGS) astinst.cpp -c -o astinst.o
 
-astinstdb.o: ast.hpp astlib.hpp astinst.cpp
+astinstdb.o: ast.hpp astlib.hpp printer-common.hpp classic-pretty-printer.hpp astinst.cpp
 	clang++ $(CXXFLAGS) astinst.cpp $(DEBUGFLAGS) -c -o astinstdb.o
 
 printer-common.o: printer-common.hpp printer-common.cpp

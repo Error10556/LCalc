@@ -1,6 +1,7 @@
 #pragma once
 #include "ast.hpp"
 #include "annotation.hpp"
+#include "classic-pretty-printer.hpp"
 
 namespace ast {
 
@@ -14,6 +15,7 @@ extern template class DoubleExpr<lib::AST<>>;
 extern template class CharExpr<lib::AST<>>;
 extern template class SpecialExpr<lib::AST<>>;
 extern template class AProgram<lib::AST<>>;
+extern template class printing::ClassicPrettyPrinter<lib::AST<>>;
 
 extern template class lib::AST<TravTime>;
 extern template class Abstraction<lib::AST<TravTime>>;
@@ -25,5 +27,6 @@ extern template class DoubleExpr<lib::AST<TravTime>>;
 extern template class CharExpr<lib::AST<TravTime>>;
 extern template class SpecialExpr<lib::AST<TravTime>>;
 extern template class AProgram<lib::AST<TravTime>>;
+extern template class printing::ClassicPrettyPrinter<lib::AST<TravTime>>;
 
 }
