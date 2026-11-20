@@ -85,7 +85,11 @@ bool parse_index(std::string_view text, std::size_t& index) {
 template <class... Ts>
 void write_rows(std::istream& args, std::ostream& out, const std::vector<Ts>&... rows) {
     std::size_t first = 0;
-    const size_t sz = (..., rows.size());
+    const size_t sz = [&] {
+        auto mn = std::numeric_limits<size_t>::max();
+        ((mn = std::min(mn, rows.size())), ...);
+        return mn;
+    }();
     std::size_t count = sz;
     std::string index_text, count_text, extra;
     if (args >> index_text) {
