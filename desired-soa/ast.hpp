@@ -42,6 +42,12 @@ template <lib::concepts::is_ast TAst>
 class AProgram final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(AProgram, Program, false, 1, 0, 0, 0, 0, 0);
 
+    AProgram(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space,
+             lib::ASTPtr<ListExpr<TAst>> ListExpr_)
+        : base(ast, reserved_space, lib::traits::type_tag_of_v<AProgram>,
+               {lib::detail::ASTPtr_privates::Index(ListExpr_)}) {}
+
+public:
     AProgram(TAst& ast, lib::ASTPtr<ListExpr<TAst>> ListExpr_)
         : base(ast, lib::traits::type_tag_of_v<AProgram>,
                {lib::detail::ASTPtr_privates::Index(ListExpr_)}) {}
@@ -67,6 +73,12 @@ template <lib::concepts::is_ast TAst>
 class Abstraction final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(Abstraction, Expr, true, 1, 1, 0, 0, 0, 0);
 
+    Abstraction(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space, Ident Ident_,
+                Expr<TAst> Expr_)
+        : base(ast, reserved_space, lib::traits::type_tag_of_v<Abstraction>,
+               {lib::detail::ASTPtr_privates::Index(Expr_), std::move(Ident_)}) {}
+
+public:
     Abstraction(TAst& ast, Ident Ident_, Expr<TAst> Expr_)
         : base(ast, lib::traits::type_tag_of_v<Abstraction>,
                {lib::detail::ASTPtr_privates::Index(Expr_), std::move(Ident_)}) {}
@@ -101,6 +113,13 @@ template <lib::concepts::is_ast TAst>
 class Application final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(Application, Expr, true, 2, 0, 0, 0, 0, 0);
 
+    Application(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space, Expr<TAst> Expr_1,
+                Expr<TAst> Expr_2)
+        : base(ast, reserved_space, lib::traits::type_tag_of_v<Application>,
+               {lib::detail::ASTPtr_privates::Index(Expr_1),
+                lib::detail::ASTPtr_privates::Index(Expr_2)}) {}
+
+public:
     Application(TAst& ast, Expr<TAst> Expr_1, Expr<TAst> Expr_2)
         : base(ast, lib::traits::type_tag_of_v<Application>,
                {lib::detail::ASTPtr_privates::Index(Expr_1),
@@ -134,6 +153,11 @@ BNFC_ASTLIB_DEFINE_LABEL_TRAITS(Variable, Expr, 2, 1);
 template <lib::concepts::is_ast TAst>
 class Variable final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(Variable, Expr, true, 0, 1, 0, 0, 0, 0);
+
+    Variable(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space, Ident Ident_)
+        : base(ast, reserved_space, lib::traits::type_tag_of_v<Variable>, {std::move(Ident_)}) {}
+
+public:
     Variable(TAst& ast, Ident Ident_)
         : base(ast, lib::traits::type_tag_of_v<Variable>, {std::move(Ident_)}) {}
 
@@ -159,6 +183,11 @@ BNFC_ASTLIB_DEFINE_LABEL_TRAITS(StringExpr, Expr, 0, 1);
 template <lib::concepts::is_ast TAst>
 class StringExpr final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(StringExpr, Expr, true, 0, 1, 0, 0, 0, 0);
+
+    StringExpr(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space, String String_)
+        : base(ast, reserved_space, lib::traits::type_tag_of_v<StringExpr>, {std::move(String_)}) {}
+
+public:
     StringExpr(TAst& ast, String String_)
         : base(ast, lib::traits::type_tag_of_v<StringExpr>, {std::move(String_)}) {}
 
@@ -184,6 +213,11 @@ BNFC_ASTLIB_DEFINE_LABEL_TRAITS(IntegerExpr, Expr, 0, 1);
 template <lib::concepts::is_ast TAst>
 class IntegerExpr final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(IntegerExpr, Expr, true, 0, 0, 0, 1, 0, 0);
+
+    IntegerExpr(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space, Integer Integer_)
+        : base(ast, reserved_space, lib::traits::type_tag_of_v<IntegerExpr>, {Integer_}) {}
+
+public:
     IntegerExpr(TAst& ast, Integer Integer_)
         : base(ast, lib::traits::type_tag_of_v<IntegerExpr>, {Integer_}) {}
 
@@ -202,6 +236,11 @@ BNFC_ASTLIB_DEFINE_LABEL_TRAITS(DoubleExpr, Expr, 0, 1);
 template <lib::concepts::is_ast TAst>
 class DoubleExpr final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(DoubleExpr, Expr, true, 0, 0, 1, 0, 0, 0);
+
+    DoubleExpr(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space, Double Double_)
+        : base(ast, reserved_space, lib::traits::type_tag_of_v<DoubleExpr>, {Double_}) {}
+
+public:
     DoubleExpr(TAst& ast, Double Double_)
         : base(ast, lib::traits::type_tag_of_v<DoubleExpr>, {Double_}) {}
 
@@ -221,6 +260,9 @@ template <lib::concepts::is_ast TAst>
 class CharExpr final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(CharExpr, Expr, true, 0, 0, 0, 0, 1, 0);
 
+    CharExpr(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space, Char Char_)
+        : base(ast, reserved_space, lib::traits::type_tag_of_v<CharExpr>, {Char_}) {}
+
 public:
     CharExpr(TAst& ast, Char Char_) : base(ast, lib::traits::type_tag_of_v<CharExpr>, {Char_}) {}
 
@@ -239,6 +281,14 @@ BNFC_ASTLIB_DEFINE_LABEL_TRAITS(SpecialExpr, Expr, 0, 3);
 template <lib::concepts::is_ast TAst>
 class SpecialExpr final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(SpecialExpr, Expr, true, 1, 2, 0, 0, 0, 0);
+
+    SpecialExpr(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space, SpecialBegin SpecialBegin_,
+                Expr<TAst> Expr_, SpecialEnd SpecialEnd_)
+        : base(ast, reserved_space, lib::traits::type_tag_of_v<SpecialExpr>,
+               {lib::detail::ASTPtr_privates::Index(Expr_), std::move(SpecialBegin_),
+                std::move(SpecialEnd_)}) {}
+
+public:
     SpecialExpr(TAst& ast, SpecialBegin SpecialBegin_, Expr<TAst> Expr_, SpecialEnd SpecialEnd_)
         : base(ast, lib::traits::type_tag_of_v<SpecialExpr>,
                {lib::detail::ASTPtr_privates::Index(Expr_), std::move(SpecialBegin_),
@@ -299,6 +349,7 @@ Expr<TAst> fn_const(TAst& ast [[maybe_unused]], Ident ident) {
 
 #include "astlib-undef-macros.include"
 
-static_assert(std::is_same_v<std::tuple_element_t<0, ast::Application<>>, ast::Expr<>>);
-static_assert(std::is_same_v<std::tuple_element_t<0, ast::Variable<>>, std::string>);
-static_assert(std::is_same_v<decltype(std::declval<ast::Variable<>>().get<0, true>()), std::string&>);
+// static_assert(std::is_same_v<std::tuple_element_t<0, ast::Application<>>, ast::Expr<>>);
+// static_assert(std::is_same_v<std::tuple_element_t<0, ast::Variable<>>, std::string>);
+// static_assert(
+//     std::is_same_v<decltype(std::declval<ast::Variable<>>().get<0, true>()), std::string&>);

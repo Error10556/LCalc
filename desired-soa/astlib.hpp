@@ -1157,11 +1157,11 @@ struct AnyAstNode_privates {
     static void on_node_moved(TNode& node, uint32_t new_extras_ptr, uint32_t new_strings_ptr) {
         return node.on_moved(new_extras_ptr, new_strings_ptr);
     }
-    template <concepts::is_ast TAst, concepts::is_ast_label TLabel>
+    template <concepts::is_ast_label TLabel, concepts::is_ast TAst>
     static ASTNewNodeInfo reserve_space(TAst ast) {
         return TLabel::base_t::reserve_space(ast);
     }
-    template <concepts::is_ast TAst, concepts::is_ast_array TArray>
+    template <concepts::is_ast_array TArray, concepts::is_ast TAst>
     static ASTNewNodeInfo reserve_space(TAst ast, uint32_t size) {
         return TArray::reserve_space(ast, size);
     }
@@ -2544,12 +2544,22 @@ auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_as
         if constexpr (concepts::is_ast_label<obj_t>) {
             static constexpr size_t argcount = std::tuple_size_v<obj_t>;
             return [&]<size_t... Indices>(std::index_sequence<Indices...>) {
+                detail::ASTNewNodeInfo reserved_space{};
+                if constexpr (TOrder == DFSOrder::PreOrder)
+                    reserved_space = detail::AnyAstNode_privates::reserve_space<obj_t>(dest_ast);
                 // copies_or_refs is evaluated in the correct order
                 // Makes copies of strings if TMoveStrings = false and moves them otherwise.
                 std::tuple<std::remove_cvref_t<std::tuple_element_t<Indices, obj_t>>...>
                     copies_or_refs{
                         rec_copy(std::move(obj.template get<Indices, TMoveStrings>()))...};
-                return obj_t(dest_ast, std::move(std::get<Indices>(copies_or_refs))...).pointer();
+                if constexpr (TOrder == DFSOrder::PreOrder)
+                    return detail::AnyAstNode_privates::create_label<obj_t>(
+                               dest_ast, reserved_space,
+                               std::move(std::get<Indices>(copies_or_refs))...)
+                        .pointer();
+                else
+                    return obj_t(dest_ast, std::move(std::get<Indices>(copies_or_refs))...)
+                        .pointer();
             }(std::make_index_sequence<argcount>());
         } else {  // array
             // TODO test this
@@ -2561,8 +2571,17 @@ auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_as
                 else
                     return obj;
             };
-            return obj_t(dest_ast, make_optionally_movable(obj) | std::views::transform(rec_copy))
-                .pointer();
+            if constexpr (TOrder == DFSOrder::PreOrder) {
+                auto reserved_space =
+                    detail::AnyAstNode_privates::reserve_space<obj_t>(dest_ast, obj.size());
+                return detail::AnyAstNode_privates::create_array<obj_t>(
+                           dest_ast, reserved_space,
+                           make_optionally_movable(obj) | std::views::transform(rec_copy))
+                    .pointer();
+            } else
+                return obj_t(dest_ast,
+                             make_optionally_movable(obj) | std::views::transform(rec_copy))
+                    .pointer();
         }
     });
     detail::copy_annots_for_node(source_ast, dest_ast, ptr, res);

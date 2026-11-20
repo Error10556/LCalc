@@ -72,4 +72,6 @@ public:                                                                         
     name<NewAst> with_ast(NewAst& new_ast) const {                                                \
         return lib::detail::AnyAstNode_privates::create_label<name<NewAst>>(                      \
             base.with_ast(new_ast));                                                              \
-    }
+    }                                                                                             \
+                                                                                                  \
+private:
