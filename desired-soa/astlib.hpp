@@ -287,10 +287,13 @@
  *     │         Decomposes the object into its constructor arguments (without the AST&
  *     │         reference).
  *     │
- *     ├── auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast,
- *     │       concepts::is_ast_ptr auto ptr) -> decltype(ptr)
+ *     ├── auto deep_copy<DFSOrder = PreOrder, MoveStrings = false
+ *     │       (concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast,
+ *     │           concepts::is_ast_ptr auto ptr) -> decltype(ptr)
  *     │     Copies the subtree. The source and destination AST data structures may be the same.
- *     │     New nodes will be stored in depth-first post-order.
+ *     │     New nodes will be stored in depth-first pre- or post-order depending on the DFSOrder
+ *     │     template value parameter. If MoveStrings is true, string token values will be moved to
+ *     │     the destination instead of copied.
  *     │     Returns the pointer to the cloned subtree root in dest_ast.
  *     │
  *     └── auto shallow_copy(concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr)
@@ -2181,14 +2184,7 @@ private:
 
 public:
     template <size_t Index>
-    std::string& string()
-        requires(NStrings > 0)
-    {
-        return AST_privates::string_tokens(ast)[strings_offset() + Index];
-    }
-
-    template <size_t Index>
-    const std::string& string() const
+    std::string& string() const
         requires(NStrings > 0)
     {
         return AST_privates::string_tokens(ast)[strings_offset() + Index];
@@ -2491,11 +2487,14 @@ void copy_annots_for_node(concepts::is_ast auto& source_ast, concepts::is_ast au
 
 }  // namespace detail
 
+enum class DFSOrder { PreOrder, PostOrder };
+
+template <DFSOrder TOrder = DFSOrder::PreOrder, bool TMoveStrings = false>
 auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast,
                concepts::is_ast_ptr auto ptr) -> decltype(ptr) {
     auto rec_copy = [&](auto&& obj) -> auto {  // return by value
         if constexpr (concepts::is_ast_ptr<std::remove_cvref_t<decltype(obj)>>)
-            return deep_copy(source_ast, dest_ast, obj);
+            return deep_copy<TOrder, TMoveStrings>(source_ast, dest_ast, obj);
         else
             return std::forward<decltype(obj)>(obj);
     };
@@ -2505,9 +2504,10 @@ auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_as
             static constexpr size_t argcount = std::tuple_size_v<obj_t>;
             return [&]<size_t... Indices>(std::index_sequence<Indices...>) {
                 // copies_or_refs is evaluated in the correct order
-                // Also makes copies of strings
+                // Makes copies of strings if TMoveStrings = false and moves them otherwise.
                 std::tuple<std::remove_cvref_t<std::tuple_element_t<Indices, obj_t>>...>
-                    copies_or_refs{rec_copy(obj.template get<Indices>())...};
+                    copies_or_refs{
+                        rec_copy(std::move(obj.template get<Indices, TMoveStrings>()))...};
                 return obj_t(dest_ast, std::move(std::get<Indices>(copies_or_refs))...).pointer();
             }(std::make_index_sequence<argcount>());
         } else {  // array
@@ -2545,109 +2545,7 @@ struct tuple_size<TLabel>
     : public integral_constant<size_t, ast::lib::detail::label_tuple_size<TLabel>::value> {};
 template <size_t I, ast::lib::concepts::is_ast_label TLabel>
 struct tuple_element<I, TLabel> {
-    using type = decltype(std::declval<const TLabel>().template get<I>());
+    using type = decltype(std::declval<TLabel>().template get<I>());
 };
 
 }  // namespace std
-
-// EXAMPLE
-
-/*
-
-namespace ast {
-template <class>
-class Plus;
-
-template <class TAst>
-using Expr = lib::ASTPtr<Plus<TAst>>;
-
-template <class TAst>
-class Plus final {
-private:
-    friend lib::detail::AnyAstNode_privates;
-    using base_t = lib::detail::Label<TAst, true, 2, 0, 0, 0, 0, 0>;
-    base_t base;
-
-    lib::detail::NodeMemoryPosition position_in_memory() const { return base.position_in_memory(); }
-
-    Plus(TAst& ast, uint32_t index) : base{ast, index} {}
-    Plus(base_t base) : base{base} {}
-
-public:
-    Plus(TAst& ast, Expr<TAst> Expr_1, Expr<TAst> Expr_2)
-        : base(ast, 0,
-               {lib::detail::ASTPtr_privates::Index(Expr_1),
-                lib::detail::ASTPtr_privates::Index(Expr_2)}) {}
-    Expr<TAst> Expr_1() const {
-        return lib::detail::ASTPtr_privates::Create<Expr>(base.template pointer<0>());
-    }
-    void Expr_1(Expr<TAst> value) {
-        base.template pointer<0>(lib::detail::ASTPtr_privates::Index(value));
-    }
-    Expr<TAst> Expr_2() const {
-        return lib::detail::ASTPtr_privates::Create<Expr>(base.template pointer<1>());
-    }
-    void Expr_2(Expr<TAst> value) {
-        base.template pointer<1>(lib::detail::ASTPtr_privates::Index(value));
-    }
-    Expr<TAst> pointer() const {
-        return lib::detail::ASTPtr_privates::Create<Expr<TAst>>(base.index());
-    }
-    template <class T>
-    T& annotation() {
-        return base.ast.template annotation<T>(pointer());
-    }
-    template <class T>
-    const T& annotation() const {
-        return base.ast.template annotation<T>(pointer());
-    }
-    template <lib::concepts::is_ast NewAst>
-    Plus<NewAst> update_annotations(NewAst& new_ast) const {
-        return lib::detail::AnyAstNode_privates::create_label<Plus<NewAst>>(
-            base.update_annotations(new_ast));
-    }
-
-    template <size_t I>
-        requires(I < 2)
-    Expr<TAst> get() const {
-        if constexpr (I == 0)
-            return Expr_1();
-        else
-            return Expr_2();
-    }
-};
-
-namespace lib {
-namespace traits {
-template <class TAst>
-struct ast_class_type<Plus<TAst>> {
-    static constexpr ASTClassType value = ASTClassType::Label;
-};
-template <class TAst>
-struct lbnf_category_of<Plus<TAst>> {
-    using value_t = Expr<TAst>;
-};
-}  // namespace traits
-
-namespace detail {
-template <class TAst>
-struct label_pointer_fields<Plus<TAst>> {
-    using value_t = pack_of_types<Expr<TAst>, Expr<TAst>>;
-};
-}  // namespace detail
-}  // namespace lib
-}  // namespace ast
-namespace std {
-template <class TAst>
-struct tuple_size<ast::Plus<TAst>> : public integral_constant<size_t, 2> {};
-template <class TAst>
-struct tuple_element<0UL, ast::Plus<TAst>> {
-    using type = ast::Expr<TAst>;
-};
-template <class TAst>
-struct tuple_element<1UL, ast::Plus<TAst>> {
-    using type = ast::Expr<TAst>;
-};
-}  // namespace std
-
-*/

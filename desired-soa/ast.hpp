@@ -54,9 +54,9 @@ class AProgram final {
         base.template pointer<0>(lib::detail::ASTPtr_privates::Index(value));
     }
 
-    template <size_t I>
+    template <size_t I, bool StringsByRefs = false>
         requires(I < 1)
-    lib::ASTPtr<ListExpr<TAst>> get() const {
+    decltype(auto) get() const {
         return ListExpr_();
     }
 };
@@ -82,12 +82,15 @@ class Abstraction final {
         base.template pointer<0>(lib::detail::ASTPtr_privates::Index(value));
     }
 
-    template <size_t I>
+    template <size_t I, bool StringsByRefs = false>
         requires(I < 2)
-    auto get() const {
-        if constexpr (I == 0)
-            return Ident_();
-        else
+    decltype(auto) get() const {
+        if constexpr (I == 0) {
+            if constexpr (StringsByRefs)
+                return base.template string<0>();
+            else
+                return Ident(Ident_());
+        } else
             return Expr_();
     }
 };
@@ -116,9 +119,9 @@ class Application final {
         base.template pointer<1>(lib::detail::ASTPtr_privates::Index(value));
     }
 
-    template <size_t I>
+    template <size_t I, bool StringsByRefs = false>
         requires(I < 2)
-    auto get() const {
+    decltype(auto) get() const {
         if constexpr (I == 0)
             return Expr_1();
         else
@@ -139,10 +142,15 @@ class Variable final {
     void Ident_(const Ident& value) { base.template string<0>() = value; }
     void Ident_(Ident&& value) { base.template string<0>() = std::move(value); }
 
-    template <size_t I>
+    template <size_t I, bool StringsByRefs = false>
         requires(I < 1)
-    auto get() const {
-        return Ident_();
+    decltype(auto) get() const {
+        {
+            if constexpr (StringsByRefs)
+                return base.template string<0>();
+            else
+                return Ident(Ident_());
+        }
     }
 };
 
@@ -159,10 +167,15 @@ class StringExpr final {
     void String_(const String& value) { base.template string<0>() = value; }
     void String_(String&& value) { base.template string<0>() = std::move(value); }
 
-    template <size_t I>
+    template <size_t I, bool StringsByRefs = false>
         requires(I < 1)
-    auto get() const {
-        return String_();
+    decltype(auto) get() const {
+        {
+            if constexpr (StringsByRefs)
+                return base.template string<0>();
+            else
+                return String(String_());
+        }
     }
 };
 
@@ -177,9 +190,9 @@ class IntegerExpr final {
     Integer Integer_() const { return base.template get_scalar_token<Integer, 0>(); }
     void Integer_(Integer value) { base.template set_scalar_token<Integer, 0>(value); }
 
-    template <size_t I>
+    template <size_t I, bool StringsByRefs = false>
         requires(I < 1)
-    auto get() const {
+    decltype(auto) get() const {
         return Integer_();
     }
 };
@@ -195,9 +208,9 @@ class DoubleExpr final {
     Double Double_() const { return base.template get_scalar_token<Double, 0>(); }
     void Double_(Double value) { base.template set_scalar_token<Double, 0>(value); }
 
-    template <size_t I>
+    template <size_t I, bool StringsByRefs = false>
         requires(I < 1)
-    auto get() const {
+    decltype(auto) get() const {
         return Double_();
     }
 };
@@ -207,15 +220,16 @@ BNFC_ASTLIB_DEFINE_LABEL_TRAITS(CharExpr, Expr, 0, 1);
 template <lib::concepts::is_ast TAst>
 class CharExpr final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(CharExpr, Expr, true, 0, 0, 0, 0, 1, 0);
+
 public:
     CharExpr(TAst& ast, Char Char_) : base(ast, lib::traits::type_tag_of_v<CharExpr>, {Char_}) {}
 
     Char Char_() const { return base.template get_scalar_token<Char, 0>(); }
     void Char_(Char value) { base.template set_scalar_token<Char, 0>(value); }
 
-    template <size_t I>
+    template <size_t I, bool StringsByRefs = false>
         requires(I < 1)
-    auto get() const {
+    decltype(auto) get() const {
         return Char_();
     }
 };
@@ -245,15 +259,22 @@ class SpecialExpr final {
     void SpecialEnd_(const SpecialEnd& value) { base.template string<1>() = value; }
     void SpecialEnd_(SpecialEnd&& value) { base.template string<1>() = std::move(value); }
 
-    template <size_t I>
+    template <size_t I, bool StringsByRefs = false>
         requires(I < 3)
-    auto get() const {
-        if constexpr (I == 0)
-            return SpecialBegin_();
-        else if constexpr (I == 1)
+    decltype(auto) get() const {
+        if constexpr (I == 0) {
+            if constexpr (StringsByRefs)
+                return base.template string<0>();
+            else
+                return SpecialBegin(SpecialBegin_());
+        } else if constexpr (I == 1)
             return Expr_();
-        else
-            return SpecialEnd_();
+        else {
+            if constexpr (StringsByRefs)
+                return base.template string<0>();
+            else
+                return SpecialEnd(SpecialEnd_());
+        }
     }
 };
 
@@ -277,3 +298,7 @@ Expr<TAst> fn_const(TAst& ast [[maybe_unused]], Ident ident) {
 }  // namespace ast
 
 #include "astlib-undef-macros.include"
+
+static_assert(std::is_same_v<std::tuple_element_t<0, ast::Application<>>, ast::Expr<>>);
+static_assert(std::is_same_v<std::tuple_element_t<0, ast::Variable<>>, std::string>);
+static_assert(std::is_same_v<decltype(std::declval<ast::Variable<>>().get<0, true>()), std::string&>);

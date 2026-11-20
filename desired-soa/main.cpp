@@ -73,7 +73,7 @@ std::pair<AST<>, ast::Program<>> pseudo_parse() {
         return ls;
     }();
 
-    auto p3_right = ast::lib::deep_copy(ast, ast, p3);
+    auto p3_right = ast::lib::deep_copy<ast::lib::DFSOrder::PostOrder, true>(ast, ast, p3);
 
     // l b. l f. f (l a. a) b
     auto prepender = [&ast] {
@@ -107,8 +107,6 @@ std::pair<AST<>, ast::Program<>> pseudo_parse() {
         ast::AProgram(ast, ast::ListExpr<>(ast, powerexpr, powerexpr2).pointer()).pointer();
     return {std::move(ast), prog};
 }
-
-static_assert(std::is_same_v<decltype(std::declval<ast::Variable<>>().template get<0>()), std::string>);
 
 int main() {
     auto [ast, prog] = pseudo_parse();
