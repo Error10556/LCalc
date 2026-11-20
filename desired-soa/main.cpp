@@ -119,5 +119,7 @@ int main() {
         ast.visit(prog) | printer;
         printer.OnNewLine().FlushWhitespace();
     }
-    ast::lib::debug::ASTDump(ast).interact(std::cin, std::cout);
+    auto dump = ast::lib::debug::ASTDump(ast);
+    dump.generate_labels(ast, prog);
+    dump.interact(std::cin, std::cout);
 }

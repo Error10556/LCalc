@@ -7,7 +7,9 @@
     namespace lib::traits {                            \
     template <class TAst>                              \
     struct lbnf_name<name<TAst>> {                     \
-        static constexpr std::string value = #name;    \
+        static constexpr std::string get_name() {      \
+            return #name;                              \
+        }                                              \
     };                                                 \
     }
 
@@ -24,7 +26,7 @@
     };                                                                             \
     template <class TAst>                                                          \
     struct lbnf_name<name<TAst>> {                                                 \
-        static constexpr std::string value = #name;                                \
+        static constexpr std::string get_name() { return #name; }                  \
     };                                                                             \
     template <class TAst>                                                          \
     struct lbnf_coercion_level<name<TAst>> {                                       \

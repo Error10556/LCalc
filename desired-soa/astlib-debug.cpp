@@ -17,7 +17,7 @@ void write_hex_byte(std::ostream& out, unsigned char byte) {
 
 void write_value(std::ostream& out, std::uint32_t word) {
     // out << "0x";
-    for (int shift = 24; shift >= 0; shift -= 8)
+    for (int shift = 8; shift >= 0; shift -= 8)
         write_hex_byte(out, static_cast<unsigned char>(word >> shift));
 }
 
@@ -60,6 +60,14 @@ void write_value(std::ostream& out, const std::string& value) {
     out.put('"');
 }
 
+struct unquoted_string_view {
+    std::string_view value;
+};
+
+void write_value(std::ostream& out, unquoted_string_view sv) {
+    out << sv.value;
+}
+
 void write_value(std::ostream& out, const ASTDump::Blob& blob) { out << blob; }
 
 bool parse_index(std::string_view text, std::size_t& index) {
@@ -74,10 +82,11 @@ bool parse_index(std::string_view text, std::size_t& index) {
     return result.ec == std::errc{} && result.ptr == end;
 }
 
-template <class T>
-void write_rows(std::istream& args, std::ostream& out, const std::vector<T>& rows) {
+template <class... Ts>
+void write_rows(std::istream& args, std::ostream& out, const std::vector<Ts>&... rows) {
     std::size_t first = 0;
-    std::size_t count = rows.size();
+    const size_t sz = (..., rows.size());
+    std::size_t count = sz;
     std::string index_text, count_text, extra;
     if (args >> index_text) {
         count = 1;
@@ -87,8 +96,8 @@ void write_rows(std::istream& args, std::ostream& out, const std::vector<T>& row
             out << "Expected a decimal index and an optional positive count.\n";
             return;
         }
-        if (first >= rows.size() || count > rows.size() - first) {
-            out << "Row range out of bounds (" << rows.size() << " entries).\n";
+        if (first >= sz || count > sz - first) {
+            out << "Row range out of bounds (" << sz << " entries).\n";
             return;
         }
     }
@@ -96,7 +105,12 @@ void write_rows(std::istream& args, std::ostream& out, const std::vector<T>& row
     for (std::size_t i = first; i < first + count; ++i) {
         write_value(out, static_cast<uint32_t>(i));
         out << ": ";
-        write_value(out, rows[i]);
+        (
+            [&](auto& val) {
+                write_value(out, val);
+                out << "    ";
+            }(rows[i]),
+            ...);
         out.put('\n');
     }
 }
@@ -109,7 +123,8 @@ constexpr char help[] =
     "annots [column [index [count]]] List annotation columns or show their bytes\n"
     "help                            Show this help\n"
     "quit                            End inspection\n"
-    "Indices and column numbers are zero-based decimal numbers or hexadecimal if prefixed with 0x.\n"
+    "Indices and column numbers are zero-based decimal numbers or hexadecimal if prefixed with "
+    "0x.\n"
     "Omit the index to show all rows. With an index, the count defaults to one.\n";
 
 }  // namespace
@@ -133,7 +148,10 @@ void ASTDump::interact(std::istream& in, std::ostream& out) {
         if (!(args >> command)) continue;
 
         if (command == "tree") {
-            write_rows(args, out, tree);
+            std::vector<unquoted_string_view> labels;
+            labels.reserve(tree_labels.size());
+            for (const std::string& i : tree_labels) labels.emplace_back(std::string_view(i));
+            write_rows(args, out, tree, labels);
         } else if (command == "extras") {
             write_rows(args, out, extras);
         } else if (command == "strings") {
@@ -175,6 +193,18 @@ void ASTDump::interact(std::istream& in, std::ostream& out) {
             out << "Unknown command. Type help for commands.\n";
         }
     }
+}
+
+std::string ASTDump::show_argument(std::string s) {
+    std::ostringstream ss;
+    write_value(ss, s);
+    return std::move(ss).str();
+}
+
+std::string ASTDump::show_argument(uint32_t v) {
+    std::ostringstream ss;
+    write_value(ss, v);
+    return std::move(ss).str();
 }
 
 }  // namespace ast::lib::debug

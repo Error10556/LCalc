@@ -705,8 +705,9 @@ struct lbnf_name<Bool> {
 
 // lbnf_name<Array<>> after Array definition
 
-template <concepts::is_ast_node T>
-constexpr std::string lbnf_name_v = lbnf_name<T>::value;
+template <class T>
+    requires(ast_class_type_v<T> != ASTClassType::Unknown)
+constexpr std::string lbnf_name_v = lbnf_name<T>::get_name();
 
 }  // namespace traits
 
@@ -1224,7 +1225,9 @@ struct ast_array_value<Array<TAst, T>> {
 template <concepts::is_ast TAst, class T>
 struct lbnf_name<Array<TAst, T>> {
 public:
-    static constexpr std::string value = std::string("List") + lbnf_name<T>::value;
+    static constexpr std::string get_name() {
+        return std::string("List") + lbnf_name<T>::get_name();
+    }
 };
 
 }  // namespace traits
