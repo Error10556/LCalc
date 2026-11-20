@@ -287,7 +287,7 @@
  *     │         Decomposes the object into its constructor arguments (without the AST&
  *     │         reference).
  *     │
- *     ├── auto deep_copy<DFSOrder = PreOrder, MoveStrings = false
+ *     ├── auto deep_copy<DFSOrder = PreOrder, MoveStrings = false>
  *     │       (concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast,
  *     │           concepts::is_ast_ptr auto ptr) -> decltype(ptr)
  *     │     Copies the subtree. The source and destination AST data structures may be the same.
@@ -296,10 +296,10 @@
  *     │     the destination instead of copied.
  *     │     Returns the pointer to the cloned subtree root in dest_ast.
  *     │
- *     └── auto shallow_copy(concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr)
- *             -> decltype(ptr)
+ *     └── auto shallow_copy<MoveStrings = false>
+ *             (concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr) -> decltype(ptr)
  *           Copies just the node identified by ptr, re-using the pointers used by that node.
- *           Token values, however, will be copied.
+ *           Token values, however, will be copied or moved.
  *           Returns the pointer to the cloned node.
  */
 
@@ -2511,23 +2511,43 @@ auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_as
                 return obj_t(dest_ast, std::move(std::get<Indices>(copies_or_refs))...).pointer();
             }(std::make_index_sequence<argcount>());
         } else {  // array
-            return obj_t(dest_ast, obj | std::views::transform(rec_copy)).pointer();
+            // TODO test this
+            auto make_optionally_movable = [](auto& obj) -> decltype(auto) {
+                if constexpr (TMoveStrings &&
+                              std::is_same_v<traits::ast_array_value_t<obj_t>, std::string>)
+                    return std::ranges::subrange(std::make_move_iterator(obj.begin()),
+                                                 std::make_move_iterator(obj.end()));
+                else
+                    return obj;
+            };
+            return obj_t(dest_ast, make_optionally_movable(obj) | std::views::transform(rec_copy))
+                .pointer();
         }
     });
     detail::copy_annots_for_node(source_ast, dest_ast, ptr, res);
     return res;
 }
 
+template <bool TMoveStrings = false>
 auto shallow_copy(concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr) -> decltype(ptr) {
     auto res = ast.visit(ptr)([&](auto obj) {
         using obj_t = decltype(obj);
         if constexpr (concepts::is_ast_label<obj_t>) {
             static constexpr size_t argcount = std::tuple_size_v<obj_t>;
             [&]<size_t... Indices>(std::index_sequence<Indices...>) {
-                return obj_t(ast, obj.template get<Indices>()...).pointer();
+                return obj_t(ast, std::move(obj.template get<Indices, TMoveStrings>())...)
+                    .pointer();
             }(std::make_index_sequence<argcount>());
         } else {  // array
-            return obj_t(ast, obj).pointer();
+            auto make_optionally_movable = [](auto& obj) -> decltype(auto) {
+                if constexpr (TMoveStrings &&
+                              std::is_same_v<traits::ast_array_value_t<obj_t>, std::string>)
+                    return std::ranges::subrange(std::make_move_iterator(obj.begin()),
+                                                 std::make_move_iterator(obj.end()));
+                else
+                    return obj;
+            };
+            return obj_t(ast, make_optionally_movable(obj)).pointer();
         }
     });
     detail::copy_annots_for_node(ast, ast, ptr, res);
