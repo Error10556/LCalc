@@ -230,12 +230,13 @@
  *     │   │     Changes the stored AST reference. Use after calling the method AST::annotate or
  *     │   │     the constructor AST(std::move(old_ast)).
  *     │   │
- *     │   ├── struct iterator
+ *     │   ├── struct [const_][reverse_]iterator
  *     │   │     A random access read-write iterator.
  *     │   │     If TItem != std::string, implements all operators except operator->().
+ *     │   │     If TItem == std::string, implements all operators.
  *     │   │
  *     │   ├── struct ItemRefWrapper  (provided if TItem != std::string)
- *     │   │     Returned instead of item references.
+ *     │   │     Returned instead of non-const item references.
  *     │   │     Invalidated after any change has been made to the AST structure!
  *     │   │
  *     │   ├── ItemRefWrapper     at(uint32_t index)        (if TItem != std::string)
@@ -252,13 +253,10 @@
  *     │   │     Out-of-bounds errors can be catastrophic and/or difficult to
  *     │   │     debug since all objects are packed together contiguously in memory.
  *     │   │
- *     │   ├── iterator begin()
- *     │   │     Creates an iterator pointing to the first element; if the container is empty,
- *     │   │     equivalent to end().
- *     │   │
- *     │   └── iterator end()
- *     │         Creates an iterator pointing to past-the-last element. Dereferencing it has
- *     │         undefined behavior (see warning for operator[]).
+ *     │   └── [const_][reverse_]iterator [c][r]begin(), [c][r]end()
+ *     │         Iterators pointing to the first (begin) and past-the-last (end) elements.
+ *     │         Dereferencing end(), cend(), rend(), and rcend() invokes undefined behavior
+ *     │         (see warning for operator[]).
  *     │
  *     ├── class LabelledRuleObject<TAst>
  *     │   │ Accesses a concrete node variant corresponding to a grammar rule.
