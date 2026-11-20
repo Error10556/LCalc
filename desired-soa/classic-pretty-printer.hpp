@@ -1,12 +1,39 @@
-#pragma once
+/*
 
-#include <iosfwd>
+The ClassicPrettyPrinter class operates on tokens. Each syntax node is converted
+into a sequence of tokens, which are then printed in order, separated by spaces.
+However, some tokens have special effects:
+
+** Space-separation **
+    - Left brackets '[' and parentheses '(' eat the separating space after
+      themselves.
+    - Commas ',', semicolons ';', and right brackets ']' and parentheses ')'
+      eat the separating space before themselves.
+    - Tokens that start and/or end with whitespace eat the separating space on
+      the whitespace side(s).
+    - Empty tokens prevent spacing.
+
+** Layout **
+    - Left curly braces '{' are printed on a separate line at the current
+      indentation level and increase the indentation for subsequent tokens.
+    - Right curly braces '}' are always printed on a separate line and decrease
+      the indentation level. The brace itself is _also_ de-dented.
+    - Semicolons ';' cause a line break after themselves.
+
+Precedence is always resolved by enclosing a term in parentheses '()'.
+
+*/
+
+#pragma once
+#include <ostream>
 #include <string_view>
 
 #include "ast.hpp"
+#include "printer-common.hpp"
 
 namespace ast::printing {
 
+template <lib::concepts::is_ast TAst>
 class ClassicPrettyPrinter {
     std::ostream& out;
     unsigned int tabSize;
@@ -14,82 +41,21 @@ class ClassicPrettyPrinter {
     int coercionLevel = 0;
     bool needSpace = false;
     bool needNewline = false;
-
     ClassicPrettyPrinter& FlushHere();
     ClassicPrettyPrinter& SimplePut(std::string_view);
 
-    template <class Print>
-    ClassicPrettyPrinter& PutParenthesized(bool parens, Print print) {
-        if (parens) PutToken("(");
-        print();
-        if (parens) PutToken(")");
-        return *this;
-    }
-
-    template <class TAst>
-    ClassicPrettyPrinter& PutAtLevel(const Variable<TAst>& v, int level) {
-        return PutParenthesized(level > 2, [&] { PutToken(v.Ident_()); });
-    }
-
-    template <class TAst>
-    ClassicPrettyPrinter& PutAtLevel(const Application<TAst>& v, int level) {
-        return PutParenthesized(level > 1, [&] {
-            Put(v.ast(), v.Expr_1(), 1);
-            Put(v.ast(), v.Expr_2(), 2);
-        });
-    }
-
-    template <class TAst>
-    ClassicPrettyPrinter& PutAtLevel(const Abstraction<TAst>& v, int level) {
-        return PutParenthesized(level > 0, [&] {
-            PutToken("l").PutToken(v.Ident_()).PutToken(".");
-            Put(v.ast(), v.Expr_(), 0);
-        });
-    }
-
-    template <class TAst>
-    ClassicPrettyPrinter& PutAtLevel(const StringExpr<TAst>& v, int level) {
-        return PutParenthesized(level > 0, [&] { PutToken("str:").PutStringLiteral(v.String_()); });
-    }
-
-    template <class TAst>
-    ClassicPrettyPrinter& PutAtLevel(const IntegerExpr<TAst>& v, int level) {
-        return PutParenthesized(level > 0,
-                                [&] { PutToken("int:").PutIntegerLiteral(v.Integer_()); });
-    }
-
-    template <class TAst>
-    ClassicPrettyPrinter& PutAtLevel(const DoubleExpr<TAst>& v, int level) {
-        return PutParenthesized(level > 0, [&] { PutToken("dbl:").PutDoubleLiteral(v.Double_()); });
-    }
-
-    template <class TAst>
-    ClassicPrettyPrinter& PutAtLevel(const CharExpr<TAst>& v, int level) {
-        return PutParenthesized(level > 0, [&] { PutToken("chr:").PutCharLiteral(v.Char_()); });
-    }
-
-    template <class TAst>
-    ClassicPrettyPrinter& PutAtLevel(const SpecialExpr<TAst>& v, int level) {
-        return PutParenthesized(level > 0, [&] {
-            PutToken(v.SpecialBegin_());
-            Put(v.ast(), v.Expr_(), 0);
-            PutToken(v.SpecialEnd_());
-        });
-    }
-
-    template <class TAst>
-    ClassicPrettyPrinter& PutAtLevel(const AProgram<TAst>& v, int level) {
-        return PutParenthesized(level > 0, [&] { Put(v.ListExpr_().get(v.ast())); });
-    }
-
 public:
+#define BNFC_ASTLIB_PRINT_IF_BAD_COERC(output)                                              \
+    if (lib::traits::lbnf_coercion_level<std::remove_cvref_t<decltype(v)>> < coercionLevel) \
+        out << output;
     ClassicPrettyPrinter(std::ostream&, unsigned int tabSize = 4);
     unsigned int TabSize() const;
+    // In tabs
     unsigned int IndentationLevel() const;
     int CoercionLevel() const;
 
     ClassicPrettyPrinter& WithTabSize(unsigned int tabSize);
-    ClassicPrettyPrinter& WithCoercionLevel(int level);
+    ClassicPrettyPrinter& WithCoercionLevel(int lvl);
     ClassicPrettyPrinter& Indent(unsigned int tabs = 1);
     ClassicPrettyPrinter& Dedent(unsigned int tabs = 1);
     ClassicPrettyPrinter& WithIndent(unsigned int tabs);
@@ -97,54 +63,73 @@ public:
     ClassicPrettyPrinter& NeedSpaceHere();
 
     ClassicPrettyPrinter& PutToken(std::string_view);
-    ClassicPrettyPrinter& PutCharLiteral(Char);
+    ClassicPrettyPrinter& PutCharLiteral(int32_t);
     ClassicPrettyPrinter& PutStringLiteral(std::string_view);
-    ClassicPrettyPrinter& PutDoubleLiteral(Double);
-    ClassicPrettyPrinter& PutIntegerLiteral(Integer);
+    ClassicPrettyPrinter& PutDoubleLiteral(double);
+    ClassicPrettyPrinter& PutIntegerLiteral(long);
     ClassicPrettyPrinter& OnNewLine();
 
-    // String literals share the identifier type. Use PutStringLiteral to quote a value.
-    ClassicPrettyPrinter& Put(std::string_view token) { return PutToken(token); }
-    ClassicPrettyPrinter& Put(Char v) { return PutCharLiteral(v); }
-    ClassicPrettyPrinter& Put(Double v) { return PutDoubleLiteral(v); }
-    ClassicPrettyPrinter& Put(Integer v) { return PutIntegerLiteral(v); }
-
-    template <class TAst>
-    ClassicPrettyPrinter& Put(TAst& tree, Expr<TAst> expr, int level = 0) {
-        expr.visit(tree)([&](const auto& node) { PutAtLevel(node, level); });
-        return *this;
-    }
-
-    template <class TAst>
-    ClassicPrettyPrinter& Put(TAst& tree, Program<TAst> program, int level = 0) {
-        return PutAtLevel(program.get(tree), level);
-    }
-
-    template <class TAst>
-    ClassicPrettyPrinter& Put(lib::Array<TAst, Expr<TAst>> list) {
-        const auto size = list.size();
-        for (decltype(list.size()) i = 0; i < size; ++i) {
-            if (i != 0) PutToken(";");
-            Put(list.ast(), static_cast<Expr<TAst>>(list[i]));
-        }
-        return *this;
-    }
-
-    template <lib::concepts::is_ast_label Node>
-    ClassicPrettyPrinter& Put(const Node& node) {
-        return PutAtLevel(node, coercionLevel);
-    }
-
-    template <class T>
-    void operator()(const T& value) {
-        Put(value);
-    }
+    ClassicPrettyPrinter& Put(const Ident&);
+    ClassicPrettyPrinter& Put(const Char&);
+    ClassicPrettyPrinter& Put(const Double&);
+    ClassicPrettyPrinter& Put(const Integer&);
+    ClassicPrettyPrinter& Put(const String&);
+    ClassicPrettyPrinter& Put(const SpecialBegin&);
+    ClassicPrettyPrinter& Put(const SpecialEnd&);
+    ClassicPrettyPrinter& Put(const Expr&, int coercLvl);     // Returns with current lvl
+    ClassicPrettyPrinter& Put(const Program&, int coercLvl);  // Returns with current lvl
+    ClassicPrettyPrinter& Put(const Variable&);
+    ClassicPrettyPrinter& Put(const Application&);
+    ClassicPrettyPrinter& Put(const Abstraction&);
+    ClassicPrettyPrinter& Put(const StringExpr&);
+    ClassicPrettyPrinter& Put(const IntegerExpr&);
+    ClassicPrettyPrinter& Put(const DoubleExpr&);
+    ClassicPrettyPrinter& Put(const CharExpr&);
+    ClassicPrettyPrinter& Put(const SpecialExpr&);
+    ClassicPrettyPrinter& Put(const AProgram&);
+    ClassicPrettyPrinter& Put(const ListExpr&);
+    void operator()(const Ident&);
+    void operator()(const Char&);
+    void operator()(const Double&);
+    void operator()(const Integer&);
+    void operator()(const String&);
+    void operator()(const SpecialBegin&);
+    void operator()(const SpecialEnd&);
+    void operator()(const Expr&);
+    void operator()(const Variable&);
+    void operator()(const Application&);
+    void operator()(const Abstraction&);
+    void operator()(const StringExpr&);
+    void operator()(const IntegerExpr&);
+    void operator()(const DoubleExpr&);
+    void operator()(const CharExpr&);
+    void operator()(const SpecialExpr&);
+    void operator()(const Program&);
+    void operator()(const AProgram&);
+    void operator()(const ListExpr&);
 };
 
-template <class T>
-    requires requires(ClassicPrettyPrinter& printer, const T& value) { printer.Put(value); }
-ClassicPrettyPrinter& operator<<(ClassicPrettyPrinter& printer, const T& value) {
-    return printer.Put(value);
-}
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Ident&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Char&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Double&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Integer&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const String&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const SpecialBegin&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const SpecialEnd&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Expr&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Variable&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Application&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Abstraction&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const StringExpr&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const IntegerExpr&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const DoubleExpr&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const CharExpr&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const SpecialExpr&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Program&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const AProgram&);
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const ListExpr&);
+
+// Calls PutToken
+const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, std::string_view);
 
 }  // namespace ast::printing

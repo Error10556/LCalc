@@ -15,7 +15,7 @@
     namespace lib {                                                                \
     namespace traits {                                                             \
     template <class TAst>                                                          \
-    struct bnf_category_of<name<TAst>> {                                           \
+    struct lbnf_category_of<name<TAst>> {                                          \
         using value_t = cat<TAst>;                                                 \
     };                                                                             \
     template <class TAst>                                                          \

@@ -42,13 +42,21 @@
  *     │   │   ├── Array       = accessor representing a list of nodes or tokens
  *     │   │   ├── Label       = accessor representing a node of known type (LBNF labelled rule)
  *     │   │   ├── StringToken = any token represented as a std::string
- *     │   │   └── ScalarToken = any token represented as a fundamental type
+ *     │   │   ├── ScalarToken = any token represented as a fundamental type
+ *     │   │   └── Unknown     = the type is unrelated
  *     │   │
  *     │   ├── ASTClassType ast_class_type_v<T>
  *     │   │     Classifies the type T as one of the above.
  *     │   │
- *     │   ├── using bnf_category_of_t<TLabel>
+ *     │   ├── using lbnf_category_of_t<TLabel>
  *     │   │     The LBNF category that the labelled rule belongs to.
+ *     │   │
+ *     │   ├── int lbnf_coercion_level_v<TLabel/TArray>
+ *     │   │     The "coercion level" of a rule (represents operator priority).
+ *     │   │     Always 0 for arrays.
+ *     │   │
+ *     │   ├── std::string lbnf_name_v<T> requires (ast_class_type_v<T> != Unknown)
+ *     │   │     The name of a BNFC-generated type as seen in the grammar file.
  *     │   │
  *     │   ├── uint32_t type_tag_of_v<TLabel>
  *     │   │     The rule index in the LBNF category that the labelled rule belongs to.
@@ -626,15 +634,15 @@ concept is_ast_token = is_ast_string_token<T> || is_ast_scalar_token<T>;
 namespace traits {
 
 template <concepts::is_ast_label TLabel>
-struct bnf_category_of;
+struct lbnf_category_of;
 
 template <concepts::is_ast_label TLabel>
-using bnf_category_of_t = bnf_category_of<TLabel>::value_t;
+using lbnf_category_of_t = lbnf_category_of<TLabel>::value_t;
 
 template <concepts::is_ast_label TLabel>
 struct type_tag_of {
 private:
-    using cat_t = bnf_category_of_t<TLabel>;
+    using cat_t = lbnf_category_of_t<TLabel>;
     static constexpr int signed_val = detail::pack_of_types_find_v<TLabel, cat_t>;
     static_assert(signed_val >= 0);
 
@@ -2530,7 +2538,7 @@ struct ast_class_type<Plus<TAst>> {
     static constexpr ASTClassType value = ASTClassType::Label;
 };
 template <class TAst>
-struct bnf_category_of<Plus<TAst>> {
+struct lbnf_category_of<Plus<TAst>> {
     using value_t = Expr<TAst>;
 };
 }  // namespace traits
