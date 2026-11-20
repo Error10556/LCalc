@@ -73,7 +73,7 @@ std::pair<AST<>, ast::Program<>> pseudo_parse() {
         return ls;
     }();
 
-    auto p3_right = ast::lib::deep_copy<ast::lib::DFSOrder::PostOrder, true>(ast, ast, p3);
+    auto p3_right = ast::lib::deep_copy<ast::lib::DFSOrder::PreOrder, true>(ast, ast, p3);
 
     // l b. l f. f (l a. a) b
     auto prepender = [&ast] {
@@ -110,10 +110,10 @@ std::pair<AST<>, ast::Program<>> pseudo_parse() {
 
 int main() {
     auto [ast, prog] = pseudo_parse();
-    auto var = static_cast<ast::Expr<>>(prog.get(ast).ListExpr_().get(ast)[0])
-        .unchecked_get<ast::Application<>>(ast)
-        .Expr_2()
-        .unchecked_get<ast::Abstraction<>>(ast).Expr_().unchecked_get<ast::Variable<>>(ast);
+    // auto var = static_cast<ast::Expr<>>(prog.get(ast).ListExpr_().get(ast)[0])
+    //     .unchecked_get<ast::Application<>>(ast)
+    //     .Expr_2()
+    //     .unchecked_get<ast::Abstraction<>>(ast).Expr_().unchecked_get<ast::Variable<>>(ast);
     {
         auto printer = ast::printing::ClassicPrettyPrinter<AST<>>(std::cout);
         ast.visit(prog) | printer;

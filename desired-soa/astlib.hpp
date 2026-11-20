@@ -1158,11 +1158,11 @@ struct AnyAstNode_privates {
         return node.on_moved(new_extras_ptr, new_strings_ptr);
     }
     template <concepts::is_ast_label TLabel, concepts::is_ast TAst>
-    static ASTNewNodeInfo reserve_space(TAst ast) {
+    static ASTNewNodeInfo reserve_space(TAst& ast) {
         return TLabel::base_t::reserve_space(ast);
     }
     template <concepts::is_ast_array TArray, concepts::is_ast TAst>
-    static ASTNewNodeInfo reserve_space(TAst ast, uint32_t size) {
+    static ASTNewNodeInfo reserve_space(TAst& ast, uint32_t size) {
         return TArray::reserve_space(ast, size);
     }
     template <concepts::is_ast_label TLabel>
@@ -2277,7 +2277,7 @@ public:
                                           layout_t::Needs8ByteAlignment);
     }
     Label(TAst& ast, uint32_t tag_if_needed, creation_params_t&& vals) : ast{ast} {
-        initialize(reserve_space, tag_if_needed, std::move(vals));
+        initialize(reserve_space(ast), tag_if_needed, std::move(vals));
     }
     Label(TAst& ast, ASTNewNodeInfo reserved_space, uint32_t tag_if_needed,
           creation_params_t&& vals)
