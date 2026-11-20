@@ -1326,7 +1326,13 @@ public:
         ast_tree_storage().children[0] = fields.children[0] = new_extras_ptr;
     }
 
-    struct iterator;
+    template <class, bool>
+    struct iterator_templated;
+    using iterator = iterator_templated<ArrayOfScalars, false>;
+    using const_iterator = iterator_templated<const ArrayOfScalars, false>;
+    using reverse_iterator = iterator_templated<ArrayOfScalars, true>;
+    using const_reverse_iterator = iterator_templated<const ArrayOfScalars, true>;
+
     struct ItemRefWrapper {
         T& item;
         T* opt_storage_ptr;
@@ -1361,59 +1367,81 @@ public:
     }
     T operator[](uint32_t index) const { return get_by_index(index); }
 
-    struct iterator {
+    template <class TOwner, bool IsReverse>
+    struct iterator_templated {
+        iterator_templated(const iterator_templated&) = default;
+        iterator_templated(iterator_templated&&) = default;
+        iterator_templated& operator=(const iterator_templated&) = delete;
+        iterator_templated& operator=(iterator_templated&&) = delete;
+        ~iterator_templated() = default;
         using iterator_category = std::random_access_iterator_tag;
-        using difference_type = uint32_t;
+        using difference_type = int32_t;
         using pointer = T*;
-        using reference = ItemRefWrapper;
+        using reference =
+            std::conditional_t<std::is_same_v<const TOwner, TOwner>, T&&, ItemRefWrapper>;
         using value_type = T;
 
-        ArrayOfScalars& owner;
+    private:
+        TOwner& owner;
         uint32_t index;
 
-    private:
-        iterator(ArrayOfScalars& owner, uint32_t index) : owner{owner}, index{index} {}
+        static constexpr int IndexIncrement = (!IsReverse) * 2 - 1;
+
+        iterator_templated(TOwner& owner, uint32_t index) : owner{owner}, index{index} {}
         friend ArrayOfScalars;
 
     public:
-        auto operator*() { return owner.at(index); }
-        iterator& operator--() {
-            --index;
+        reference operator*() const { return owner.at(index - !!IsReverse); }
+        iterator_templated& operator--() {
+            index -= IndexIncrement;
             return *this;
         }
-        iterator operator--(int) {
+        iterator_templated operator--(int) {
             auto res = *this;
-            --index;
+            index -= IndexIncrement;
             return res;
         }
-        iterator& operator++() {
-            ++index;
+        iterator_templated& operator++() {
+            index += IndexIncrement;
             return *this;
         }
-        iterator operator++(int) {
+        iterator_templated operator++(int) {
             auto res = *this;
-            ++index;
+            index += IndexIncrement;
             return res;
         }
-        iterator& operator+=(difference_type d) {
-            index += d;
+        iterator_templated& operator+=(difference_type d) {
+            index += IndexIncrement * static_cast<int32_t>(d);
             return *this;
         }
-        iterator& operator-=(difference_type d) {
-            index -= d;
+        iterator_templated& operator-=(difference_type d) {
+            index -= IndexIncrement * static_cast<int32_t>(d);
             return *this;
         }
-        iterator operator+(difference_type d) const { return iterator{*this} += d; }
-        iterator operator-(difference_type d) const { return iterator{*this} -= d; }
-        std::strong_ordering operator<=>(const iterator& other) const {
-            return index <=> other.index;
+        iterator operator+(difference_type d) const { return iterator_templated{*this} += d; }
+        iterator operator-(difference_type d) const { return iterator_templated{*this} -= d; }
+        std::strong_ordering operator<=>(const iterator_templated& other) const {
+            if constexpr (IsReverse)
+                return other.index <=> index;
+            else
+                return index <=> other.index;
         }
-        bool operator==(const iterator& other) const { return index == other.index; }
-        bool operator!=(const iterator& other) const { return index != other.index; }
+        bool operator==(const iterator_templated& other) const { return index == other.index; }
+        bool operator!=(const iterator_templated& other) const { return index != other.index; }
     };
 
     iterator begin() { return iterator{*this, 0}; }
     iterator end() { return iterator{*this, size()}; }
+    const_iterator begin() const { return const_iterator{*this, 0}; }
+    const_iterator end() const { return const_iterator{*this, size()}; }
+    const_iterator cbegin() const { return const_iterator{*this, 0}; }
+    const_iterator cend() const { return const_iterator{*this, size()}; }
+    reverse_iterator rbegin() { return reverse_iterator{*this, 0}; }
+    reverse_iterator rend() { return reverse_iterator{*this, size()}; }
+    const_reverse_iterator rbegin() const { return const_reverse_iterator{*this, 0}; }
+    const_reverse_iterator rend() const { return const_reverse_iterator{*this, size()}; }
+    const_reverse_iterator crbegin() const { return const_reverse_iterator{*this, 0}; }
+    const_reverse_iterator crend() const { return const_reverse_iterator{*this, size()}; }
 
     template <class U>
     U& annotation() {
@@ -1486,7 +1514,13 @@ public:
             new_ast, this->fields, this->myindex);
     }
 
-    struct iterator;
+    template <class, bool>
+    struct iterator_templated;
+    using iterator = iterator_templated<Array, false>;
+    using const_iterator = iterator_templated<const Array, false>;
+    using reverse_iterator = iterator_templated<Array, true>;
+    using const_reverse_iterator = iterator_templated<const Array, true>;
+
     struct ItemRefWrapper {
     private:
         friend Array;
@@ -1504,7 +1538,8 @@ public:
         }
     };
 
-    struct iterator : private base_t::iterator {
+    template <class TOwner, bool IsReverse>
+    struct iterator_templated : private base_t::template iterator_templated<TOwner, IsReverse> {
     private:
         using w_t = base_t::iterator;
 
@@ -1512,46 +1547,51 @@ public:
         using iterator_category = std::random_access_iterator_tag;
         using difference_type = uint32_t;
         using pointer = Item*;
-        using reference = ItemRefWrapper;
+        using reference =
+            std::conditional_t<std::is_same_v<TOwner, const TOwner>, Item&&, ItemRefWrapper>;
         using value_type = Item;
-        iterator(w_t&& iter) : w_t{std::move(iter)} {}
+        iterator_templated(w_t&& iter) : w_t{std::move(iter)} {}
 
         ItemRefWrapper operator*() { return {w_t::operator*()}; }
-        iterator& operator--() {
+        iterator_templated& operator--() {
             w_t::operator--();
             return *this;
         }
-        iterator operator--(int) {
+        iterator_templated operator--(int) {
             auto res = *this;
             w_t::operator--();
             return res;
         }
-        iterator& operator++() {
+        iterator_templated& operator++() {
             w_t::operator++();
             return *this;
         }
-        iterator operator++(int) {
+        iterator_templated operator++(int) {
             auto res = *this;
             w_t::operator++();
             return res;
         }
-        iterator& operator+=(difference_type d) {
+        iterator_templated& operator+=(difference_type d) {
             w_t::operator+=(d);
             return *this;
         }
-        iterator& operator-=(difference_type d) {
+        iterator_templated& operator-=(difference_type d) {
             w_t::operator-=(d);
             return *this;
         }
-        iterator operator+(difference_type d) const { return iterator{*this} += d; }
-        iterator operator-(difference_type d) const { return iterator{*this} -= d; }
-        std::strong_ordering operator<=>(const iterator& other) const {
+        iterator_templated operator+(difference_type d) const {
+            return iterator_templated{*this} += d;
+        }
+        iterator_templated operator-(difference_type d) const {
+            return iterator_templated{*this} -= d;
+        }
+        std::strong_ordering operator<=>(const iterator_templated& other) const {
             return w_t::operator<=>(static_cast<const w_t&>(other));
         }
-        bool operator==(const iterator& other) const {
+        bool operator==(const iterator_templated& other) const {
             return w_t::operator==(static_cast<const w_t&>(other));
         }
-        bool operator!=(const iterator& other) const {
+        bool operator!=(const iterator_templated& other) const {
             return w_t::operator!=(static_cast<const w_t&>(other));
         }
     };
@@ -1564,8 +1604,19 @@ public:
         return detail::ASTPtr_privates::Create<Item>(base_t::operator[](index));
     }
     ItemRefWrapper operator[](uint32_t index) { return {base_t::operator[](index)}; }
+
     iterator begin() { return {base_t::begin()}; }
     iterator end() { return {base_t::end()}; }
+    const_iterator begin() const { return {base_t::cbegin()}; }
+    const_iterator end() const { return {base_t::cend()}; }
+    const_iterator cbegin() const { return {base_t::cbegin()}; }
+    const_iterator cend() const { return {base_t::cend()}; }
+    reverse_iterator rbegin() { return {base_t::rbegin()}; }
+    reverse_iterator rend() { return {base_t::rend()}; }
+    const_reverse_iterator rbegin() const { return {base_t::crbegin()}; }
+    const_reverse_iterator rend() const { return {base_t::crend()}; }
+    const_reverse_iterator crbegin() const { return {base_t::crbegin()}; }
+    const_reverse_iterator crend() const { return {base_t::crend()}; }
 
 private:
     static constexpr auto ExtractIndicesFromPointers =
@@ -1609,7 +1660,13 @@ public:
     using base_t::iterator;
     using base_t::operator[];
     using base_t::begin;
+    using base_t::cbegin;
+    using base_t::cend;
+    using base_t::crbegin;
+    using base_t::crend;
     using base_t::end;
+    using base_t::rbegin;
+    using base_t::rend;
     using base_t::size;
 
     template <std::ranges::range Range>
@@ -1627,9 +1684,10 @@ class Array<TAst, std::string> {
     uint32_t m_size;
     uint32_t strings_ptr;
     uint32_t myindex;
-    auto strings() const {
-        return detail::AST_privates::string_tokens(m_ast).begin() + strings_ptr;
+    std::vector<std::string>& string_token_vector() const {
+        return detail::AST_privates::string_tokens(m_ast);
     }
+    auto strings() const { return string_token_vector().begin() + strings_ptr; }
     Array(TAst& ast, uint32_t index) : Array(ast, ast.tree[index], index) {}
     Array(TAst& ast, detail::ASTNodeItem data, uint32_t index)
         : m_ast{ast}, m_size{data.info}, strings_ptr{data.children[0]}, myindex{index} {}
@@ -1645,6 +1703,8 @@ public:
 
     using iterator = std::vector<std::string>::iterator;
     using const_iterator = std::vector<std::string>::const_iterator;
+    using reverse_iterator = std::vector<std::string>::reverse_iterator;
+    using const_reverse_iterator = std::vector<std::string>::const_reverse_iterator;
 
     uint32_t size() const { return m_size; }
     std::string& at(uint32_t index) {
@@ -1662,8 +1722,20 @@ public:
 
     iterator begin() { return strings(); }
     iterator end() { return strings() + size(); }
-    const_iterator begin() const { return strings(); }
-    const_iterator end() const { return strings() + size(); }
+    const_iterator begin() const { return string_token_vector().cbegin() + strings_ptr; }
+    const_iterator end() const { return string_token_vector().cbegin() + (strings_ptr + m_size); }
+    const_iterator cbegin() const { return string_token_vector().cbegin() + strings_ptr; }
+    const_iterator cend() const { return string_token_vector().cbegin() + (strings_ptr + m_size); }
+    reverse_iterator rbegin() { return string_token_vector().rend() - (strings_ptr + m_size); }
+    reverse_iterator rend() { return string_token_vector().rend() - strings_ptr; }
+    const_reverse_iterator rbegin() const {
+        return string_token_vector().crend() - (strings_ptr + m_size);
+    }
+    const_reverse_iterator rend() const { return string_token_vector().crend() - strings_ptr; }
+    const_reverse_iterator crbegin() const {
+        return string_token_vector().crend() - (strings_ptr + m_size);
+    }
+    const_reverse_iterator crend() const { return string_token_vector().crend() - strings_ptr; }
 
     ASTPtr<Array> pointer() const { return lib::detail::ASTPtr_privates::Create<Array>(myindex); }
     template <class T>
