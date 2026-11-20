@@ -25,6 +25,7 @@ Precedence is always resolved by enclosing a term in parentheses '()'.
 */
 
 #pragma once
+#include <cctype>
 #include <ostream>
 #include <string_view>
 
@@ -43,16 +44,16 @@ class ClassicPrettyPrinter {
     bool needNewline = false;
     ClassicPrettyPrinter& FlushHere();
     ClassicPrettyPrinter& SimplePut(std::string_view);
+    static void PutLinebreak(std::ostream& out, unsigned int indent) {
+        out << '\n' << std::string(indent, ' ');
+    }
 
 public:
-#define BNFC_ASTLIB_PRINT_IF_BAD_COERC(output)                                              \
-    if (lib::traits::lbnf_coercion_level<std::remove_cvref_t<decltype(v)>> < coercionLevel) \
-        out << output;
     ClassicPrettyPrinter(std::ostream&, unsigned int tabSize = 4);
-    unsigned int TabSize() const;
+    unsigned int TabSize() const { return tabSize; }
     // In tabs
-    unsigned int IndentationLevel() const;
-    int CoercionLevel() const;
+    unsigned int IndentationLevel() const { return indentInTabs; }
+    int CoercionLevel() const { return coercionLevel; }
 
     ClassicPrettyPrinter& WithTabSize(unsigned int tabSize);
     ClassicPrettyPrinter& WithCoercionLevel(int lvl);
@@ -76,8 +77,10 @@ public:
     ClassicPrettyPrinter& PutString(const String&);
     ClassicPrettyPrinter& PutSpecialBegin(const SpecialBegin&);
     ClassicPrettyPrinter& PutSpecialEnd(const SpecialEnd&);
-    ClassicPrettyPrinter& Put(TAst& ast, const Expr<TAst>&, int coercLvl);     // Returns with current lvl
-    ClassicPrettyPrinter& Put(TAst& ast, const Program<TAst>&, int coercLvl);  // Returns with current lvl
+    ClassicPrettyPrinter& Put(TAst& ast, const Expr<TAst>&,
+                              int coercLvl);  // Returns with current lvl
+    ClassicPrettyPrinter& Put(TAst& ast, const Program<TAst>&,
+                              int coercLvl);  // Returns with current lvl
     ClassicPrettyPrinter& Put(const Variable<TAst>&);
     ClassicPrettyPrinter& Put(const Application<TAst>&);
     ClassicPrettyPrinter& Put(const Abstraction<TAst>&);
@@ -88,48 +91,406 @@ public:
     ClassicPrettyPrinter& Put(const SpecialExpr<TAst>&);
     ClassicPrettyPrinter& Put(const AProgram<TAst>&);
     ClassicPrettyPrinter& Put(const ListExpr<TAst>&);
-    void operator()(const Ident&);
-    void operator()(const Char&);
-    void operator()(const Double&);
-    void operator()(const Integer&);
-    void operator()(const String&);
-    void operator()(const SpecialBegin&);
-    void operator()(const SpecialEnd&);
-    void operator()(const Expr&);
-    void operator()(const Variable&);
-    void operator()(const Application&);
-    void operator()(const Abstraction&);
-    void operator()(const StringExpr&);
-    void operator()(const IntegerExpr&);
-    void operator()(const DoubleExpr&);
-    void operator()(const CharExpr&);
-    void operator()(const SpecialExpr&);
-    void operator()(const Program&);
-    void operator()(const AProgram&);
-    void operator()(const ListExpr&);
+    ClassicPrettyPrinter& operator()(const std::string& s) {
+        PutToken(s);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(const Char& c) {
+        Put(c);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(const Double& d) {
+        Put(d);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(const Integer& i) {
+        Put(i);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(TAst& ast, const Expr<TAst>& v) {
+        Put(ast, v, 0);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(const Variable<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(const Application<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(const Abstraction<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(const StringExpr<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(const IntegerExpr<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(const DoubleExpr<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(const CharExpr<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(const SpecialExpr<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(TAst& ast, const Program<TAst>& v) {
+        Put(ast, v, 0);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(const AProgram<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator()(const ListExpr<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const std::string& v) {
+        PutToken(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(std::string_view v) {
+        PutToken(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const Char& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const Double& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const Integer& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const Variable<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const Application<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const Abstraction<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const StringExpr<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const IntegerExpr<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const DoubleExpr<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const CharExpr<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const SpecialExpr<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const AProgram<TAst>& v) {
+        Put(v);
+        return *this;
+    }
+    ClassicPrettyPrinter& operator<<(const ListExpr<TAst>& v) {
+        Put(v);
+        return *this;
+    }
 };
 
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Ident&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Char&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Double&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Integer&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const String&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const SpecialBegin&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const SpecialEnd&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Expr&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Variable&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Application&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Abstraction&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const StringExpr&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const IntegerExpr&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const DoubleExpr&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const CharExpr&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const SpecialExpr&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const Program&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const AProgram&);
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, const ListExpr&);
+#define BNFC_ASTLIB_PRINT_IF_BAD_COERC(output)                                                \
+    if (lib::traits::lbnf_coercion_level_v<std::remove_cvref_t<decltype(v)>> < coercionLevel) \
+        PutToken(output);
 
-// Calls PutToken
-const ClassicPrettyPrinter& operator<<(const ClassicPrettyPrinter&, std::string_view);
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::SimplePut(std::string_view s) {
+    FlushHere();
+    out << s;
+    needSpace = true;
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::WithTabSize(unsigned int tabSize) {
+    this->tabSize = tabSize;
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Indent(unsigned int tabs) {
+    indentInTabs += tabs;
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Dedent(unsigned int tabs) {
+    if (tabs > indentInTabs)
+        indentInTabs = 0;
+    else
+        indentInTabs -= tabs;
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::WithIndent(unsigned int tabs) {
+    indentInTabs = tabs;
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::SkipSpaceHere() {
+    needSpace = false;
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::NeedSpaceHere() {
+    needSpace = true;
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutToken(std::string_view s) {
+    if (s.empty()) {
+        SkipSpaceHere();
+        return *this;
+    }
+    if (s.size() == 1) {
+        bool handled = true;
+        switch (s.front()) {
+            case '{':
+                OnNewLine().SimplePut(s).Indent().OnNewLine();
+                break;
+            case '}':
+                OnNewLine().Dedent().SimplePut(s).OnNewLine();
+                break;
+            case ';':
+                SkipSpaceHere().SimplePut(s).OnNewLine();
+                break;
+            case ',':
+            case ')':
+            case ']':
+                SkipSpaceHere().SimplePut(s).NeedSpaceHere();
+                break;
+            case '(':
+            case '[':
+                SimplePut(s).SkipSpaceHere();
+                break;
+            default:
+                handled = false;
+                break;
+        }
+        if (handled) return *this;
+    }
+    if (std::isspace(s.front())) SkipSpaceHere();
+    SimplePut(s);
+    if (std::isspace(s.back())) SkipSpaceHere();
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutCharLiteral(int32_t ch) {
+    FlushHere();
+    print_escaped_char(out, ch);
+    return NeedSpaceHere();
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutStringLiteral(std::string_view s) {
+    FlushHere();
+    print_escaped_string(out, s);
+    return NeedSpaceHere();
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutDoubleLiteral(double v) {
+    FlushHere();
+    print_double(out, v);
+    return NeedSpaceHere();
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutIntegerLiteral(long v) {
+    FlushHere();
+    print_double(out, v);
+    return NeedSpaceHere();
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::OnNewLine() {
+    needSpace = false;
+    needNewline = true;
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutIdent(const Ident& v) {
+    return PutToken(v);
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const Char& v) {
+    return PutCharLiteral(v);
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const Double& v) {
+    return PutDoubleLiteral(v);
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const Integer& v) {
+    return PutIntegerLiteral(v);
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutString(const String& v) {
+    return PutStringLiteral(v);
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutSpecialBegin(const SpecialBegin& v) {
+    return PutToken(v);
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutSpecialEnd(const SpecialEnd& v) {
+    return PutToken(v);
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(TAst& ast, const Expr<TAst>& v,
+                                                            int coercLvl) {
+    int cur = coercionLevel;
+    coercionLevel = coercLvl;
+    ast.visit(v)(*this);
+    coercionLevel = cur;
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(TAst& ast, const Program<TAst>& v,
+                                                            int coercLvl) {
+    int cur = coercionLevel;
+    coercionLevel = coercLvl;
+    ast.visit(v)(*this);
+    coercionLevel = cur;
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const Variable<TAst>& v) {
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
+    PutIdent(v.Ident_);
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const Application<TAst>& v) {
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
+    Put(*v.Expr_1, 1);
+    Put(*v.Expr_2, 2);
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const Abstraction<TAst>& v) {
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
+    PutToken("l");
+    Put(v.Ident_);
+    PutToken(".");
+    Put(*v.Expr_, 0);
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const StringExpr<TAst>& v) {
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
+    PutToken("str:");
+    Put(v.String_);
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const IntegerExpr<TAst>& v) {
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
+    PutToken("int:");
+    Put(v.Integer_);
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const DoubleExpr<TAst>& v) {
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
+    PutToken("dbl:");
+    Put(v.Double_);
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const CharExpr<TAst>& v) {
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
+    PutToken("chr:");
+    Put(v.Char_);
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const SpecialExpr<TAst>& v) {
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
+    Put(v.SpecialBegin_);
+    Put(*v.Expr_, 0);
+    Put(v.SpecialEnd_);
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const AProgram<TAst>& v) {
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC("(");
+    Put(v.ListExpr_);
+    BNFC_ASTLIB_PRINT_IF_BAD_COERC(")");
+    return *this;
+}
+
+template <lib::concepts::is_ast TAst>
+ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const ListExpr<TAst>& v) {
+    if (v.empty()) {
+    } else {
+        auto last = std::prev(v.cend());
+        for (auto i = v.begin(); i != last; ++i) {
+            Put(*i, 0);
+            PutToken(";");
+        }
+        Put(*last, 0);
+    }
+    return *this;
+}
 
 }  // namespace ast::printing
