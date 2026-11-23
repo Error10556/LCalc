@@ -17,20 +17,6 @@
 namespace ast::lib {
 namespace debug {
 
-template <class T>
-struct ast_obj_name {
-    static constexpr std::string get_name() {
-        using std::literals::operator""s;
-        return "(typeid)"s + typeid(T).name();
-    }
-};
-
-template <class T>
-    requires(traits::ast_class_type_v<T> != traits::ASTClassType::Unknown)
-struct ast_obj_name<T> {
-    static constexpr std::string get_name() { return traits::lbnf_name_v<T>; }
-};
-
 class ASTDump {
     static std::string show_argument(std::string s);
     static std::string show_argument(uint32_t v);
@@ -63,7 +49,7 @@ public:
         tree_labels.resize(tree.size());
         extras = detail::AST_privates::extra(ast);
         strings = detail::AST_privates::string_tokens(ast);
-        annot_names = {ast_obj_name<Annots>::get_name()...};
+        annot_names = {typeid(Annots).name()...};
         [[maybe_unused]] auto blobify_vector = []<class T>(const std::vector<T>& v) {
             std::vector<Blob> res;
             res.reserve(v.size());
@@ -89,7 +75,7 @@ public:
         if constexpr (concepts::is_ast_variant_ptr<decltype(ptr)>) {
             ast.visit(ptr) | [&](auto node) {
                 using obj_t = decltype(node);
-                res = traits::lbnf_name_v<obj_t>;
+                res = traits::lbnf_name<obj_t>::get_name();
                 res.push_back('(');
                 res += [&]<size_t... Indices>(std::index_sequence<Indices...>) {
                     return (... + [&] {
@@ -106,7 +92,7 @@ public:
             };
         } else {  // array
             const auto node = ptr.get(ast);
-            res = traits::lbnf_name_v<std::remove_const_t<decltype(node)>>;
+            res = traits::lbnf_name<std::remove_const_t<decltype(node)>>::get_name();
             res.push_back('[');
             res.append(std::to_string(std::size(node)));
             res.append("]{");
