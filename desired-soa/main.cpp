@@ -108,22 +108,29 @@ std::pair<AST<>, ast::Program<>> pseudo_parse() {
     return {std::move(ast), prog};
 }
 
+static_assert(std::is_same_v<ast::lib::detail::astptr_with_updated_annotations_t<ast::lib::ASTPtr<ast::ListExpr<>>, AST<TravTime>>, ast::lib::ASTPtr<ast::ListExpr<AST<TravTime>>>>);
+
 int traverse(ast::lib::concepts::ast_annotated_by<TravTime> auto& ast,
              ast::lib::concepts::is_ast_ptr auto root, int nx_time) {
     root.template annotation<TravTime>(ast).tin = nx_time++;
-    root.visit(ast) | [&](auto node) {
-        static constexpr size_t n = std::tuple_size_v<decltype(node)>;
-        [&]<size_t... Indices>(std::index_sequence<Indices...>) {
-            (
-                [&] {
-                    if constexpr (ast::lib::concepts::is_ast_ptr<
-                                      std::tuple_element_t<Indices, decltype(node)>>) {
-                        nx_time = traverse(ast, node.template get<Indices>(), nx_time);
-                    }
-                }(),
-                ...);
-        }(std::make_index_sequence<n>());
-    };
+    if constexpr (ast::lib::concepts::is_ast_array_ptr<decltype(root)>) {
+        const auto arr = ast.get(root);
+        for (auto p : arr) nx_time = traverse(ast, p, nx_time);
+    } else {
+        root.visit(ast) | [&](auto node) {
+            static constexpr size_t n = std::tuple_size_v<decltype(node)>;
+            [&]<size_t... Indices>(std::index_sequence<Indices...>) {
+                (
+                    [&] {
+                        if constexpr (ast::lib::concepts::is_ast_ptr<
+                                          std::tuple_element_t<Indices, decltype(node)>>) {
+                            nx_time = traverse(ast, node.template get<Indices>(), nx_time);
+                        }
+                    }(),
+                    ...);
+            }(std::make_index_sequence<n>());
+        };
+    }
     root.template annotation<TravTime>(ast).tout = nx_time++;
     return nx_time;
 }
@@ -149,6 +156,6 @@ int main() {
     auto avar = var.update_annotations(aast);
     traverse(aast, aprog, 0);
     auto dump = ast::lib::debug::ASTDump(aast);
-    dump.generate_labels(aast, prog);
+    dump.generate_labels(aast, aprog);
     dump.interact(std::cin, std::cout);
 }

@@ -70,7 +70,7 @@ public:                                                                         
     template <lib::concepts::is_ast NewAst>                                                       \
     name<NewAst> update_annotations(NewAst& new_ast) const {                                      \
         return lib::detail::AnyAstNode_privates::create_label<name<NewAst>>(                      \
-            base.with_ast(new_ast));                                                              \
+            base.update_annotations(new_ast));                                                    \
     }                                                                                             \
                                                                                                   \
 private:

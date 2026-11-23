@@ -628,34 +628,28 @@ template <class TAst, class... Annots>
 concept ast_annotated_by = traits::is_ast_annotated_by_v<TAst, Annots...>;
 
 template <class T>
-concept is_ast_variant_ptr =
-    traits::ast_class_type_v<T> == traits::ASTClassType::VariantPtr;
+concept is_ast_variant_ptr = traits::ast_class_type_v<T> == traits::ASTClassType::VariantPtr;
 
 template <class T>
-concept is_ast_array_ptr =
-    traits::ast_class_type_v<T> == traits::ASTClassType::ArrayPtr;
+concept is_ast_array_ptr = traits::ast_class_type_v<T> == traits::ASTClassType::ArrayPtr;
 
 template <class T>
 concept is_ast_ptr = is_ast_variant_ptr<T> || is_ast_array_ptr<T>;
 
 template <class T>
-concept is_ast_label =
-    traits::ast_class_type_v<T> == traits::ASTClassType::Label;
+concept is_ast_label = traits::ast_class_type_v<T> == traits::ASTClassType::Label;
 
 template <class T>
-concept is_ast_array =
-    traits::ast_class_type_v<T> == traits::ASTClassType::Array;
+concept is_ast_array = traits::ast_class_type_v<T> == traits::ASTClassType::Array;
 
 template <class T>
 concept is_ast_node = is_ast_label<T> || is_ast_array<T>;
 
 template <class T>
-concept is_ast_scalar_token =
-    traits::ast_class_type_v<T> == traits::ASTClassType::ScalarToken;
+concept is_ast_scalar_token = traits::ast_class_type_v<T> == traits::ASTClassType::ScalarToken;
 
 template <class T>
-concept is_ast_string_token =
-    traits::ast_class_type_v<T> == traits::ASTClassType::StringToken;
+concept is_ast_string_token = traits::ast_class_type_v<T> == traits::ASTClassType::StringToken;
 
 template <class T>
 concept is_ast_token = is_ast_string_token<T> || is_ast_scalar_token<T>;
@@ -774,6 +768,10 @@ struct AST_privates {
     template <class TAnnot, class... Annots>
         requires concepts::detail::same_as_any_of<TAnnot, Annots...>
     static const std::vector<TAnnot>& annots(const AST<Annots...>&);
+    template <concepts::is_ast TAst>
+    static auto& annots_tuple(TAst&);
+    template <concepts::is_ast TAst>
+    static const auto& annots_tuple(const TAst&);
 
     template <concepts::is_ast TAst>
     static ASTNewNodeInfo emplace_back(TAst&, uint32_t nextra, uint32_t nstrings,
@@ -842,7 +840,8 @@ public:
         : tree{std::move(detail::AST_privates::tree(other))},
           string_tokens{std::move(detail::AST_privates::string_tokens(other))},
           extra{std::move(detail::AST_privates::extra(other))},
-          annots{transform_annotations(std::move(other).annots, tree.size())} {}
+          annots{transform_annotations(std::move(detail::AST_privates::annots_tuple(other)),
+                                       tree.size())} {}
     uint32_t size() const { return tree.size(); }
     template <concepts::detail::default_constructible... T>
         requires(sizeof...(T) > 0)
@@ -890,7 +889,7 @@ struct is_ast<AST<Ts...>> {
 };
 
 template <class... RealAnnots, class... NeededAnnots>
-struct is_ast_annotated_by<AST<RealAnnots...>, NeededAnnots...>{
+struct is_ast_annotated_by<AST<RealAnnots...>, NeededAnnots...> {
     static constexpr bool value = (... && (detail::pack_find_v<NeededAnnots, RealAnnots...> >= 0));
 };
 
@@ -930,6 +929,14 @@ template <class TAnnot, class... Annots>
     requires concepts::detail::same_as_any_of<TAnnot, Annots...>
 inline const std::vector<TAnnot>& AST_privates::annots(const AST<Annots...>& ast) {
     return std::get<std::vector<TAnnot>>(ast.annots);
+}
+template <concepts::is_ast TAst>
+inline auto& AST_privates::annots_tuple(TAst& ast) {
+    return ast.annots;
+}
+template <concepts::is_ast TAst>
+inline const auto& AST_privates::annots_tuple(const TAst& ast) {
+    return ast.annots;
 }
 template <concepts::is_ast TAst>
 inline ASTNewNodeInfo AST_privates::emplace_back(TAst& ast, uint32_t nextra, uint32_t nstrings,
@@ -1035,6 +1042,16 @@ public:
     template <concepts::detail::same_as_any_of<Ts...> TLabel, concepts::is_ast TAst>
     TLabel unchecked_get(TAst& ast) const {
         return ast.template unchecked_get<TLabel>(*this);
+    }
+    template <concepts::detail::default_constructible TAnnot, class... TAnnots>
+        requires concepts::detail::same_as_any_of<TAnnot, TAnnots...>
+    TAnnot& annotation(AST<TAnnots...>& ast) {
+        return ast.template annotation<TAnnot>(*this);
+    }
+    template <concepts::detail::default_constructible TAnnot, class... TAnnots>
+        requires concepts::detail::same_as_any_of<TAnnot, TAnnots...>
+    const TAnnot& annotation(const AST<TAnnots...>& ast) {
+        return ast.template annotation<TAnnot>(*this);
     }
     template <concepts::is_ast TNewAst>
     detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations() const {
@@ -2068,12 +2085,10 @@ private:
             return *reinterpret_cast<TScalar*>(extras() + Pos.second);
     }
 
+public:
     Label(TAst& ast, const decltype(inline_data)& data, decltype(cond_index) cond_index)
         : ast{ast}, inline_data{data}, cond_index{cond_index} {}
 
-    friend AnyAstNode_privates;
-
-public:
     uint32_t index() const {
         if constexpr (layout_t::PlaceToStoreNodeIndex == -1)
             return cond_index.separately_stored_index();
@@ -2214,8 +2229,7 @@ public:
     template <concepts::is_ast TNewAst>
     Label<TNewAst, TStoresTag, NPtrs, NStrings, NDoubles, NInts, NChars, NBools> update_annotations(
         TNewAst& new_ast) const {
-        return AnyAstNode_privates::create_label<
-            Label<TNewAst, TStoresTag, NPtrs, NStrings, NDoubles, NInts, NChars, NBools>>(
+        return Label<TNewAst, TStoresTag, NPtrs, NStrings, NDoubles, NInts, NChars, NBools>(
             new_ast, inline_data, cond_index);
     }
 
@@ -2244,7 +2258,7 @@ template <class TAnnot, concepts::is_ast_ptr TPtr>
 inline TAnnot& AST<TAnnotations...>::annotation(TPtr ptr)
     requires(sizeof...(TAnnotations) > 0)
 {
-    return std::get<TAnnot>(annots)[detail::ASTPtr_privates::Index(ptr)];
+    return std::get<std::vector<TAnnot>>(annots)[detail::ASTPtr_privates::Index(ptr)];
 }
 
 template <concepts::detail::default_constructible... TAnnotations>
@@ -2254,7 +2268,7 @@ template <class TAnnot, concepts::is_ast_ptr TPtr>
 inline const TAnnot& AST<TAnnotations...>::annotation(TPtr ptr) const
     requires(sizeof...(TAnnotations) > 0)
 {
-    return std::get<TAnnot>(annots)[detail::ASTPtr_privates::Index(ptr)];
+    return std::get<std::vector<TAnnot>>(annots)[detail::ASTPtr_privates::Index(ptr)];
 }
 
 template <concepts::detail::default_constructible... TAnnotations>
