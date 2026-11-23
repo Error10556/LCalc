@@ -8,6 +8,8 @@
 namespace ast::lib::debug {
 namespace {
 
+/// BEGIN !VIBECODED!
+
 constexpr char hex_digits[] = "0123456789abcdef";
 
 void write_hex_byte(std::ostream& out, unsigned char byte) {
@@ -64,9 +66,7 @@ struct unquoted_string_view {
     std::string_view value;
 };
 
-void write_value(std::ostream& out, unquoted_string_view sv) {
-    out << sv.value;
-}
+void write_value(std::ostream& out, unquoted_string_view sv) { out << sv.value; }
 
 void write_value(std::ostream& out, const ASTDump::Blob& blob) { out << blob; }
 
@@ -81,6 +81,8 @@ bool parse_index(std::string_view text, std::size_t& index) {
     const auto result = std::from_chars(start, end, index, radix);
     return result.ec == std::errc{} && result.ptr == end;
 }
+
+/// END !VIBECODED!
 
 template <class... Ts>
 void write_rows(std::istream& args, std::ostream& out, const std::vector<Ts>&... rows) {
@@ -119,6 +121,8 @@ void write_rows(std::istream& args, std::ostream& out, const std::vector<Ts>&...
     }
 }
 
+/// BEGIN !VIBECODED!
+
 constexpr char help[] =
     "summary                         Show the number of entries in each section\n"
     "tree [index [count]]            Show tree words\n"
@@ -143,6 +147,13 @@ std::ostream& operator<<(std::ostream& out, const ASTDump::Blob& blob) {
     return out;
 }
 
+std::vector<unquoted_string_view> make_unquoted(const std::vector<std::string>& s) {
+    std::vector<unquoted_string_view> labels;
+    labels.reserve(s.size());
+    for (const std::string& i : s) labels.emplace_back(std::string_view(i));
+    return labels;
+}
+
 void ASTDump::interact(std::istream& in, std::ostream& out) {
     out << "AST dump. Type help for commands.\n";
     std::string line;
@@ -150,12 +161,8 @@ void ASTDump::interact(std::istream& in, std::ostream& out) {
         std::istringstream args(line);
         std::string command;
         if (!(args >> command)) continue;
-
         if (command == "tree") {
-            std::vector<unquoted_string_view> labels;
-            labels.reserve(tree_labels.size());
-            for (const std::string& i : tree_labels) labels.emplace_back(std::string_view(i));
-            write_rows(args, out, tree, labels);
+            write_rows(args, out, tree, make_unquoted(tree_labels));
         } else if (command == "extras") {
             write_rows(args, out, extras);
         } else if (command == "strings") {
@@ -169,14 +176,14 @@ void ASTDump::interact(std::istream& in, std::ostream& out) {
                 } else if (column >= annots.size()) {
                     out << "Annotation column out of bounds (" << annots.size() << " columns).\n";
                 } else {
-                    write_rows(args, out, annots[column]);
+                    write_rows(args, out, annots[column], make_unquoted(tree_labels));
                 }
             } else {
                 if (annots.empty()) out << "(empty)\n";
                 for (std::size_t i = 0; i < annots.size(); ++i) {
                     const std::string_view name =
                         i < annot_names.size() ? std::string_view(annot_names[i]) : "(unnamed)";
-                    out << i << ": " << name << " (" << annots[i].size() << " entries)\n";
+                    out << ' ' << i << ": " << name << " (" << annots[i].size() << " entries)\n";
                 }
             }
         } else if (command == "help" || command == "summary" || command == "quit") {
@@ -212,3 +219,5 @@ std::string ASTDump::show_argument(uint32_t v) {
 }
 
 }  // namespace ast::lib::debug
+
+/// END !VIBECODED!

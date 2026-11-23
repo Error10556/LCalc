@@ -5,6 +5,8 @@ OLD_BNFCFLAGS = --cpp-var ../grammar.cf
 BNFCFLAGS = $(OLD_BNFCFLAGS)
 DEBUGFLAGS = -glldb -fstandalone-debug
 
+.DEFAULT_GOAL = main
+
 all: main maindb
 
 astinst.o: ast.hpp astlib.hpp printer-common.hpp classic-pretty-printer.hpp astinst.cpp
