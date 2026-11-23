@@ -272,6 +272,9 @@ uint32_t type_tag_of_v<TLabel>
 using ast_array_value_t<TArray>
   The type of items in the array.
 
+bool is_ast_annotated_by_v<Ast<...>, Annotations...>
+  True iff the AST instantiation contains each of the listed annotation structs.
+
 }  // namespace ast::lib::traits
 
 == namespace ast::lib::concepts { ==================================================================
@@ -279,6 +282,9 @@ using ast_array_value_t<TArray>
 
 is_ast<T>
   T must be an ast::lib::AST<...> instantiation.
+
+ast_annotated_by<AST<...>, Annotations...>
+  The AST instantiation must contain each of the listed annotation structs.
 
 is_ast_variant_ptr<T>
   T must be a pointer (ASTPtr) to a polymorphic node object (LBNF category).
@@ -601,12 +607,25 @@ struct ast_class_type<Char> {
     static constexpr ASTClassType value = ASTClassType::ScalarToken;
 };
 
+template <class TAst, class... Annots>
+struct is_ast_annotated_by {
+    static constexpr bool value = false;
+};
+
+// Definition of is_ast_annotated_by is after class AST
+
+template <class TAst, class... Annots>
+constexpr bool is_ast_annotated_by_v = is_ast_annotated_by<TAst, Annots...>::value;
+
 }  // namespace traits
 
 namespace concepts {
 
 template <class T>
 concept is_ast = traits::is_ast_v<T>;
+
+template <class TAst, class... Annots>
+concept ast_annotated_by = traits::is_ast_annotated_by_v<TAst, Annots...>;
 
 template <class T>
 concept is_ast_variant_ptr =
@@ -864,10 +883,17 @@ public:
 };
 
 namespace traits {
+
 template <class... Ts>
 struct is_ast<AST<Ts...>> {
     static constexpr bool value = true;
 };
+
+template <class... RealAnnots, class... NeededAnnots>
+struct is_ast_annotated_by<AST<RealAnnots...>, NeededAnnots...>{
+    static constexpr bool value = (... && (detail::pack_find_v<NeededAnnots, RealAnnots...> >= 0));
+};
+
 }  // namespace traits
 
 namespace detail {
@@ -980,7 +1006,7 @@ template <concepts::is_ast_ptr TPtr, concepts::is_ast TAst>
 struct astptr_with_updated_annotations;
 
 template <class... Ts, concepts::is_ast TAst>
-struct astptr_with_updated_annotations<TAst, ASTPtr<Ts...>> {
+struct astptr_with_updated_annotations<ASTPtr<Ts...>, TAst> {
     using value_t =
         ASTPtr<decltype(std::declval<Ts>().update_annotations(std::declval<TAst&>()))...>;
 };

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string_view>
+#include <utility>
 #include <variant>
 
 #include "annotation.hpp"
@@ -103,23 +104,51 @@ std::pair<AST<>, ast::Program<>> pseudo_parse() {
             nul)
             .pointer();
     auto powerexpr2 = ast::lib::deep_copy(ast, ast, powerexpr);
-    auto prog =
-        ast::AProgram(ast, ast::ListExpr<>(ast, powerexpr, powerexpr2).pointer()).pointer();
+    auto prog = ast::AProgram(ast, ast::ListExpr<>(ast, powerexpr, powerexpr2).pointer()).pointer();
     return {std::move(ast), prog};
+}
+
+int traverse(ast::lib::concepts::ast_annotated_by<TravTime> auto& ast,
+             ast::lib::concepts::is_ast_ptr auto root, int nx_time) {
+    root.template annotation<TravTime>(ast).tin = nx_time++;
+    root.visit(ast) | [&](auto node) {
+        static constexpr size_t n = std::tuple_size_v<decltype(node)>;
+        [&]<size_t... Indices>(std::index_sequence<Indices...>) {
+            (
+                [&] {
+                    if constexpr (ast::lib::concepts::is_ast_ptr<
+                                      std::tuple_element_t<Indices, decltype(node)>>) {
+                        nx_time = traverse(ast, node.template get<Indices>(), nx_time);
+                    }
+                }(),
+                ...);
+        }(std::make_index_sequence<n>());
+    };
+    root.template annotation<TravTime>(ast).tout = nx_time++;
+    return nx_time;
 }
 
 int main() {
     auto [ast, prog] = pseudo_parse();
-    // auto var = static_cast<ast::Expr<>>(prog.get(ast).ListExpr_().get(ast)[0])
-    //     .unchecked_get<ast::Application<>>(ast)
-    //     .Expr_2()
-    //     .unchecked_get<ast::Abstraction<>>(ast).Expr_().unchecked_get<ast::Variable<>>(ast);
+    auto var = prog.get(ast)
+                   .ListExpr_()
+                   .get(ast)[0]
+                   .read()
+                   .unchecked_get<ast::Application<>>(ast)
+                   .Expr_2()
+                   .unchecked_get<ast::Abstraction<>>(ast)
+                   .Expr_()
+                   .unchecked_get<ast::Variable<>>(ast);
     {
         auto printer = ast::printing::ClassicPrettyPrinter<AST<>>(std::cout);
         ast.visit(prog) | printer;
         printer.OnNewLine().FlushWhitespace();
     }
-    auto dump = ast::lib::debug::ASTDump(ast);
-    dump.generate_labels(ast, prog);
+    auto aast = std::move(ast).annotate<TravTime>();
+    auto aprog = prog.update_annotations(aast);
+    auto avar = var.update_annotations(aast);
+    traverse(aast, aprog, 0);
+    auto dump = ast::lib::debug::ASTDump(aast);
+    dump.generate_labels(aast, prog);
     dump.interact(std::cin, std::cout);
 }

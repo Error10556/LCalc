@@ -68,7 +68,7 @@ public:                                                                         
         return base.ast.template annotation<T>(pointer());                                        \
     }                                                                                             \
     template <lib::concepts::is_ast NewAst>                                                       \
-    name<NewAst> with_ast(NewAst& new_ast) const {                                                \
+    name<NewAst> update_annotations(NewAst& new_ast) const {                                      \
         return lib::detail::AnyAstNode_privates::create_label<name<NewAst>>(                      \
             base.with_ast(new_ast));                                                              \
     }                                                                                             \
