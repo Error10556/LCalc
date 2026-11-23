@@ -3,304 +3,312 @@
 /*******************/
 
 /* Overview of the ast namespace:
- * ('detail' namespaces contain internal implementation details and are therefore omitted)
- *
- * namespace ast
- * │ Contains classes encapsulating the AST data structure.
- * │
- * ├── using Ident = std::string
- * │     The identifier built-in token.
- * │
- * ├── using String = std::string
- * │     The UTF-8-encoded string literal built-in token.
- * │
- * ├── using Integer = long
- * │     The 64-bit signed integer literal built-in token.
- * │
- * ├── using Double = double
- * │     The double-precision floating point literal built-in token.
- * │
- * ├── using Char = char32_t
- * │     The UTF-32-encoded (UCS-4) character literal built-in token.
- * │
- * ├── using Bool = bool
- * │     The boolean value literal built-in token.
- * │
- * └── namespace lib
- *     │ Abstractions accessible to the user and automatically used by the generator.
- *     │
- *     ├── namespace traits
- *     │   │ Information about AST classes.
- *     │   │
- *     │   ├── bool is_ast_v<T>
- *     │   │     'true' if T is an instantiation of 'ast::lib::AST<...>'.
- *     │   │
- *     │   ├── enum class ASTClassType
- *     │   │   │ Kinds of objects used in this module.
- *     │   │   ├── VariantPtr  = pointer (ASTPtr) to a polymorphic node object (LBNF category)
- *     │   │   ├── ArrayPtr    = pointer (ASTPtr) to a list of nodes or tokens
- *     │   │   ├── Array       = accessor representing a list of nodes or tokens
- *     │   │   ├── Label       = accessor representing a node of known type (LBNF labelled rule)
- *     │   │   ├── StringToken = any token represented as a std::string
- *     │   │   ├── ScalarToken = any token represented as a fundamental type
- *     │   │   └── Unknown     = the type is unrelated
- *     │   │
- *     │   ├── ASTClassType ast_class_type_v<T>
- *     │   │     Classifies the type T as one of the above.
- *     │   │
- *     │   ├── using lbnf_category_of_t<TLabel>
- *     │   │     The LBNF category that the labelled rule belongs to.
- *     │   │
- *     │   ├── int lbnf_coercion_level_v<TLabel/TArray>
- *     │   │     The "coercion level" of a rule (represents operator priority).
- *     │   │     Always 0 for arrays.
- *     │   │
- *     │   ├── std::string lbnf_name_v<T> requires (ast_class_type_v<T> != Unknown)
- *     │   │     The name of a BNFC-generated type as seen in the grammar file.
- *     │   │
- *     │   ├── uint32_t type_tag_of_v<TLabel>
- *     │   │     The rule index in the LBNF category that the labelled rule belongs to.
- *     │   │     Internally used as the tag for dynamic dispatch.
- *     │   │
- *     │   └── using ast_array_value_t<TArray>
- *     │         The type of items in the array.
- *     │
- *     ├── namespace concepts
- *     │   │ Contains useful concepts for template definitions.
- *     │   │
- *     │   ├── is_ast<T>
- *     │   │     T must be an ast::lib::AST<...> instantiation.
- *     │   │
- *     │   ├── is_ast_variant_ptr<T>
- *     │   │     T must be a pointer (ASTPtr) to a polymorphic node object (LBNF category).
- *     │   │
- *     │   ├── is_ast_array_ptr<T>
- *     │   │     T must be a pointer (ASTPtr) to a list of syntax nodes or token values.
- *     │   │
- *     │   ├── is_ast_ptr<T>
- *     │   │     T must be an AST object pointer (ASTPtr).
- *     │   │
- *     │   ├── is_ast_label<T>
- *     │   │     T must be an accessor to a polymorphic node object (LBNF category).
- *     │   │
- *     │   ├── is_ast_array<T>
- *     │   │     T must be an accessor to a list of syntax nodes or token values.
- *     │   │
- *     │   ├── is_ast_node<T>
- *     │   │     T must be an accessor to a list or label.
- *     │   │
- *     │   ├── is_ast_scalar_token<T>
- *     │   │     T must be a token value represented as a fundamental type.
- *     │   │
- *     │   ├── is_ast_string_token<T>
- *     │   │     T must be a token value represented as a std::string.
- *     │   │
- *     │   └── is_ast_token<T>
- *     │         T must be a token value.
- *     │
- *     ├── class AST<TAnnotations...>
- *     │   │ Represents the entire Abstract Syntax Tree. Encapsulates node access. If annotation
- *     │   │ structs are specified, creates one of each for every syntax node.
- *     │   │ Token values are not syntax nodes and cannot be annotated.
- *     │   │
- *     │   ├── AST()
- *     │   │     New empty syntax tree.
- *     │   │
- *     │   ├── AST(AST<TOtherAnnots...>&& rvalue_old_tree)
- *     │   │     Changes the annotation list: default-constructs new annotations and keeps
- *     │   │     existing ones. The argument must be discarded after the call.
- *     │   │
- *     │   ├── AST<TAnnotations..., TMore...> annotate<TMore...>() &&
- *     │   │     Adds more annotations, returns a new tree with all existing and additional
- *     │   │     annotations. Annotation objects are default-constructed for each node.
- *     │   │     Must be called on an rvalue.
- *     │   │
- *     │   ├── TAnnot&       annotation<TAnnot>(TPtr node_pointer)
- *     │   ├── const TAnnot& annotation<TAnnot>(TPtr node_pointer) const
- *     │   │     Accesses an annotation object of a syntax node identified by node_pointer.
- *     │   │
- *     │   ├── Visit<AST, TPtr...> visit(TPtr... ptrs)
- *     │   │     Allows dynamic dispatch on one or more polymorphic syntax nodes.
- *     │   │     (see operator|(Visit, Visitor)).
- *     │   │
- *     │   ├── TLabel unchecked_get<TLabel>(TPtr ptr)
- *     │   │     Returns a node accessor for a labelled rule object without checking if TLabel is
- *     │   │     the correct type for it. If the type does not match, the behavior is undefined!!
- *     │   │
- *     │   ├── std::optional<TLabel> checked_get<TLabel>(TPtr ptr)
- *     │   │     Returns a node accessor for a labelled rule object, checking if TLabel is
- *     │   │     the correct type for it. If the type does not match, returns an empty optional.
- *     │   │
- *     │   ├── TLabel get(ASTPtr<TLabel> ptr)
- *     │   │     Returns a node accessor for a labelled rule object. Only defined for pointers
- *     │   │     representing LBNF categories with exactly one rule.
- *     │   │
- *     │   ├── TArray get(ASTPtr<TArray> ptr)
- *     │   │     Returns a list accessor.
- *     │   │
- *     │   └── std::pair<AST, TPtr> preorder(TPtr ptr)
- *     │         Returns a subtree of this tree rooted at the node identified by ptr, with the nodes
- *     │         ordered in depth-first pre-order.
- *     │         If called on an lvalue, copies values of involved string literals.
- *     │         If called on an rvalue, moves the values of string literals; the current AST
- *     │         object must be discarded after the call.
- *     │         The returned pair contains the subtree as a separate object and
- *     │         the root node pointer for the returned tree.
- *     │
- *     ├── class ASTPtr<...>
- *     │   │ Has several specializations:
- *     │   │ 1. ASTPtr<TLabels...> (with 2 or more type parameters)
- *     │   │    A polymorphic syntax node generated from an LBNF category with 2 or more labelled
- *     │   │    rules. To access the node, use dynamic dispatch via visitation
- *     │   │    (see operator|(Visit, Visitor)).
- *     │   │ 2. ASTPtr<TLabel>
- *     │   │    A syntax node pointer generated from an LBNF category with only 1 labelled rule.
- *     │   │    However, traits::ast_class_type_v<> still gives ASTClassType::VariantPtr.
- *     │   │
- *     │   ├── Visit<TAst, ASTPtr> visit(TAst& ast) const  (if specialization 1 or 2)
- *     │   ├── Visit<TAst, ASTPtr> visit(TAst& ast) const  (if specialization 1 or 2)
- *     │   │     Allows dynamic dispatch.
- *     │   │
- *     │   ├── TLabel unchecked_get<TLabel>(TAst& ast)     (if specialization 1)
- *     │   │     Returns a node accessor for a labelled rule object without checking if TLabel is
- *     │   │     the correct type for it. If the type does not match, the behavior is undefined!!
- *     │   │
- *     │   ├── std::optional<TLabel> checked_get<TLabel>(TAst& ast)  (if specialization 1)
- *     │   │     Returns a node accessor for a labelled rule object, checking if TLabel is
- *     │   │     the correct type for it. If the type does not match, returns an empty optional.
- *     │   │
- *     │   ├── TLabel get(TAst& ast)  (if specialization 2)
- *     │   │     Returns a node accessor to the labelled rule object.
- *     │   │
- *     │   ├── TArray get(TAst& ast)  (if specialization 3)
- *     │   │     Returns a node accessor to the list object.
- *     │   │
- *     │   ├── TAnnot&       annotation<TAnnot>(      AST<TAnnotations...>&)
- *     │   ├── const TAnnot& annotation<TAnnot>(const AST<TAnnotations...>&)
- *     │   │     Returns an annotation of this node.
- *     │   │
- *     │   ├── ASTPtr<...> update_annotations<TNewAst>() const
- *     │   └── ASTPtr<...> update_annotations(const TNewAst&) const
- *     │         Returns the same pointer for the AST with new annotations.
- *     │
- *     ├── class Visit<TAst, TVariantPtr...>
- *     │   │ Contains the AST object reference and the pointers.
- *     │   │ Used to dynamically dispatch visitation of one or several polymorphic nodes.
- *     │   │
- *     │   ├── Visit(TAst& ast, TVariantPtr... pointers)
- *     │   │     Stores the reference and the node addresses;
- *     │   │     does not determine dynamic types of nodes.
- *     │   │
- *     │   ├── decltype(auto) operator()(Visitor&& visitor_forwarding_reference)
- *     │   │     Performs dynamic dispatch (similarly to std::visit).
- *     │   │
- *     │   └── decltype(auto) visit(Visitor&& visitor_forwarding_reference)
- *     │         Performs dynamic dispatch (similarly to std::visit).
- *     │
- *     ├── decltype(auto) operator|(Visit&& visited_fwd_ref, Visitor&& visitor_fwd_ref)
- *     │     Performs dynamic dispatch (similarly to std::visit).
- *     │
- *     ├── class Array<TAst, TItem>
- *     │   │ Accesses a list of syntax node pointers or token values.
- *     │   │ TItem can be an ASTPtr or any token value type.
- *     │   │ The list size cannot be changed, hence the name.
- *     │   │
- *     │   ├── Array(TAst&, TItem...)
- *     │   │     Creates a new array syntax node in the tree with the provided items.
- *     │   │     In particular, Array(TAst&) creates an empty array.
- *     │   │
- *     │   ├── Array(TAst&, Range&& container_fwd_ref)
- *     │   ├── Array(TAst&, std::initializer_list<TItem>)
- *     │   ├── Array(TAst&, std::initializer_list<std::string_view>)  (if TItem == std::string)
- *     │   ├── Array(TAst&, std::initializer_list<const char*>)       (if TItem == std::string)
- *     │   │     Creates a new array syntax node in the tree with the items taken from the range.
- *     │   │     Use ranges::subrange(make_move_iterator(begin), make_move_iterator(end))
- *     │   │     to avoid copying strings from a container.
- *     │   │
- *     │   ├── TAst& ast() const
- *     │   │     Returns the owning AST data structure.
- *     │   │
- *     │   ├── uint32_t size() const
- *     │   │     Returns the number of elements in the array.
- *     │   │
- *     │   ├── bool empty() const
- *     │   │     Equivalent to `size() == 0`.
- *     │   │
- *     │   ├── ASTPtr<Array> pointer() const
- *     │   │     Returns the pointer.
- *     │   │
- *     │   ├── Array<TNewAst, ...> update_annotations(TNewAst& ast) const
- *     │   │     Changes the stored AST reference. Use after calling the method AST::annotate or
- *     │   │     the constructor AST(std::move(old_ast)).
- *     │   │
- *     │   ├── struct [const_][reverse_]iterator
- *     │   │     A random access read-write iterator.
- *     │   │     If TItem != std::string, implements all operators except operator->().
- *     │   │     If TItem == std::string, implements all operators.
- *     │   │
- *     │   ├── struct ItemRefWrapper  (provided if TItem != std::string)
- *     │   │     Returned instead of non-const item references.
- *     │   │     Invalidated after any change has been made to the AST structure!
- *     │   │
- *     │   ├── ItemRefWrapper     at(uint32_t index)        (if TItem != std::string)
- *     │   ├── TItem              at(uint32_t index) const  (if TItem != std::string)
- *     │   ├── std::string&       at(uint32_t index)        (if TItem == std::string)
- *     │   ├── const std::string& at(uint32_t index) const  (if TItem == std::string)
- *     │   │     Performs bounds checking and returns an element or throws std::range_error.
- *     │   │
- *     │   ├── ItemRefWrapper     operator[](uint32_t index)        (if TItem != std::string)
- *     │   ├── TItem              operator[](uint32_t index) const  (if TItem != std::string)
- *     │   ├── std::string&       operator[](uint32_t index)        (if TItem == std::string)
- *     │   ├── const std::string& operator[](uint32_t index) const  (if TItem == std::string)
- *     │   │     Returns an element. Does not perform bounds checking.
- *     │   │     Out-of-bounds errors can be catastrophic and/or difficult to
- *     │   │     debug since all objects are packed together contiguously in memory.
- *     │   │
- *     │   └── [const_][reverse_]iterator [c][r]begin(), [c][r]end()
- *     │         Iterators pointing to the first (begin) and past-the-last (end) elements.
- *     │         Dereferencing end(), cend(), rend(), and rcend() invokes undefined behavior
- *     │         (see warning for operator[]).
- *     │
- *     ├── class LabelledRuleObject<TAst>
- *     │   │ Accesses a concrete node variant corresponding to a grammar rule.
- *     │   │ Not part of the library; generated from definitions in the grammar file.
- *     │   │
- *     │   ├── LabelledRuleObject(TAst&, ...args)
- *     │   │     Creates a new rule object in the AST from the values of its subtree pointers and/or
- *     │   │     token values. The order of arguments is the same as in the grammar production.
- *     │   │
- *     │   ├── TAst& ast() const
- *     │   │     Returns the owning AST data structure.
- *     │   │
- *     │   ├── ASTPtr<LabelledRuleObject> pointer() const
- *     │   │     Returns the pointer to this object.
- *     │   │
- *     │   ├── LabelledRuleObject<TNewAst> update_annotations(TNewAst& ast) const
- *     │   │     Changes the stored AST reference. Use after calling the method AST::annotate or
- *     │   │     the constructor AST(std::move(old_ast)).
- *     │   │
- *     │   ├── MemberType Member_() const
- *     │   ├── void Member_(MemberType)
- *     │   │     Gets/sets a field.
- *     │   │
- *     │   └── const auto& [new_variables] = labelledRuleObject;
- *     │         Decomposes the object into its constructor arguments (without the AST&
- *     │         reference).
- *     │
- *     ├── auto deep_copy<DFSOrder = PreOrder, MoveStrings = false>
- *     │       (concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast,
- *     │           concepts::is_ast_ptr auto ptr) -> decltype(ptr)
- *     │     Copies the subtree. The source and destination AST data structures may be the same.
- *     │     New nodes will be stored in depth-first pre- or post-order depending on the DFSOrder
- *     │     template value parameter. If MoveStrings is true, string token values will be moved to
- *     │     the destination instead of copied.
- *     │     Returns the pointer to the cloned subtree root in dest_ast.
- *     │
- *     └── auto shallow_copy<MoveStrings = false>
- *             (concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr) -> decltype(ptr)
- *           Copies just the node identified by ptr, re-using the pointers used by that node.
- *           Token values, however, will be copied or moved.
- *           Returns the pointer to the cloned node.
+('detail' namespaces contain internal implementation details and are therefore omitted)
+
+== namespace ast { =================================================================================
+  Contains classes encapsulating the AST data structure.
+
+using Ident = std::string
+  The identifier built-in token.
+
+using String = std::string
+  The UTF-8-encoded string literal built-in token.
+
+using Integer = long
+  The 64-bit signed integer literal built-in token.
+
+using Double = double
+  The double-precision floating point literal built-in token.
+
+using Char = char32_t
+  The UTF-32-encoded (UCS-4) character literal built-in token.
+
+using Bool = bool
+  The boolean value literal built-in token.
+
+}  // namespace ast
+
+== namespace ast::lib { ============================================================================
+  Abstractions accessible to the user and automatically used by the generator.
+
+auto deep_copy<DFSOrder = PreOrder, MoveStrings = false>
+    (concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast,
+        concepts::is_ast_ptr auto ptr) -> decltype(ptr)
+  Copies the subtree. The source and destination AST data structures may be the same.
+  New nodes will be stored in depth-first pre- or post-order depending on the DFSOrder
+  template value parameter.
+  If MoveStrings is true, string token values will be moved to the destination instead of copied.
+  Returns the pointer to the cloned subtree root in dest_ast.
+
+auto shallow_copy<MoveStrings = false>
+    (concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr) -> decltype(ptr)
+  Copies just the node identified by ptr, re-using the pointers used by that node.
+  Token values, however, will be copied or moved.
+  Returns the pointer to the cloned node.
+
+class AST<TAnnotations...>
+│ Represents the entire Abstract Syntax Tree. Encapsulates node access.
+│ If annotation structs are specified, creates one of each for every syntax node.
+│ Token values are not syntax nodes and cannot be annotated.
+│
+├── AST()
+│     New empty syntax tree.
+│
+├── AST(AST<TOtherAnnots...>&& rvalue_old_tree)
+│     Changes the annotation list: default-constructs new annotations and keeps existing ones.
+│     The argument must be discarded after the call.
+│
+├── AST<TAnnotations..., TMore...> annotate<TMore...>() &&
+│     Adds more annotations, returns a new tree with all existing and additional annotations.
+│     Annotation objects are default-constructed for each node. Must be called on an rvalue.
+│
+├── TAnnot&       annotation<TAnnot>(TPtr node_pointer)
+├── const TAnnot& annotation<TAnnot>(TPtr node_pointer) const
+│     Accesses an annotation object of a syntax node identified by node_pointer.
+│
+├── Visit<AST, TPtr...> visit(TPtr... ptrs)
+│     Allows dynamic dispatch on one or more polymorphic syntax nodes (see operator|).
+│
+├── TLabel unchecked_get<TLabel>(TPtr ptr)
+│     Returns a node accessor for a labelled rule object without checking if TLabel is
+│     the correct type for it. If the type does not match, the behavior is undefined!!
+│
+├── std::optional<TLabel> checked_get<TLabel>(TPtr ptr)
+│     Returns a node accessor for a labelled rule object, checking if TLabel is
+│     the correct type for it. If the type does not match, returns an empty optional.
+│
+├── TLabel get(ASTPtr<TLabel> ptr)
+│     Returns a node accessor for a labelled rule object.
+│     Only defined for pointers representing LBNF categories with exactly one rule.
+│
+├── TArray get(ASTPtr<TArray> ptr)
+│     Returns a list accessor.
+│
+└── std::pair<AST, TPtr> preorder(TPtr ptr)
+      Returns a subtree of this tree rooted at the node identified by ptr, with the nodes
+      ordered in depth-first pre-order.
+      If called on a non-const rvalue, moves the values of string literals;
+      the current AST object must be discarded after the call.
+      If not, copies values of involved string literals.
+      The returned pair contains the subtree as a separate AST and
+      the root node pointer for the returned tree.
+
+class ASTPtr<...>
+│ Has several specializations:
+│ 1. ASTPtr<TLabels...> (with 2 or more type parameters)
+│    A polymorphic syntax node generated from an LBNF category with 2 or more labelled
+│    rules. To access the node, use dynamic dispatch via visitation
+│    (see operator|(Visit, Visitor)).
+│ 2. ASTPtr<TLabel>
+│    A syntax node pointer generated from an LBNF category with only 1 labelled rule.
+│    However, traits::ast_class_type_v<> still gives ASTClassType::VariantPtr.
+│ 3. ASTPtr<TArray>
+│    A pointer to a BNFC list.
+│
+├── Visit<TAst, ASTPtr> visit(TAst& ast) const  (if specialization 1 or 2)
+│     Allows dynamic dispatch.
+│
+├── TLabel unchecked_get<TLabel>(TAst& ast)     (if specialization 1)
+│     Returns a node accessor for a labelled rule object without checking if TLabel is
+│     the correct type for it. If the type does not match, the behavior is undefined!!
+│
+├── std::optional<TLabel> checked_get<TLabel>(TAst& ast)  (if specialization 1)
+│     Returns a node accessor for a labelled rule object, checking if TLabel is
+│     the correct type for it. If the type does not match, returns an empty optional.
+│
+├── TLabel get(TAst& ast)  (if specialization 2)
+│     Returns a node accessor to the labelled rule object.
+│
+├── TArray get(TAst& ast)  (if specialization 3)
+│     Returns a node accessor to the list object.
+│
+├── TAnnot&       annotation<TAnnot>(      AST<TAnnotations...>&)
+├── const TAnnot& annotation<TAnnot>(const AST<TAnnotations...>&)
+│     Returns an annotation of this node.
+│
+├── ASTPtr<...> update_annotations<TNewAst>() const
+└── ASTPtr<...> update_annotations(const TNewAst&) const
+      Returns the same pointer for the AST with new annotations.
+
+class Visit<TAst, TVariantPtr...>
+│ Contains the AST object reference and the pointers.
+│ Used to dynamically dispatch visitation of one or several polymorphic nodes.
+│
+├── Visit(TAst& ast, TVariantPtr... pointers)
+│     Stores the reference and the node addresses;
+│     does not determine dynamic types of nodes.
+│
+├── decltype(auto) operator()(Visitor&& visitor_forwarding_reference)
+│     Performs dynamic dispatch (similarly to std::visit).
+│
+└── decltype(auto) visit(Visitor&& visitor_forwarding_reference)
+      Performs dynamic dispatch (similarly to std::visit).
+
+decltype(auto) operator|(Visit&& visited_fwd_ref, Visitor&& visitor_fwd_ref)
+  Performs dynamic dispatch (similarly to std::visit).
+
+class Array<TAst, TItem>
+│ Accesses a list of syntax node pointers or token values.
+│ TItem can be an ASTPtr or any token value type.
+│ The list size cannot be changed, hence the name.
+│
+├── Array(TAst&, TItem...)
+│     Creates a new array syntax node in the tree with the provided items.
+│     In particular, Array(TAst&) creates an empty array.
+│
+├── Array(TAst&, Range&& container_fwd_ref)
+├── Array(TAst&, std::initializer_list<TItem>)
+├── Array(TAst&, std::initializer_list<std::string_view>)  (if TItem == std::string)
+├── Array(TAst&, std::initializer_list<const char*>)       (if TItem == std::string)
+│     Creates a new array syntax node in the tree with the items taken from the range.
+│     Use ranges::subrange(make_move_iterator(begin), make_move_iterator(end))
+│     to avoid copying strings from a container.
+│
+├── TAst& ast() const
+│     Returns the owning AST data structure.
+│
+├── uint32_t size() const
+│     Returns the number of elements in the array.
+│
+├── bool empty() const
+│     Equivalent to `size() == 0`.
+│
+├── ASTPtr<Array> pointer() const
+│     Returns the pointer.
+│
+├── Array<TNewAst, ...> update_annotations(TNewAst& ast) const
+│     Changes the stored AST reference. Use after calling the method AST::annotate or
+│     the constructor AST(std::move(old_ast)).
+│
+├── struct [const_][reverse_]iterator
+│     A random access read-write iterator.
+│     If TItem != std::string, implements all operators except operator->().
+│     If TItem == std::string, implements all operators.
+│
+├── struct ItemRefWrapper  (provided if TItem != std::string)
+│     Returned instead of non-const item references.
+│     Invalidated after any change has been made to the AST structure!
+│
+├── ItemRefWrapper     at(uint32_t index)        (if TItem != std::string)
+├── TItem              at(uint32_t index) const  (if TItem != std::string)
+├── std::string&       at(uint32_t index)        (if TItem == std::string)
+├── const std::string& at(uint32_t index) const  (if TItem == std::string)
+│     Performs bounds checking and returns an element or throws std::range_error.
+│
+├── ItemRefWrapper     operator[](uint32_t index)        (if TItem != std::string)
+├── TItem              operator[](uint32_t index) const  (if TItem != std::string)
+├── std::string&       operator[](uint32_t index)        (if TItem == std::string)
+├── const std::string& operator[](uint32_t index) const  (if TItem == std::string)
+│     Returns an element. Does not perform bounds checking.
+│     Out-of-bounds errors can be catastrophic and/or difficult to
+│     debug since all objects are packed together contiguously in memory.
+│
+└── [const_][reverse_]iterator [c][r]begin(), [c][r]end()
+      Iterators pointing to the first (begin) and past-the-last (end) elements.
+      Dereferencing end(), cend(), rend(), and rcend() invokes undefined behavior
+      (see warning for operator[]).
+
+class LabelledRuleObject<TAst>
+│ Accesses a concrete node variant corresponding to a grammar rule.
+│ Not part of the library; generated from definitions in the grammar file.
+│
+├── LabelledRuleObject(TAst&, ...args)
+│     Creates a new rule object in the AST from the values of its subtree pointers and/or
+│     token values. The order of arguments is the same as in the grammar production.
+│
+├── TAst& ast() const
+│     Returns the owning AST data structure.
+│
+├── ASTPtr<LabelledRuleObject> pointer() const
+│     Returns the pointer to this object.
+│
+├── LabelledRuleObject<TNewAst> update_annotations(TNewAst& ast) const
+│     Changes the stored AST reference. Use after calling the method AST::annotate or
+│     the constructor AST(std::move(old_ast)).
+│
+├── MemberType Member_() const
+├── void Member_(MemberType)
+│     Gets/sets a field.
+│
+└── const auto& [new_variables] = labelledRuleObject;
+      Decomposes the object into its constructor arguments (without the AST&
+      reference).
+
+}  // namespace ast::lib
+
+== namespace ast::lib::traits { ====================================================================
+  Information about AST classes.
+
+bool is_ast_v<T>
+  'true' if T is an instantiation of 'ast::lib::AST<...>'.
+
+enum class ASTClassType
+│ Kinds of objects used in this module.
+├── VariantPtr  = pointer (ASTPtr) to a polymorphic node object (LBNF category)
+├── ArrayPtr    = pointer (ASTPtr) to a list of nodes or tokens
+├── Array       = accessor representing a list of nodes or tokens
+├── Label       = accessor representing a node of known type (LBNF labelled rule)
+├── StringToken = any token represented as a std::string
+├── ScalarToken = any token represented as a fundamental type
+└── Unknown     = the type is unrelated
+
+ASTClassType ast_class_type_v<T>
+  Classifies the type T as one of the above.
+
+using lbnf_category_of_t<TLabel>
+  The LBNF category that the labelled rule belongs to.
+
+int lbnf_coercion_level_v<TLabel/TArray>
+  The "coercion level" of a rule (represents operator priority).
+  Always 0 for arrays.
+
+std::string lbnf_name<T>::get_name() requires (ast_class_type_v<T> != Unknown)
+  The name of a BNFC-generated type as seen in the grammar file.
+
+uint32_t type_tag_of_v<TLabel>
+  The rule index in the LBNF category that the labelled rule belongs to.
+  Internally used as the tag for dynamic dispatch.
+
+using ast_array_value_t<TArray>
+  The type of items in the array.
+
+}  // namespace ast::lib::traits
+
+== namespace ast::lib::concepts { ==================================================================
+  Contains useful concepts for template definitions.
+
+is_ast<T>
+  T must be an ast::lib::AST<...> instantiation.
+
+is_ast_variant_ptr<T>
+  T must be a pointer (ASTPtr) to a polymorphic node object (LBNF category).
+
+is_ast_array_ptr<T>
+  T must be a pointer (ASTPtr) to a list of syntax nodes or token values.
+
+is_ast_ptr<T>
+  T must be an AST object pointer (ASTPtr).
+
+is_ast_label<T>
+  T must be an accessor to a polymorphic node object (LBNF category).
+
+is_ast_array<T>
+  T must be an accessor to a list of syntax nodes or token values.
+
+is_ast_node<T>
+  T must be an accessor to a list or label.
+
+is_ast_scalar_token<T>
+  T must be a token value represented as a fundamental type (Double, Integer, Char, Bool).
+
+is_ast_string_token<T>
+  T must be a token value represented as a std::string.
+
+is_ast_token<T>
+  T must be a type of a token value (std::string, Double, Integer, Char, Bool).
+
+}  // namespace ast::lib::concepts
+
  */
 
 #pragma once
@@ -598,37 +606,37 @@ struct ast_class_type<Char> {
 namespace concepts {
 
 template <class T>
-concept is_ast = traits::is_ast_v<std::remove_cvref_t<T>>;
+concept is_ast = traits::is_ast_v<T>;
 
 template <class T>
 concept is_ast_variant_ptr =
-    traits::ast_class_type_v<std::remove_cvref_t<T>> == traits::ASTClassType::VariantPtr;
+    traits::ast_class_type_v<T> == traits::ASTClassType::VariantPtr;
 
 template <class T>
 concept is_ast_array_ptr =
-    traits::ast_class_type_v<std::remove_cvref_t<T>> == traits::ASTClassType::ArrayPtr;
+    traits::ast_class_type_v<T> == traits::ASTClassType::ArrayPtr;
 
 template <class T>
 concept is_ast_ptr = is_ast_variant_ptr<T> || is_ast_array_ptr<T>;
 
 template <class T>
 concept is_ast_label =
-    traits::ast_class_type_v<std::remove_cvref_t<T>> == traits::ASTClassType::Label;
+    traits::ast_class_type_v<T> == traits::ASTClassType::Label;
 
 template <class T>
 concept is_ast_array =
-    traits::ast_class_type_v<std::remove_cvref_t<T>> == traits::ASTClassType::Array;
+    traits::ast_class_type_v<T> == traits::ASTClassType::Array;
 
 template <class T>
 concept is_ast_node = is_ast_label<T> || is_ast_array<T>;
 
 template <class T>
 concept is_ast_scalar_token =
-    traits::ast_class_type_v<std::remove_cvref_t<T>> == traits::ASTClassType::ScalarToken;
+    traits::ast_class_type_v<T> == traits::ASTClassType::ScalarToken;
 
 template <class T>
 concept is_ast_string_token =
-    traits::ast_class_type_v<std::remove_cvref_t<T>> == traits::ASTClassType::StringToken;
+    traits::ast_class_type_v<T> == traits::ASTClassType::StringToken;
 
 template <class T>
 concept is_ast_token = is_ast_string_token<T> || is_ast_scalar_token<T>;
@@ -705,10 +713,6 @@ struct lbnf_name<Bool> {
 
 // lbnf_name<Array<>> after Array definition
 
-template <class T>
-    requires(ast_class_type_v<T> != ASTClassType::Unknown)
-constexpr std::string lbnf_name_v = lbnf_name<T>::get_name();
-
 }  // namespace traits
 
 /************************/
@@ -755,12 +759,6 @@ struct AST_privates {
     template <concepts::is_ast TAst>
     static ASTNewNodeInfo emplace_back(TAst&, uint32_t nextra, uint32_t nstrings,
                                        bool needs_8byte_align);
-};
-
-struct NodeMemoryPosition {
-    uint32_t index;
-    std::pair<uint32_t, uint32_t> extras_range;
-    std::pair<uint32_t, uint32_t> strings_range;
 };
 
 }  // namespace detail
@@ -858,52 +856,11 @@ public:
     template <concepts::is_ast_array TArray>
     TArray get(ASTPtr<TArray> ptr);
 
-private:
-    template <class FuncDataMove>
-        requires(std::same_as<std::invoke_result_t<FuncDataMove, detail::NodeMemoryPosition, bool>,
-                              detail::ASTNewNodeInfo>)
-    class PreorderTransducer {
-    private:
-        FuncDataMove transduce;
-        AST &oldast, &newast;
-
-    public:
-        PreorderTransducer(FuncDataMove&& f_transduce, AST& oldast, AST& newast)
-            : transduce{std::move(f_transduce)}, oldast{oldast}, newast{newast} {}
-        template <concepts::is_ast_label TLabel>
-        uint32_t operator()(TLabel);
-        template <class TAst, concepts::is_ast_ptr TPtr>
-        uint32_t operator()(Array<TAst, TPtr>);
-        template <class TAst, concepts::is_ast_token Tk>
-        uint32_t operator()(Array<TAst, Tk>);
-        template <concepts::is_ast_variant_ptr TPtr>
-        uint32_t operator()(TPtr);
-        template <concepts::is_ast_array_ptr TPtr>
-        uint32_t operator()(TPtr);
-    };
-
-    AST new_ast_with_reserved_containers() const {
-        AST res;
-        const auto n = size();
-        res.tree.reserve(n / 2);
-        res.extra.reserve(extra.size() / 2);
-        res.string_tokens.reserve(string_tokens.size() / 2);
-        [halfn = n / 2, &res]<size_t... Indices>(std::index_sequence<Indices...>) {
-            (std::get<Indices>(res.annots).reserve(halfn), ...);
-        }(std::make_index_sequence<sizeof...(TAnnotations)>());
-        return res;
-    }
-
 public:
-    // TODO rework as deep_copy
     template <concepts::is_ast_ptr TPtr>
     std::pair<AST, TPtr> preorder(TPtr root) &;
-    // template <concepts::is_ast_ptr TPtr>
-    // std::pair<AST, TPtr> preorder(TPtr root) const&;
     template <concepts::is_ast_ptr TPtr>
     std::pair<AST, TPtr> preorder(TPtr root) &&;
-    // template <concepts::is_ast_ptr TPtr>
-    // AST preorder(TPtr& root) const&&;
 };
 
 namespace traits {
@@ -1150,14 +1107,6 @@ struct AnyAstNode_privates {
     static TArray create_array(Args&&... args) {
         return TArray(std::forward<Args>(args)...);
     }
-    template <concepts::is_ast_node TNode>
-    static NodeMemoryPosition position_in_memory(const TNode& node) {
-        return node.position_in_memory();
-    }
-    template <concepts::is_ast_node TNode>
-    static void on_node_moved(TNode& node, uint32_t new_extras_ptr, uint32_t new_strings_ptr) {
-        return node.on_moved(new_extras_ptr, new_strings_ptr);
-    }
     template <concepts::is_ast_label TLabel, concepts::is_ast TAst>
     static ASTNewNodeInfo reserve_space(TAst& ast) {
         return TLabel::base_t::reserve_space(ast);
@@ -1282,13 +1231,6 @@ class ArrayOfScalars {
     static constexpr uint32_t LongListInlineTs = sizeof(uint32_t) * 2 / sizeof(T);
     static constexpr uint32_t ShortListInlineTs =
         sizeof(uint32_t) * (3 - Is8ByteAligned) / sizeof(T);
-    // static constexpr size_t N = sizeof...(args);
-    // static constexpr bool IsShortList = N <= ShortListInlineTs;
-    // static constexpr size_t ExtrasSize =
-    //     IsShortList
-    //         ? 0
-    //         : (N - LongListInlineTs) * ((sizeof(T) + sizeof(uint32_t) - 1) / sizeof(uint32_t));
-    // static constexpr size_t InlineItems = IsShortList ? ShortListInlineTs : LongListInlineTs;
 
 protected:
     TAst& ast;
@@ -1333,17 +1275,6 @@ public:
         : ast{ast}, fields{AST_privates::tree(ast)[index]}, myindex{index} {}
     ArrayOfScalars(TAst& ast, detail::ASTNodeItem fields, uint32_t index)
         : ast{ast}, fields{fields}, myindex{index} {}
-    detail::NodeMemoryPosition position_in_memory() const {
-        uint32_t n = size();
-        if (n > 3) {  // !is_short_list
-            uint32_t ex_index = extras_index();
-            return {myindex, {ex_index, ex_index + (n - 2)}, {0, 0}};
-        }
-        return {myindex, {0, 0}, {0, 0}};
-    }
-    void on_moved(uint32_t new_extras_ptr, uint32_t /*new_strings_ptr*/) {
-        ast_tree_storage().children[0] = fields.children[0] = new_extras_ptr;
-    }
 
     template <bool, bool>
     struct iterator_templated;
@@ -1526,8 +1457,6 @@ class Array<TAst, Item> : private detail::ArrayOfScalars<TAst, uint32_t> {
 
 private:
     using base_t::base_t;
-    using base_t::on_moved;
-    using base_t::position_in_memory;
     using base_t::reserve_space;
     friend detail::AnyAstNode_privates;
 
@@ -1684,8 +1613,7 @@ class Array<TAst, Token> : private detail::ArrayOfScalars<TAst, Token> {
 
 private:
     using base_t::base_t;
-    using base_t::on_moved;
-    using base_t::position_in_memory;
+    using base_t::reserve_space;
     friend detail::AnyAstNode_privates;
 
 public:
@@ -1739,9 +1667,6 @@ class Array<TAst, std::string> {
         : m_ast{ast}, m_size{data.info}, strings_ptr{data.children[0]}, myindex{index} {}
     Array(TAst& ast, uint32_t size, uint32_t strings_ptr, uint32_t index)
         : m_ast{ast}, m_size{size}, strings_ptr{strings_ptr}, myindex{index} {}
-    void on_moved(uint32_t /*new_extras_ptr*/, uint32_t new_strings_ptr) {
-        detail::AST_privates::tree(m_ast)[myindex].children[0] = strings_ptr = new_strings_ptr;
-    }
 
     friend detail::AnyAstNode_privates;
 
@@ -2120,13 +2045,6 @@ private:
     Label(TAst& ast, const decltype(inline_data)& data, decltype(cond_index) cond_index)
         : ast{ast}, inline_data{data}, cond_index{cond_index} {}
 
-    void on_moved(uint32_t new_extras_ptr, uint32_t new_strings_ptr) {
-        if constexpr (layout_t::ExtraSpaceInts)
-            set_inline_scalar<uint32_t, layout_t::ExtraPtrOffset>(new_extras_ptr);
-        if constexpr (NStrings)
-            set_inline_scalar<uint32_t, layout_t::StringPtrOffset>(new_strings_ptr);
-    }
-
     friend AnyAstNode_privates;
 
 public:
@@ -2244,27 +2162,6 @@ public:
         set_scalar<TScalar, layout_t::template ScalarPos<TScalar>(Index), Commit>(value);
     }
 
-    NodeMemoryPosition position_in_memory() const {
-        if constexpr (layout_t::ExtraSpaceInts > 0) {
-            uint32_t extras = extras_offset();
-            if constexpr (NStrings > 0) {
-                uint32_t strings = strings_offset();
-                return {index(),
-                        {extras, extras + layout_t::ExtraSpaceInts},
-                        {strings, strings + NStrings}};
-            } else {
-                return {index(), {extras, extras + layout_t::ExtraSpaceInts}, {0, 0}};
-            }
-        } else {
-            if constexpr (NStrings > 0) {
-                uint32_t strings = strings_offset();
-                return {index(), {0, 0}, {strings, strings + NStrings}};
-            } else {
-                return {index(), {0, 0}, {0, 0}};
-            }
-        }
-    }
-
     Label(const Label&) = default;
     Label(Label&&) = default;
     Label& operator=(const Label&) = delete;
@@ -2376,146 +2273,12 @@ inline TArray AST<TAnnotations...>::get(ASTPtr<TArray> ptr) {
                                                              detail::ASTPtr_privates::Index(ptr));
 }
 
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
-template <class FuncDataMove>
-    requires(std::same_as<std::invoke_result_t<FuncDataMove, detail::NodeMemoryPosition, bool>,
-                          detail::ASTNewNodeInfo>)
-template <concepts::is_ast_label TLabel>
-uint32_t AST<TAnnotations...>::PreorderTransducer<FuncDataMove>::operator()(TLabel l) {
-    detail::NodeMemoryPosition oldpos = detail::AnyAstNode_privates::position_in_memory(l);
-    using TBase = detail::AnyAstNode_privates::label_base_t<TLabel>;
-    detail::ASTNewNodeInfo newpos = transduce(oldpos, TBase::layout_t::Needs8ByteAlignment);
-    TBase oldbase{oldast, oldpos.index};
-    TBase newbase{newast, newpos.node_index};
-    detail::AnyAstNode_privates::on_node_moved(newbase, newpos.extras_index, newpos.strings_index);
-    using TPointerFields = detail::label_pointer_fields_t<TLabel>;
-    [&]<class... TPtrs, size_t... Indices>(detail::pack_of_types<TPtrs...>,
-                                           std::index_sequence<Indices...>) {
-        (newbase.template pointer<Indices>(
-             (*this)(detail::ASTPtr_privates::Create<TPtrs>(oldbase.template pointer<Indices>()))),
-         ...);
-    }(TPointerFields(), std::make_index_sequence<detail::pack_of_types_size_v<TPointerFields>>());
-    return newpos.node_index;
-}
-
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
-template <class FuncDataMove>
-    requires(std::same_as<std::invoke_result_t<FuncDataMove, detail::NodeMemoryPosition, bool>,
-                          detail::ASTNewNodeInfo>)
-template <class TAst, concepts::is_ast_ptr TPtr>
-uint32_t AST<TAnnotations...>::PreorderTransducer<FuncDataMove>::operator()(Array<TAst, TPtr> arr) {
-    detail::NodeMemoryPosition oldpos = detail::AnyAstNode_privates::position_in_memory(arr);
-    detail::ASTNewNodeInfo newpos = transduce(oldpos, false);
-    auto newarr =
-        detail::AnyAstNode_privates::create_array<decltype(arr)>(newast, newpos.node_index);
-    detail::AnyAstNode_privates::on_node_moved(newarr, newpos.extras_index, newpos.strings_index);
-    auto old_iter = arr.begin();
-    for (auto newptr_ref : newarr) {
-        newptr_ref = detail::ASTPtr_privates::Create<TPtr>((*this)(*old_iter));
-        ++old_iter;
-    }
-    return newpos.node_index;
-}
-
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
-template <class FuncDataMove>
-    requires(std::same_as<std::invoke_result_t<FuncDataMove, detail::NodeMemoryPosition, bool>,
-                          detail::ASTNewNodeInfo>)
-template <class TAst, concepts::is_ast_token Tk>
-uint32_t AST<TAnnotations...>::PreorderTransducer<FuncDataMove>::operator()(Array<TAst, Tk> arr) {
-    detail::NodeMemoryPosition oldpos = detail::AnyAstNode_privates::position_in_memory(arr);
-    detail::ASTNewNodeInfo newpos = transduce(oldpos, sizeof(Tk) == 8);
-    auto newarr =
-        detail::AnyAstNode_privates::create_array<decltype(arr)>(newast, newpos.node_index);
-    detail::AnyAstNode_privates::on_node_moved(newarr, newpos.extras_index, newpos.strings_index);
-    return newarr.node_index;
-}
-
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
-template <class FuncDataMove>
-    requires(std::same_as<std::invoke_result_t<FuncDataMove, detail::NodeMemoryPosition, bool>,
-                          detail::ASTNewNodeInfo>)
-template <concepts::is_ast_variant_ptr TPtr>
-uint32_t AST<TAnnotations...>::PreorderTransducer<FuncDataMove>::operator()(TPtr ptr) {
-    return oldast.visit(ptr) | *this;
-}
-
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
-template <class FuncDataMove>
-    requires(std::same_as<std::invoke_result_t<FuncDataMove, detail::NodeMemoryPosition, bool>,
-                          detail::ASTNewNodeInfo>)
-template <concepts::is_ast_array_ptr TPtr>
-uint32_t AST<TAnnotations...>::PreorderTransducer<FuncDataMove>::operator()(TPtr ptr) {
-    return (*this)(oldast.get(ptr));
-}
-
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
-template <concepts::is_ast_ptr TPtr>
-inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) & {
-    std::pair<AST, TPtr> res{new_ast_with_reserved_containers(),
-                             detail::ASTPtr_privates::Create<TPtr>(0)};
-    PreorderTransducer dfs(
-        [&](detail::NodeMemoryPosition oldpos) {
-            uint32_t new_node_index = res.tree.size();
-            res.tree.push_back(tree[oldpos.index]);
-            uint32_t new_extras_index = res.extra.size();
-            {
-                auto [ebegin, eend] = oldpos.extras_range;
-                res.extra.insert(res.extra.end(), extra.begin() + ebegin, extra.begin() + eend);
-            }
-            uint32_t new_strings_index = res.string_tokens.size();
-            {
-                auto [sbegin, send] = oldpos.strings_range;
-                res.string_tokens.insert(res.string_tokens.end(), string_tokens.begin() + sbegin,
-                                         string_tokens.begin() + send);
-            }
-            return detail::ASTNewNodeInfo{new_node_index, new_extras_index, new_strings_index};
-        },
-        *this, res);
-    dfs(root);
-    return res;
-}
-
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
-template <concepts::is_ast_ptr TPtr>
-inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) && {
-    std::pair<AST, TPtr> res{new_ast_with_reserved_containers(),
-                             detail::ASTPtr_privates::Create<TPtr>(0)};
-    PreorderTransducer dfs(
-        [&](detail::NodeMemoryPosition oldpos) {
-            uint32_t new_node_index = res.tree.size();
-            res.tree.push_back(tree[oldpos.index]);
-            uint32_t new_extras_index = res.extra.size();
-            {
-                auto [ebegin, eend] = oldpos.extras_range;
-                res.extra.insert(res.extra.end(), extra.begin() + ebegin, extra.begin() + eend);
-            }
-            uint32_t new_strings_index = res.string_tokens.size();
-            {
-                auto [sbegin_index, send_index] = oldpos.strings_range;
-                auto sbegin = std::make_move_iterator(string_tokens.begin() + sbegin_index);
-                auto send = std::make_move_iterator(string_tokens.begin() + send_index);
-                res.string_tokens.insert(res.string_tokens.end(), sbegin, send);
-            }
-            return detail::ASTNewNodeInfo{new_node_index, new_extras_index, new_strings_index};
-        },
-        *this, res);
-    dfs(root);
-    return res;
-}
-
 namespace detail {
-
+namespace {
 template <concepts::is_ast_ptr TPtr>
-void copy_annots_for_node(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast,
-                          TPtr source_ptr, TPtr dest_ptr) {
+[[maybe_unused]] void copy_annots_for_node(concepts::is_ast auto& source_ast,
+                                           concepts::is_ast auto& dest_ast, TPtr source_ptr,
+                                           TPtr dest_ptr) {
     [&]<class... SourceTypes, class... DestTypes>(const AST<SourceTypes...>&,
                                                   const AST<DestTypes...>&) {
         (
@@ -2528,7 +2291,7 @@ void copy_annots_for_node(concepts::is_ast auto& source_ast, concepts::is_ast au
             ...);
     }(source_ast, dest_ast);
 }
-
+}  // namespace
 }  // namespace detail
 
 enum class DFSOrder { PreOrder, PostOrder };
@@ -2614,6 +2377,24 @@ auto shallow_copy(concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr) -> 
         }
     });
     detail::copy_annots_for_node(ast, ast, ptr, res);
+    return res;
+}
+
+template <concepts::detail::default_constructible... TAnnotations>
+    requires(detail::pairwise_different_v<TAnnotations...>)
+template <concepts::is_ast_ptr TPtr>
+inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) & {
+    std::pair<AST, TPtr> res;
+    res.second = deep_copy<DFSOrder::PreOrder, false>(*this, res.first, root);
+    return res;
+}
+
+template <concepts::detail::default_constructible... TAnnotations>
+    requires(detail::pairwise_different_v<TAnnotations...>)
+template <concepts::is_ast_ptr TPtr>
+inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) && {
+    std::pair<AST, TPtr> res;
+    res.second = deep_copy<DFSOrder::PreOrder, true>(*this, res.first, root);
     return res;
 }
 

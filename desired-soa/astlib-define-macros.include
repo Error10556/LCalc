@@ -51,9 +51,6 @@
     using base_t =                                                                                \
         lib::detail::Label<TAst, contains_tag, nptrs, nstrings, ndoubles, nints, nchars, nbools>; \
     base_t base;                                                                                  \
-    lib::detail::NodeMemoryPosition position_in_memory() const {                                  \
-        return base.position_in_memory();                                                         \
-    }                                                                                             \
     name(TAst& ast, uint32_t index) : base{ast, index} {}                                         \
     name(base_t base) : base{base} {}                                                             \
                                                                                                   \
