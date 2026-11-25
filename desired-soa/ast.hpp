@@ -8,13 +8,18 @@ namespace ast {
 /*  Custom Tokens  */
 /*******************/
 
+namespace LC {
+
 using SpecialBegin = String;
 using SpecialEnd = String;
+
+}  // namespace LC
 
 /****************/
 /*  Categories  */
 /****************/
 
+namespace LC {
 BNFC_ASTLIB_PREDEF_LABEL(Abstraction);
 BNFC_ASTLIB_PREDEF_LABEL(Application);
 BNFC_ASTLIB_PREDEF_LABEL(Variable);
@@ -23,21 +28,39 @@ BNFC_ASTLIB_PREDEF_LABEL(IntegerExpr);
 BNFC_ASTLIB_PREDEF_LABEL(DoubleExpr);
 BNFC_ASTLIB_PREDEF_LABEL(CharExpr);
 BNFC_ASTLIB_PREDEF_LABEL(SpecialExpr);
-BNFC_ASTLIB_DEFINE_CAT(Expr, Abstraction<TAst>, Application<TAst>, Variable<TAst>, StringExpr<TAst>,
-                       IntegerExpr<TAst>, DoubleExpr<TAst>, CharExpr<TAst>, SpecialExpr<TAst>);
+}  // namespace LC
+BNFC_ASTLIB_DEFINE_CAT(
+    namespace LC{
+        ,
+    },
+    LC::, Expr, Abstraction<TAst>, Application<TAst>, Variable<TAst>, StringExpr<TAst>,
+    IntegerExpr<TAst>, DoubleExpr<TAst>, CharExpr<TAst>, SpecialExpr<TAst>);
 
+namespace LC {
 BNFC_ASTLIB_PREDEF_LABEL(AProgram);
-BNFC_ASTLIB_DEFINE_CAT(Program, AProgram<TAst>);
+}
+BNFC_ASTLIB_DEFINE_CAT(
+    namespace LC{
+        ,
+    },
+    LC::, Program, AProgram<TAst>);
 
+/*********************/
+/*  List Categories  */
+/*********************/
+
+namespace LC {
 template <lib::concepts::is_ast TAst = lib::AST<>>
 using ListExpr = lib::Array<TAst, Expr<TAst>>;
+}
 
 /*****************/
 /*  Rule Labels  */
 /*****************/
 
-BNFC_ASTLIB_DEFINE_LABEL_TRAITS(AProgram, Program, 0, 1, ASTPtr<ListExpr<TAst>>)
+BNFC_ASTLIB_DEFINE_LABEL_TRAITS(LC::, AProgram, Program, 0, 1)
 
+namespace LC {
 template <lib::concepts::is_ast TAst>
 class AProgram final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(AProgram, Program, false, 1, 0, 0, 0, 0, 0);
@@ -66,9 +89,11 @@ public:
         return ListExpr_();
     }
 };
+}  // namespace LC
 
-BNFC_ASTLIB_DEFINE_LABEL_TRAITS(Abstraction, Expr, 0, 2, Expr<TAst>);
+BNFC_ASTLIB_DEFINE_LABEL_TRAITS(LC::, Abstraction, Expr, 0, 2);
 
+namespace LC {
 template <lib::concepts::is_ast TAst>
 class Abstraction final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(Abstraction, Expr, true, 1, 1, 0, 0, 0, 0);
@@ -106,9 +131,11 @@ public:
             return Expr_();
     }
 };
+}  // namespace LC
 
-BNFC_ASTLIB_DEFINE_LABEL_TRAITS(Application, Expr, 1, 2, Expr<TAst>, Expr<TAst>);
+BNFC_ASTLIB_DEFINE_LABEL_TRAITS(LC::, Application, Expr, 1, 2);
 
+namespace LC {
 template <lib::concepts::is_ast TAst>
 class Application final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(Application, Expr, true, 2, 0, 0, 0, 0, 0);
@@ -147,9 +174,11 @@ public:
             return Expr_2();
     }
 };
+}
 
-BNFC_ASTLIB_DEFINE_LABEL_TRAITS(Variable, Expr, 2, 1);
+BNFC_ASTLIB_DEFINE_LABEL_TRAITS(LC::, Variable, Expr, 2, 1);
 
+namespace LC {
 template <lib::concepts::is_ast TAst>
 class Variable final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(Variable, Expr, true, 0, 1, 0, 0, 0, 0);
@@ -177,9 +206,11 @@ public:
         }
     }
 };
+}
 
-BNFC_ASTLIB_DEFINE_LABEL_TRAITS(StringExpr, Expr, 0, 1);
+BNFC_ASTLIB_DEFINE_LABEL_TRAITS(LC::, StringExpr, Expr, 0, 1);
 
+namespace LC {
 template <lib::concepts::is_ast TAst>
 class StringExpr final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(StringExpr, Expr, true, 0, 1, 0, 0, 0, 0);
@@ -207,9 +238,11 @@ public:
         }
     }
 };
+}
 
-BNFC_ASTLIB_DEFINE_LABEL_TRAITS(IntegerExpr, Expr, 0, 1);
+BNFC_ASTLIB_DEFINE_LABEL_TRAITS(LC::, IntegerExpr, Expr, 0, 1);
 
+namespace LC {
 template <lib::concepts::is_ast TAst>
 class IntegerExpr final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(IntegerExpr, Expr, true, 0, 0, 0, 1, 0, 0);
@@ -230,9 +263,11 @@ public:
         return Integer_();
     }
 };
+}
 
-BNFC_ASTLIB_DEFINE_LABEL_TRAITS(DoubleExpr, Expr, 0, 1);
+BNFC_ASTLIB_DEFINE_LABEL_TRAITS(LC::, DoubleExpr, Expr, 0, 1);
 
+namespace LC {
 template <lib::concepts::is_ast TAst>
 class DoubleExpr final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(DoubleExpr, Expr, true, 0, 0, 1, 0, 0, 0);
@@ -253,9 +288,11 @@ public:
         return Double_();
     }
 };
+}
 
-BNFC_ASTLIB_DEFINE_LABEL_TRAITS(CharExpr, Expr, 0, 1);
+BNFC_ASTLIB_DEFINE_LABEL_TRAITS(LC::, CharExpr, Expr, 0, 1);
 
+namespace LC {
 template <lib::concepts::is_ast TAst>
 class CharExpr final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(CharExpr, Expr, true, 0, 0, 0, 0, 1, 0);
@@ -275,9 +312,11 @@ public:
         return Char_();
     }
 };
+}
 
-BNFC_ASTLIB_DEFINE_LABEL_TRAITS(SpecialExpr, Expr, 0, 3);
+BNFC_ASTLIB_DEFINE_LABEL_TRAITS(LC::, SpecialExpr, Expr, 0, 3);
 
+namespace LC {
 template <lib::concepts::is_ast TAst>
 class SpecialExpr final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(SpecialExpr, Expr, true, 1, 2, 0, 0, 0, 0);
@@ -327,11 +366,13 @@ public:
         }
     }
 };
+}
 
 /***************/
 /*  Functions  */
 /***************/
 
+namespace LC {
 template <lib::concepts::is_ast TAst>
 Expr<TAst> fn_id(TAst& ast [[maybe_unused]], Ident ident) {
     auto ident_2 = ident;
@@ -344,12 +385,8 @@ Expr<TAst> fn_const(TAst& ast [[maybe_unused]], Ident ident) {
     auto ident_2 = ident;
     return Abstraction(ast, std::move(ident), fn_id(ast, std::move(ident_2))).pointer();
 }
+}
 
 }  // namespace ast
 
 #include "astlib-undef-macros.include"
-
-// static_assert(std::is_same_v<std::tuple_element_t<0, ast::Application<>>, ast::Expr<>>);
-// static_assert(std::is_same_v<std::tuple_element_t<0, ast::Variable<>>, std::string>);
-// static_assert(
-//     std::is_same_v<decltype(std::declval<ast::Variable<>>().get<0, true>()), std::string&>);

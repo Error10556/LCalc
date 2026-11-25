@@ -6,6 +6,7 @@
 namespace ast {
 
 extern template class lib::AST<>;
+namespace LC {
 extern template class Abstraction<lib::AST<>>;
 extern template class Application<lib::AST<>>;
 extern template class Variable<lib::AST<>>;
@@ -16,8 +17,10 @@ extern template class CharExpr<lib::AST<>>;
 extern template class SpecialExpr<lib::AST<>>;
 extern template class AProgram<lib::AST<>>;
 extern template class printing::ClassicPrettyPrinter<lib::AST<>>;
+}
 
 extern template class lib::AST<TravTime>;
+namespace LC {
 extern template class Abstraction<lib::AST<TravTime>>;
 extern template class Application<lib::AST<TravTime>>;
 extern template class Variable<lib::AST<TravTime>>;
@@ -28,5 +31,6 @@ extern template class CharExpr<lib::AST<TravTime>>;
 extern template class SpecialExpr<lib::AST<TravTime>>;
 extern template class AProgram<lib::AST<TravTime>>;
 extern template class printing::ClassicPrettyPrinter<lib::AST<TravTime>>;
+}
 
 }

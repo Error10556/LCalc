@@ -32,7 +32,7 @@ Precedence is always resolved by enclosing a term in parentheses '()'.
 #include "ast.hpp"
 #include "printer-common.hpp"
 
-namespace ast::printing {
+namespace ast::LC::printing {
 
 template <lib::concepts::is_ast TAst>
 class ClassicPrettyPrinter {
@@ -330,28 +330,28 @@ ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutToken(std::string_vie
 template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutCharLiteral(int32_t ch) {
     FlushWhitespace();
-    print_escaped_char(out, ch);
+    ast::printing::print_escaped_char(out, ch);
     return NeedSpaceHere();
 }
 
 template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutStringLiteral(std::string_view s) {
     FlushWhitespace();
-    print_escaped_string(out, s);
+    ast::printing::print_escaped_string(out, s);
     return NeedSpaceHere();
 }
 
 template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutDoubleLiteral(double v) {
     FlushWhitespace();
-    print_double(out, v);
+    ast::printing::print_double(out, v);
     return NeedSpaceHere();
 }
 
 template <lib::concepts::is_ast TAst>
 ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::PutIntegerLiteral(long v) {
     FlushWhitespace();
-    print_double(out, v);
+    out << v;
     return NeedSpaceHere();
 }
 
@@ -508,4 +508,4 @@ ClassicPrettyPrinter<TAst>& ClassicPrettyPrinter<TAst>::Put(const ListExpr<TAst>
     return *this;
 }
 
-}  // namespace ast::printing
+}  // namespace ast::LC::printing

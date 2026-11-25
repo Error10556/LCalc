@@ -1,48 +1,48 @@
 #define BNFC_ASTLIB_PREDEF_LABEL(name)                 \
     template <lib::concepts::is_ast TAst = lib::AST<>> \
     class name
-#define BNFC_ASTLIB_DEFINE_CAT(name, ...)              \
+#define BNFC_ASTLIB_DEFINE_CAT(ns, endns, nsprefix,    \
+                               name, ...)              \
+    ns                                                 \
     template <lib::concepts::is_ast TAst = lib::AST<>> \
     using name = lib::ASTPtr<__VA_ARGS__>;             \
+    endns                                              \
     namespace lib::traits {                            \
     template <class TAst>                              \
-    struct lbnf_name<name<TAst>> {                     \
+    struct lbnf_name<nsprefix name<TAst>> {            \
         static constexpr std::string get_name() {      \
             return #name;                              \
         }                                              \
     };                                                 \
     }
 
-#define BNFC_ASTLIB_DEFINE_LABEL_TRAITS(name, cat, coercion_level, tuplesize, ...) \
-    namespace lib {                                                                \
-    namespace traits {                                                             \
-    template <class TAst>                                                          \
-    struct lbnf_category_of<name<TAst>> {                                          \
-        using value_t = cat<TAst>;                                                 \
-    };                                                                             \
-    template <class TAst>                                                          \
-    struct ast_class_type<name<TAst>> {                                            \
-        static constexpr ASTClassType value = ASTClassType::Label;                 \
-    };                                                                             \
-    template <class TAst>                                                          \
-    struct lbnf_name<name<TAst>> {                                                 \
-        static constexpr std::string get_name() { return #name; }                  \
-    };                                                                             \
-    template <class TAst>                                                          \
-    struct lbnf_coercion_level<name<TAst>> {                                       \
-        static constexpr int value = coercion_level;                               \
-    };                                                                             \
-    }                                                                              \
-    namespace detail {                                                             \
-    template <class TAst>                                                          \
-    struct label_pointer_fields<name<TAst>> {                                      \
-        using value_t = pack_of_types<__VA_ARGS__>;                                \
-    };                                                                             \
-    template <class TAst>                                                          \
-    struct label_tuple_size<name<TAst>> {                                          \
-        static constexpr size_t value = tuplesize;                                 \
-    };                                                                             \
-    }                                                                              \
+#define BNFC_ASTLIB_DEFINE_LABEL_TRAITS(nsprefix, name, cat,       \
+                                        coercion_level, tuplesize) \
+    namespace lib {                                                \
+    namespace traits {                                             \
+    template <class TAst>                                          \
+    struct lbnf_category_of<nsprefix name<TAst>> {                 \
+        using value_t = nsprefix cat<TAst>;                        \
+    };                                                             \
+    template <class TAst>                                          \
+    struct ast_class_type<nsprefix name<TAst>> {                   \
+        static constexpr ASTClassType value = ASTClassType::Label; \
+    };                                                             \
+    template <class TAst>                                          \
+    struct lbnf_name<nsprefix name<TAst>> {                        \
+        static constexpr std::string get_name() { return #name; }  \
+    };                                                             \
+    template <class TAst>                                          \
+    struct lbnf_coercion_level<nsprefix name<TAst>> {              \
+        static constexpr int value = coercion_level;               \
+    };                                                             \
+    }                                                              \
+    namespace detail {                                             \
+    template <class TAst>                                          \
+    struct label_tuple_size<nsprefix name<TAst>> {                 \
+        static constexpr size_t value = tuplesize;                 \
+    };                                                             \
+    }                                                              \
     }
 
 #define BNFC_ASTLIB_IMPLEMENT_LABEL(name, cat, contains_tag, nptrs, nstrings, ndoubles, nints,    \

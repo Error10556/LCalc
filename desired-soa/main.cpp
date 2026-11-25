@@ -1,7 +1,5 @@
 #include <iostream>
-#include <string_view>
 #include <utility>
-#include <variant>
 
 #include "annotation.hpp"
 #include "ast.hpp"
@@ -11,6 +9,7 @@
 #include "classic-pretty-printer.hpp"
 
 using ast::lib::AST;
+using namespace ast::LC;
 
 /*
 
@@ -39,38 +38,38 @@ const <a>;
 
 */
 
-std::pair<AST<>, ast::Program<>> pseudo_parse() {
+std::pair<AST<>, Program<>> pseudo_parse() {
     using std::literals::operator""s;
     AST<> ast;
     // l a. l b. l s. l z. a b s z
     auto ppower = [&ast] {
         auto inner_app =
-            ast::Application(
+            Application(
                 ast,
-                ast::Application(ast,
-                                 ast::Application(ast, ast::Variable(ast, "a").pointer(),
-                                                  ast::Variable(ast, "b").pointer())
+                Application(ast,
+                                 Application(ast, Variable(ast, "a").pointer(),
+                                                  Variable(ast, "b").pointer())
                                      .pointer(),
-                                 ast::Variable(ast, "s").pointer())
+                                 Variable(ast, "s").pointer())
                     .pointer(),
-                ast::Variable(ast, "z").pointer())
+                Variable(ast, "z").pointer())
                 .pointer();
-        auto lz = ast::Abstraction(ast, "z", inner_app).pointer();
-        auto ls = ast::Abstraction(ast, "s", lz).pointer();
-        auto lb = ast::Abstraction(ast, "b", ls).pointer();
-        auto la = ast::Abstraction(ast, "a", lb).pointer();
+        auto lz = Abstraction(ast, "z", inner_app).pointer();
+        auto ls = Abstraction(ast, "s", lz).pointer();
+        auto lb = Abstraction(ast, "b", ls).pointer();
+        auto la = Abstraction(ast, "a", lb).pointer();
         return la;
     }();
 
     // l s. l z. s (s (s z))
     auto p3 = [&ast] {
-        auto z = ast::Variable<>(ast, "z").pointer();
+        auto z = Variable<>(ast, "z").pointer();
         auto inner_app = z;
         for (int i = 0; i < 3; i++)
             inner_app =
-                ast::Application(ast, ast::Variable(ast, "s").pointer(), inner_app).pointer();
-        auto lz = ast::Abstraction(ast, "z", inner_app).pointer();
-        auto ls = ast::Abstraction(ast, "s", lz).pointer();
+                Application(ast, Variable(ast, "s").pointer(), inner_app).pointer();
+        auto lz = Abstraction(ast, "z", inner_app).pointer();
+        auto ls = Abstraction(ast, "s", lz).pointer();
         return ls;
     }();
 
@@ -78,37 +77,37 @@ std::pair<AST<>, ast::Program<>> pseudo_parse() {
 
     // l b. l f. f (l a. a) b
     auto prepender = [&ast] {
-        auto f = ast::Variable(ast, "f").pointer();
-        auto id = ast::Abstraction(ast, "a", ast::Variable(ast, "a").pointer()).pointer();
-        auto b = ast::Variable(ast, "b").pointer();
-        auto lf = ast::Abstraction(
+        auto f = Variable(ast, "f").pointer();
+        auto id = Abstraction(ast, "a", Variable(ast, "a").pointer()).pointer();
+        auto b = Variable(ast, "b").pointer();
+        auto lf = Abstraction(
                       ast, "f",
-                      ast::Application(ast, ast::Application(ast, f, id).pointer(), b).pointer())
+                      Application(ast, Application(ast, f, id).pointer(), b).pointer())
                       .pointer();
-        auto lb = ast::Abstraction(ast, "b", lf).pointer();
+        auto lb = Abstraction(ast, "b", lf).pointer();
         return lb;
     }();
 
     // l z. z
-    auto nul = ast::Abstraction(ast, "z", ast::Variable(ast, "z").pointer()).pointer();
+    auto nul = Abstraction(ast, "z", Variable(ast, "z").pointer()).pointer();
 
     auto powerexpr =
-        ast::Application(
+        Application(
             ast,
-            ast::Application(
+            Application(
                 ast,
-                ast::Application(ast, ast::Application(ast, ppower, p3).pointer(), p3_right)
+                Application(ast, Application(ast, ppower, p3).pointer(), p3_right)
                     .pointer(),
                 prepender)
                 .pointer(),
             nul)
             .pointer();
     auto powerexpr2 = ast::lib::deep_copy(ast, ast, powerexpr);
-    auto prog = ast::AProgram(ast, ast::ListExpr<>(ast, powerexpr, powerexpr2).pointer()).pointer();
+    auto prog = AProgram(ast, ListExpr<>(ast, powerexpr, powerexpr2).pointer()).pointer();
     return {std::move(ast), prog};
 }
 
-static_assert(std::is_same_v<ast::lib::detail::astptr_with_updated_annotations_t<ast::lib::ASTPtr<ast::ListExpr<>>, AST<TravTime>>, ast::lib::ASTPtr<ast::ListExpr<AST<TravTime>>>>);
+static_assert(std::is_same_v<ast::lib::detail::astptr_with_updated_annotations_t<ast::lib::ASTPtr<ListExpr<>>, AST<TravTime>>, ast::lib::ASTPtr<ListExpr<AST<TravTime>>>>);
 
 int traverse(ast::lib::concepts::ast_annotated_by<TravTime> auto& ast,
              ast::lib::concepts::is_ast_ptr auto root, int nx_time) {
@@ -141,19 +140,19 @@ int main() {
                    .ListExpr_()
                    .get(ast)[0]
                    .read()
-                   .unchecked_get<ast::Application<>>(ast)
+                   .unchecked_get<Application<>>(ast)
                    .Expr_2()
-                   .unchecked_get<ast::Abstraction<>>(ast)
+                   .unchecked_get<Abstraction<>>(ast)
                    .Expr_()
-                   .unchecked_get<ast::Variable<>>(ast);
+                   .unchecked_get<Variable<>>(ast);
     {
-        auto printer = ast::printing::ClassicPrettyPrinter<AST<>>(std::cout);
+        auto printer = printing::ClassicPrettyPrinter<AST<>>(std::cout);
         ast.visit(prog) | printer;
         printer.OnNewLine().FlushWhitespace();
     }
     auto aast = std::move(ast).annotate<TravTime>();
     auto aprog = prog.update_annotations(aast);
-    auto avar = var.update_annotations(aast);
+    [[maybe_unused]] auto avar = var.update_annotations(aast);
     traverse(aast, aprog, 0);
     auto dump = ast::lib::debug::ASTDump(aast);
     dump.generate_labels(aast, aprog);
