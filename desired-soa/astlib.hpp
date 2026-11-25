@@ -826,7 +826,7 @@ class AST {
 
 public:
     AST() = default;
-    template <concepts::detail::same_as_any_of<TAnnotations...>... TOtherAnnots>
+    template <class... TOtherAnnots>
     AST(AST<TOtherAnnots...>&& other);
     uint32_t size() const { return tree.size(); }
     template <concepts::detail::default_constructible... T>
@@ -869,7 +869,7 @@ public:
 
 template <concepts::detail::default_constructible... TAnnotations>
     requires(detail::pairwise_different_v<TAnnotations...>)
-template <concepts::detail::same_as_any_of<TAnnotations...>... TOtherAnnots>
+template <class... TOtherAnnots>
 AST<TAnnotations...>::AST(AST<TOtherAnnots...>&& other)
     : tree{std::move(detail::AST_privates::tree(other))},
       string_tokens{std::move(detail::AST_privates::string_tokens(other))},

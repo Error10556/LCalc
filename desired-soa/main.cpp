@@ -5,7 +5,6 @@
 #include "ast.hpp"
 #include "astinst.hpp"
 #include "astlib-debug.hpp"
-#include "astlib.hpp"
 #include "classic-pretty-printer.hpp"
 
 using ast::lib::AST;

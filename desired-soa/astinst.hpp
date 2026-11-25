@@ -33,4 +33,33 @@ extern template class AProgram<lib::AST<TravTime>>;
 extern template class printing::ClassicPrettyPrinter<lib::AST<TravTime>>;
 }
 
+extern template lib::AST<TravTime>::AST(AST<>&&);
+extern template lib::AST<>::AST(AST<TravTime>&&);
+
+extern template LC::Program<lib::AST<>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<>, lib::AST<>, LC::Program<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Program<lib::AST<>> ptr);
+extern template LC::Program<lib::AST<>> lib::deep_copy<lib::DFSOrder::PreOrder, true, lib::AST<>, lib::AST<>, LC::Program<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Program<lib::AST<>> ptr);
+extern template LC::Program<lib::AST<>> lib::deep_copy<lib::DFSOrder::PostOrder, false, lib::AST<>, lib::AST<>, LC::Program<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Program<lib::AST<>> ptr);
+extern template LC::Program<lib::AST<>> lib::deep_copy<lib::DFSOrder::PostOrder, true, lib::AST<>, lib::AST<>, LC::Program<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Program<lib::AST<>> ptr);
+extern template LC::Expr<lib::AST<>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<>, lib::AST<>, LC::Expr<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Expr<lib::AST<>> ptr);
+extern template LC::Expr<lib::AST<>> lib::deep_copy<lib::DFSOrder::PreOrder, true, lib::AST<>, lib::AST<>, LC::Expr<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Expr<lib::AST<>> ptr);
+extern template LC::Expr<lib::AST<>> lib::deep_copy<lib::DFSOrder::PostOrder, false, lib::AST<>, lib::AST<>, LC::Expr<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Expr<lib::AST<>> ptr);
+extern template LC::Expr<lib::AST<>> lib::deep_copy<lib::DFSOrder::PostOrder, true, lib::AST<>, lib::AST<>, LC::Expr<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Expr<lib::AST<>> ptr);
+extern template lib::ASTPtr<LC::ListExpr<lib::AST<>>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<>, lib::AST<>, lib::ASTPtr<LC::ListExpr<lib::AST<>>>>(lib::AST<>&, lib::AST<>&, lib::ASTPtr<LC::ListExpr<lib::AST<>>> ptr);
+extern template lib::ASTPtr<LC::ListExpr<lib::AST<>>> lib::deep_copy<lib::DFSOrder::PreOrder, true, lib::AST<>, lib::AST<>, lib::ASTPtr<LC::ListExpr<lib::AST<>>>>(lib::AST<>&, lib::AST<>&, lib::ASTPtr<LC::ListExpr<lib::AST<>>> ptr);
+extern template lib::ASTPtr<LC::ListExpr<lib::AST<>>> lib::deep_copy<lib::DFSOrder::PostOrder, false, lib::AST<>, lib::AST<>, lib::ASTPtr<LC::ListExpr<lib::AST<>>>>(lib::AST<>&, lib::AST<>&, lib::ASTPtr<LC::ListExpr<lib::AST<>>> ptr);
+extern template lib::ASTPtr<LC::ListExpr<lib::AST<>>> lib::deep_copy<lib::DFSOrder::PostOrder, true, lib::AST<>, lib::AST<>, lib::ASTPtr<LC::ListExpr<lib::AST<>>>>(lib::AST<>&, lib::AST<>&, lib::ASTPtr<LC::ListExpr<lib::AST<>>> ptr);
+
+extern template LC::Program<lib::AST<TravTime>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<TravTime>, lib::AST<TravTime>, LC::Program<lib::AST<TravTime>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, LC::Program<lib::AST<TravTime>> ptr);
+extern template LC::Program<lib::AST<TravTime>> lib::deep_copy<lib::DFSOrder::PreOrder, true, lib::AST<TravTime>, lib::AST<TravTime>, LC::Program<lib::AST<TravTime>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, LC::Program<lib::AST<TravTime>> ptr);
+extern template LC::Program<lib::AST<TravTime>> lib::deep_copy<lib::DFSOrder::PostOrder, false, lib::AST<TravTime>, lib::AST<TravTime>, LC::Program<lib::AST<TravTime>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, LC::Program<lib::AST<TravTime>> ptr);
+extern template LC::Program<lib::AST<TravTime>> lib::deep_copy<lib::DFSOrder::PostOrder, true, lib::AST<TravTime>, lib::AST<TravTime>, LC::Program<lib::AST<TravTime>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, LC::Program<lib::AST<TravTime>> ptr);
+extern template LC::Expr<lib::AST<TravTime>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<TravTime>, lib::AST<TravTime>, LC::Expr<lib::AST<TravTime>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, LC::Expr<lib::AST<TravTime>> ptr);
+extern template LC::Expr<lib::AST<TravTime>> lib::deep_copy<lib::DFSOrder::PreOrder, true, lib::AST<TravTime>, lib::AST<TravTime>, LC::Expr<lib::AST<TravTime>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, LC::Expr<lib::AST<TravTime>> ptr);
+extern template LC::Expr<lib::AST<TravTime>> lib::deep_copy<lib::DFSOrder::PostOrder, false, lib::AST<TravTime>, lib::AST<TravTime>, LC::Expr<lib::AST<TravTime>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, LC::Expr<lib::AST<TravTime>> ptr);
+extern template LC::Expr<lib::AST<TravTime>> lib::deep_copy<lib::DFSOrder::PostOrder, true, lib::AST<TravTime>, lib::AST<TravTime>, LC::Expr<lib::AST<TravTime>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, LC::Expr<lib::AST<TravTime>> ptr);
+extern template lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<TravTime>, lib::AST<TravTime>, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> ptr);
+extern template lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> lib::deep_copy<lib::DFSOrder::PreOrder, true, lib::AST<TravTime>, lib::AST<TravTime>, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> ptr);
+extern template lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> lib::deep_copy<lib::DFSOrder::PostOrder, false, lib::AST<TravTime>, lib::AST<TravTime>, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> ptr);
+extern template lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> lib::deep_copy<lib::DFSOrder::PostOrder, true, lib::AST<TravTime>, lib::AST<TravTime>, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> ptr);
+
 }
