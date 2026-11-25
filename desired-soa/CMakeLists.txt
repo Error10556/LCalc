@@ -5,6 +5,7 @@ set(CACHE{CMAKE_CXX_FLAGS_COVERAGE} TYPE STRING VALUE "-O0 --coverage")
 
 project(LCalc_SOA LANGUAGES CXX)
 
-add_executable(main main.cpp printer-common.cpp astinst.cpp astlib-debug.cpp)
+add_executable(main main.cpp printer-common.cpp astinst.cpp astlib-debug.cpp astlib-debug-inst.cpp)
+target_precompile_headers(main PRIVATE astlib.hpp ast.hpp)
 target_compile_options(main PRIVATE -Wall -Wextra)
 target_compile_features(main PRIVATE cxx_std_20)

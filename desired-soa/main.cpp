@@ -4,7 +4,7 @@
 #include "annotation.hpp"
 #include "ast.hpp"
 #include "astinst.hpp"
-#include "astlib-debug.hpp"
+#include "astlib-debug-inst.hpp"
 #include "classic-pretty-printer.hpp"
 
 using ast::lib::AST;
@@ -154,6 +154,7 @@ int main() {
     [[maybe_unused]] auto avar = var.update_annotations(aast);
     traverse(aast, aprog, 0);
     auto dump = ast::lib::debug::ASTDump(aast);
+    // CHANGE 5
     dump.generate_labels(aast, aprog);
     dump.interact(std::cin, std::cout);
 }

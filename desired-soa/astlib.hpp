@@ -1265,6 +1265,11 @@ private:
     friend iterator_templated<const TOwner, IsReverse>;
 
 public:
+    // Do not use the default constructor.
+    // std::ranges::end requires that iterator satisfies std::sentinel_for, which requires
+    // std::default_constructible.
+    // stdlibc++ solves this by defining the constructor anyway, so we do the same.
+    iterator_templated() = default;
     iterator_templated(const iterator_templated&) = default;
     iterator_templated(iterator_templated&&) = default;
     iterator_templated& operator=(const iterator_templated&) = default;
@@ -1288,8 +1293,8 @@ public:
     using value_type = T;
 
 private:
-    TOwner* owner;
-    uint32_t index;
+    TOwner* owner = nullptr;
+    uint32_t index{};
 
     static constexpr int IndexIncrement = (!IsReverse) * 2 - 1;
 
