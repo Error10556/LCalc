@@ -1257,22 +1257,36 @@ std::pair<ASTNodeItem, ASTNewNodeInfo> emplace_scalar_array(TAst& ast, Ts&&... a
 }
 
 template <class TOwner, bool IsReverse>
+struct sentinel_templated;
+
+template <class TOwner, bool IsReverse>
 struct iterator_templated {
+public:
+    using sentinel_t = sentinel_templated<TOwner, IsReverse>;
+
 private:
     static constexpr bool IsConst = std::is_same_v<TOwner, const TOwner>;
-    using T = decltype(std::declval<const TOwner>().operator[](0U));
     using ItemRefWrapper = typename TOwner::ItemRefWrapper;
+    using T = decltype(std::declval<ItemRefWrapper>().read());
     friend iterator_templated<const TOwner, IsReverse>;
 
 public:
     iterator_templated(const iterator_templated&) = default;
     iterator_templated(iterator_templated&&) = default;
-    iterator_templated& operator=(const iterator_templated&) = delete;
-    iterator_templated& operator=(iterator_templated&&) = delete;
+    iterator_templated& operator=(const iterator_templated&) = default;
+    iterator_templated& operator=(iterator_templated&&) = default;
     ~iterator_templated() = default;
     iterator_templated(const iterator_templated<std::remove_const_t<TOwner>, IsReverse>& other)
         requires(IsConst)
         : owner{other.owner}, index{other.index} {}
+    iterator_templated& operator=(
+        const iterator_templated<std::remove_const_t<TOwner>, IsReverse>& other)
+        requires(IsConst)
+    {
+        owner = other.owner;
+        index = other.index;
+        return *this;
+    }
     using iterator_category = std::random_access_iterator_tag;
     using difference_type = int32_t;
     using pointer = T*;
@@ -1280,16 +1294,16 @@ public:
     using value_type = T;
 
 private:
-    TOwner& owner;
+    TOwner* owner;
     uint32_t index;
 
     static constexpr int IndexIncrement = (!IsReverse) * 2 - 1;
 
-    iterator_templated(TOwner& owner, uint32_t index) : owner{owner}, index{index} {}
+    iterator_templated(TOwner& owner, uint32_t index) : owner{&owner}, index{index} {}
     friend std::remove_const_t<TOwner>;
 
 public:
-    reference operator*() const { return owner[index - !!IsReverse]; }
+    reference operator*() const { return (*owner)[index - !!IsReverse]; }
     iterator_templated& operator--() {
         index -= IndexIncrement;
         return *this;
@@ -1326,6 +1340,44 @@ public:
     }
     bool operator==(const iterator_templated& other) const { return index == other.index; }
     bool operator!=(const iterator_templated& other) const { return index != other.index; }
+    std::strong_ordering operator<=>(sentinel_t) const {
+        if constexpr (IsReverse)
+            return 0 <=> index;
+        else
+            return index <=> owner->size();
+    }
+    bool operator==(sentinel_t) const {
+        if constexpr (IsReverse)
+            return index == 0;
+        else
+            return index == owner->size();
+    }
+    bool operator!=(sentinel_t) const {
+        if constexpr (IsReverse)
+            return index != 0;
+        else
+            return index != owner->size();
+    }
+};
+
+template <class TOwner, bool IsReverse>
+struct sentinel_templated {
+public:
+    using iterator_t = iterator_templated<TOwner, IsReverse>;
+    using iterator_category = typename iterator_t::iterator_category;
+    using difference_type = typename iterator_t::difference_type;
+    using pointer = typename iterator_t::pointer;
+    using reference = typename iterator_t::reference;
+    using value_type = typename iterator_t::value_type;
+    auto operator<=>(const iterator_t& iter) const {
+        return 0 <=> (iter <=> *this);
+    }
+    bool operator==(const iterator_t& iter) const {
+        return iter == *this;
+    }
+    bool operator!=(const iterator_t& iter) const {
+        return iter != *this;
+    }
 };
 
 template <concepts::is_ast TAst, class T>
@@ -1420,17 +1472,17 @@ public:
     T operator[](uint32_t index) const { return get_by_index(index); }
 
     iterator begin() { return {*this, 0}; }
-    iterator end() { return {*this, size()}; }
+    typename iterator::sentinel_t end() { return {}; }
     const_iterator begin() const { return {*this, 0}; }
-    const_iterator end() const { return {*this, size()}; }
+    typename const_iterator::sentinel_t end() const { return {}; }
     const_iterator cbegin() const { return {*this, 0}; }
-    const_iterator cend() const { return {*this, size()}; }
+    typename const_iterator::sentinel_t cend() const { return {}; }
     reverse_iterator rbegin() { return {*this, 0}; }
-    reverse_iterator rend() { return {*this, size()}; }
+    typename reverse_iterator::sentinel_t rend() { return {}; }
     const_reverse_iterator rbegin() const { return {*this, 0}; }
-    const_reverse_iterator rend() const { return {*this, size()}; }
+    typename const_reverse_iterator::sentinel_t rend() const { return {}; }
     const_reverse_iterator crbegin() const { return {*this, 0}; }
-    const_reverse_iterator crend() const { return {*this, size()}; }
+    typename const_reverse_iterator::sentinel_t crend() const { return {}; }
 
     template <class U>
     U& annotation() {
@@ -1550,17 +1602,17 @@ public:
     ItemRefWrapper operator[](uint32_t index) { return {base_t::operator[](index)}; }
 
     iterator begin() { return {*this, 0}; }
-    iterator end() { return {*this, size()}; }
+    typename iterator::sentinel_t end() { return {}; }
     const_iterator begin() const { return {*this, 0}; }
-    const_iterator end() const { return {*this, size()}; }
+    typename const_iterator::sentinel_t end() const { return {}; }
     const_iterator cbegin() const { return {*this, 0}; }
-    const_iterator cend() const { return {*this, size()}; }
+    typename const_iterator::sentinel_t cend() const { return {}; }
     reverse_iterator rbegin() { return {*this, size()}; }
-    reverse_iterator rend() { return {*this, 0}; }
+    typename reverse_iterator::sentinel_t rend() { return {}; }
     const_reverse_iterator rbegin() const { return {*this, size()}; }
-    const_reverse_iterator rend() const { return {*this, 0}; }
+    typename const_reverse_iterator::sentinel_t rend() const { return {}; }
     const_reverse_iterator crbegin() const { return {*this, size()}; }
-    const_reverse_iterator crend() const { return {*this, 0}; }
+    typename const_reverse_iterator::sentinel_t crend() const { return {}; }
 
 private:
     static constexpr auto ExtractIndicesFromPointers =
@@ -2270,77 +2322,90 @@ TPtr deep_copy(TSourceAst& source_ast, TDestAst& dest_ast, TPtr ptr) {
         else
             return std::forward<decltype(obj)>(obj);
     };
-    auto res = source_ast.visit(ptr)([&](auto obj) {
-        using obj_t = decltype(obj);
-        if constexpr (concepts::is_ast_label<obj_t>) {
-            static constexpr size_t argcount = std::tuple_size_v<obj_t>;
-            return [&]<size_t... Indices>(std::index_sequence<Indices...>) {
-                detail::ASTNewNodeInfo reserved_space{};
-                if constexpr (TOrder == DFSOrder::PreOrder)
-                    reserved_space = detail::AnyAstNode_privates::reserve_space<obj_t>(dest_ast);
-                // copies_or_refs is evaluated in the correct order
-                // Makes copies of strings if TMoveStrings = false and moves them otherwise.
-                std::tuple<std::remove_cvref_t<std::tuple_element_t<Indices, obj_t>>...>
-                    copies_or_refs{
-                        rec_copy(std::move(obj.template get<Indices, TMoveStrings>()))...};
-                if constexpr (TOrder == DFSOrder::PreOrder)
-                    return detail::AnyAstNode_privates::create_label<obj_t>(
-                               dest_ast, reserved_space,
-                               std::move(std::get<Indices>(copies_or_refs))...)
-                        .pointer();
-                else
-                    return obj_t(dest_ast, std::move(std::get<Indices>(copies_or_refs))...)
-                        .pointer();
-            }(std::make_index_sequence<argcount>());
+    TPtr res = [&] {
+        if constexpr (concepts::is_ast_variant_ptr<TPtr>) {
+            return source_ast.visit(ptr)([&](auto obj) {
+                using obj_t = decltype(obj);
+                static constexpr size_t argcount = std::tuple_size_v<obj_t>;
+                return [&]<size_t... Indices>(std::index_sequence<Indices...>) {
+                    detail::ASTNewNodeInfo reserved_space{};
+                    if constexpr (TOrder == DFSOrder::PreOrder)
+                        reserved_space =
+                            detail::AnyAstNode_privates::reserve_space<obj_t>(dest_ast);
+                    // copies_or_refs is evaluated in the correct order
+                    // Makes copies of strings if TMoveStrings = false and moves them otherwise.
+                    std::tuple<std::remove_cvref_t<std::tuple_element_t<Indices, obj_t>>...>
+                        copies_or_refs{
+                            rec_copy(std::move(obj.template get<Indices, TMoveStrings>()))...};
+                    if constexpr (TOrder == DFSOrder::PreOrder)
+                        return detail::AnyAstNode_privates::create_label<obj_t>(
+                                   dest_ast, reserved_space,
+                                   std::move(std::get<Indices>(copies_or_refs))...)
+                            .pointer();
+                    else
+                        return obj_t(dest_ast, std::move(std::get<Indices>(copies_or_refs))...)
+                            .pointer();
+                }(std::make_index_sequence<argcount>());
+            });
         } else {  // array
-            // TODO test this
-            auto make_optionally_movable = [](auto& obj) -> decltype(auto) {
+            auto arr = source_ast.get(ptr);
+            using array_t = decltype(arr);
+            auto&& optionally_movable_arr = [](auto& obj) -> decltype(auto) {
                 if constexpr (TMoveStrings &&
-                              std::is_same_v<traits::ast_array_value_t<obj_t>, std::string>)
+                              std::is_same_v<traits::ast_array_value_t<array_t>, std::string>)
                     return std::ranges::subrange(std::make_move_iterator(obj.begin()),
                                                  std::make_move_iterator(obj.end()));
                 else
-                    return obj;
-            };
+                    return const_cast<const array_t&>(obj);
+            }(arr);
+            static_assert(concepts::is_ast_ptr<std::ranges::range_value_t<array_t>>);
+            static_assert(concepts::is_ast_ptr<std::ranges::range_value_t<decltype(optionally_movable_arr)>>);
+            static_assert(concepts::is_ast_ptr<std::ranges::range_value_t<decltype(optionally_movable_arr | std::views::transform(rec_copy))>>);
             if constexpr (TOrder == DFSOrder::PreOrder) {
                 auto reserved_space =
-                    detail::AnyAstNode_privates::reserve_space<obj_t>(dest_ast, obj.size());
-                return detail::AnyAstNode_privates::create_array<obj_t>(
+                    detail::AnyAstNode_privates::reserve_space<array_t>(dest_ast, arr.size());
+                return detail::AnyAstNode_privates::create_array<array_t>(
                            dest_ast, reserved_space,
-                           make_optionally_movable(obj) | std::views::transform(rec_copy))
+                           optionally_movable_arr | std::views::transform(rec_copy))
                     .pointer();
-            } else
-                return obj_t(dest_ast,
-                             make_optionally_movable(obj) | std::views::transform(rec_copy))
-                    .pointer();
+            }
+            // else return array_t(dest_ast, optionally_movable_arr |
+            // std::views::transform(rec_copy))
+            //     .pointer();
+            else
+                return array_t(dest_ast, std::ranges::transform_view(optionally_movable_arr, rec_copy)).pointer();
         }
-    });
+    }();
     detail::copy_annots_for_node(source_ast, dest_ast, ptr, res);
     return res;
 }
 
 template <bool TMoveStrings = false, concepts::is_ast TAst, concepts::is_ast_ptr TPtr>
 TPtr shallow_copy(TAst& ast, TPtr ptr) {
-    auto res = ast.visit(ptr)([&](auto obj) {
-        using obj_t = decltype(obj);
-        if constexpr (concepts::is_ast_label<obj_t>) {
-            static constexpr size_t argcount = std::tuple_size_v<obj_t>;
-            [&]<size_t... Indices>(std::index_sequence<Indices...>) {
-                return obj_t(ast, std::move(obj.template get<Indices, TMoveStrings>())...)
-                    .pointer();
-            }(std::make_index_sequence<argcount>());
+    TPtr res = [&] {
+        if constexpr (concepts::is_ast_variant_ptr<TPtr>) {
+            return ast.visit(ptr)([&](auto obj) {
+                using obj_t = decltype(obj);
+                static constexpr size_t argcount = std::tuple_size_v<obj_t>;
+                [&]<size_t... Indices>(std::index_sequence<Indices...>) {
+                    return obj_t(ast, std::move(obj.template get<Indices, TMoveStrings>())...)
+                        .pointer();
+                }(std::make_index_sequence<argcount>());
+            });
         } else {  // array
+            auto arr = ast.get(ptr);
+            using array_t = decltype(arr);
             auto make_optionally_movable = [](auto& obj) -> decltype(auto) {
                 if constexpr (TMoveStrings &&
-                              std::is_same_v<traits::ast_array_value_t<obj_t>, std::string>)
+                              std::is_same_v<traits::ast_array_value_t<array_t>, std::string>)
                     return std::ranges::subrange(std::make_move_iterator(obj.begin()),
                                                  std::make_move_iterator(obj.end()));
                 else
-                    return obj;
+                    return const_cast<const array_t>(obj);
             };
-            return obj_t(ast, make_optionally_movable(obj)).pointer();
+            return array_t(ast, make_optionally_movable(arr)).pointer();
         }
-    });
+    }();
     detail::copy_annots_for_node(ast, ast, ptr, res);
     return res;
 }

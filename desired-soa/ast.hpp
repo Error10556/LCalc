@@ -574,4 +574,6 @@ Expr<TAst> fn_const(TAst& ast [[maybe_unused]], Ident ident) {
 
 }  // namespace ast
 
+using v = decltype(std::ranges::begin(std::declval<ast::LC::ListExpr<>&>()));
+
 #include "astlib-undef-macros.include"
