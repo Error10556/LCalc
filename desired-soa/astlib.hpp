@@ -819,50 +819,15 @@ class AST {
 
     template <class... TOtherAnnots>
     static std::tuple<std::vector<TAnnotations>...> transform_annotations(
-        std::tuple<TOtherAnnots...>&& other, uint32_t default_size) {
-        using return_type = std::tuple<std::vector<TAnnotations>...>;
-        static constexpr auto other_indices =
-            std::integer_sequence<int, detail::pack_find_v<TAnnotations, TOtherAnnots...>...>();
-        return [&]<int... OtherIndices, size_t... MyIndices>(
-                   std::integer_sequence<int, OtherIndices...>,
-                   std::index_sequence<MyIndices...>) -> return_type {
-            return {[&]() -> std::vector<TAnnotations> {
-                if constexpr (OtherIndices == -1) {
-                    return std::vector<TAnnotations>(default_size);
-                } else {
-                    return std::move(std::get<OtherIndices>(other));
-                }
-            }()...};
-        }(other_indices, std::make_index_sequence<sizeof...(TAnnotations)>());
-    }
+        std::tuple<TOtherAnnots...>&& other, uint32_t default_size);
 
-    detail::ASTNewNodeInfo emplace_back(uint32_t nextra, uint32_t nstrings,
-                                        bool needs_8byte_align) {
-        uint32_t res_index = tree.size();
-        tree.emplace_back();
-        if (needs_8byte_align && nextra && (extra.size() & 1)) {
-            extra.emplace_back();
-        }
-        uint32_t extra_index = extra.size();
-        uint32_t strings_index = string_tokens.size();
-        extra.resize(extra_index + nextra);
-        string_tokens.resize(strings_index + nstrings);
-        [this]<size_t... Indices>(std::index_sequence<Indices...>) {
-            (std::get<Indices>(annots).emplace_back(), ...);
-        }(std::make_index_sequence<sizeof...(TAnnotations)>());
-        return {res_index, extra_index, strings_index};
-    }
+    detail::ASTNewNodeInfo emplace_back(uint32_t nextra, uint32_t nstrings, bool needs_8byte_align);
     friend detail::AST_privates;
 
 public:
     AST() = default;
     template <concepts::detail::same_as_any_of<TAnnotations...>... TOtherAnnots>
-    AST(AST<TOtherAnnots...>&& other)
-        : tree{std::move(detail::AST_privates::tree(other))},
-          string_tokens{std::move(detail::AST_privates::string_tokens(other))},
-          extra{std::move(detail::AST_privates::extra(other))},
-          annots{transform_annotations(std::move(detail::AST_privates::annots_tuple(other)),
-                                       tree.size())} {}
+    AST(AST<TOtherAnnots...>&& other);
     uint32_t size() const { return tree.size(); }
     template <concepts::detail::default_constructible... T>
         requires(sizeof...(T) > 0)
@@ -872,35 +837,85 @@ public:
 
     template <class TAnnot, concepts::is_ast_ptr TPtr>
         requires(std::same_as<TAnnot, TAnnotations> || ...)
-    TAnnot& annotation(TPtr ptr)
+    inline TAnnot& annotation(TPtr ptr)
         requires(sizeof...(TAnnotations) > 0);
     template <class TAnnot, concepts::is_ast_ptr TPtr>
         requires(std::same_as<TAnnot, TAnnotations> || ...)
-    const TAnnot& annotation(TPtr ptr) const
+    inline const TAnnot& annotation(TPtr ptr) const
         requires(sizeof...(TAnnotations) > 0);
 
     template <concepts::is_ast_variant_ptr... TPtr>
         requires(sizeof...(TPtr) > 0)
-    Visit<AST, TPtr...> visit(TPtr... ptrs) {
+    inline Visit<AST, TPtr...> visit(TPtr... ptrs) {
         return {*this, ptrs...};
     }
     template <concepts::is_ast_label TLabel, concepts::is_ast_label... TLs>
         requires(concepts::detail::same_as_any_of<TLabel, TLs...> && sizeof...(TLs) > 1)
-    TLabel unchecked_get(ASTPtr<TLs...> ptr);
+    inline TLabel unchecked_get(ASTPtr<TLs...> ptr);
     template <concepts::is_ast_label TLabel, concepts::is_ast_label... TLs>
         requires(concepts::detail::same_as_any_of<TLabel, TLs...>)
-    std::optional<TLabel> checked_get(ASTPtr<TLs...> ptr);
+    inline std::optional<TLabel> checked_get(ASTPtr<TLs...> ptr);
     template <concepts::is_ast_label TLabel>
-    TLabel get(ASTPtr<TLabel> ptr);
+    inline TLabel get(ASTPtr<TLabel> ptr);
     template <concepts::is_ast_array TArray>
-    TArray get(ASTPtr<TArray> ptr);
+    inline TArray get(ASTPtr<TArray> ptr);
 
 public:
     template <concepts::is_ast_ptr TPtr>
-    std::pair<AST, TPtr> preorder(TPtr root) &;
+    inline std::pair<AST, TPtr> preorder(TPtr root) &;
     template <concepts::is_ast_ptr TPtr>
-    std::pair<AST, TPtr> preorder(TPtr root) &&;
+    inline std::pair<AST, TPtr> preorder(TPtr root) &&;
 };
+
+template <concepts::detail::default_constructible... TAnnotations>
+    requires(detail::pairwise_different_v<TAnnotations...>)
+template <concepts::detail::same_as_any_of<TAnnotations...>... TOtherAnnots>
+AST<TAnnotations...>::AST(AST<TOtherAnnots...>&& other)
+    : tree{std::move(detail::AST_privates::tree(other))},
+      string_tokens{std::move(detail::AST_privates::string_tokens(other))},
+      extra{std::move(detail::AST_privates::extra(other))},
+      annots{transform_annotations(std::move(detail::AST_privates::annots_tuple(other)),
+                                   tree.size())} {}
+
+template <concepts::detail::default_constructible... TAnnotations>
+    requires(detail::pairwise_different_v<TAnnotations...>)
+detail::ASTNewNodeInfo AST<TAnnotations...>::emplace_back(uint32_t nextra, uint32_t nstrings,
+                                                          bool needs_8byte_align) {
+    uint32_t res_index = tree.size();
+    tree.emplace_back();
+    if (needs_8byte_align && nextra && (extra.size() & 1)) {
+        extra.emplace_back();
+    }
+    uint32_t extra_index = extra.size();
+    uint32_t strings_index = string_tokens.size();
+    extra.resize(extra_index + nextra);
+    string_tokens.resize(strings_index + nstrings);
+    [this]<size_t... Indices>(std::index_sequence<Indices...>) {
+        (std::get<Indices>(annots).emplace_back(), ...);
+    }(std::make_index_sequence<sizeof...(TAnnotations)>());
+    return {res_index, extra_index, strings_index};
+}
+
+template <concepts::detail::default_constructible... TAnnotations>
+    requires(detail::pairwise_different_v<TAnnotations...>)
+template <class... TOtherAnnots>
+std::tuple<std::vector<TAnnotations>...> AST<TAnnotations...>::transform_annotations(
+    std::tuple<TOtherAnnots...>&& other, uint32_t default_size) {
+    using return_type = std::tuple<std::vector<TAnnotations>...>;
+    static constexpr auto other_indices =
+        std::integer_sequence<int, detail::pack_find_v<TAnnotations, TOtherAnnots...>...>();
+    return [&]<int... OtherIndices, size_t... MyIndices>(
+               std::integer_sequence<int, OtherIndices...>,
+               std::index_sequence<MyIndices...>) -> return_type {
+        return {[&]() -> std::vector<TAnnotations> {
+            if constexpr (OtherIndices == -1) {
+                return std::vector<TAnnotations>(default_size);
+            } else {
+                return std::move(std::get<OtherIndices>(other));
+            }
+        }()...};
+    }(other_indices, std::make_index_sequence<sizeof...(TAnnotations)>());
+}
 
 namespace traits {
 
@@ -1095,10 +1110,11 @@ class Visit {
     std::array<uint32_t, sizeof...(TASTPtr)> indices;
 
 public:
-    constexpr Visit(TAst& ast, TASTPtr... ptrs)
+    Visit(TAst& ast, TASTPtr... ptrs)
         : ast{ast}, indices{detail::ASTPtr_privates::Index(ptrs)...} {}
     template <class Visitor>
-    decltype(auto) operator()(Visitor&&);
+    auto operator()(Visitor&&)
+        -> std::invoke_result_t<Visitor&&, detail::pack_of_types_index_t<0ULL, TASTPtr>...>;
     template <class Visitor>
     decltype(auto) visit(Visitor&& visitor) {
         return (*this)(std::forward<Visitor>(visitor));
@@ -1106,8 +1122,8 @@ public:
 };
 
 template <class TAst, class... TASTPtr, class Visitor>
-decltype(auto) operator|(Visit<TAst, TASTPtr...>&& visited, Visitor&& f) {
-    return std::move(visited)(f);
+inline decltype(auto) operator|(Visit<TAst, TASTPtr...>&& visited, Visitor&& f) {
+    return std::move(visited)(std::forward<Visitor>(f));
 }
 
 namespace detail {
@@ -1138,7 +1154,8 @@ struct AnyAstNode_privates {
 template <concepts::is_ast TAst, concepts::is_ast_variant_ptr... TASTPtr>
     requires(sizeof...(TASTPtr) > 0)
 template <class Visitor>
-inline decltype(auto) Visit<TAst, TASTPtr...>::operator()(Visitor&& visitor) {
+auto Visit<TAst, TASTPtr...>::operator()(Visitor&& visitor)
+    -> std::invoke_result_t<Visitor&&, detail::pack_of_types_index_t<0ULL, TASTPtr>...> {
     using namespace detail;
     constexpr size_t npacks = sizeof...(TASTPtr);
     using proxy_t = std::invoke_result_t<Visitor&&, pack_of_types_index_t<0ULL, TASTPtr>...> (*)(
@@ -1239,6 +1256,78 @@ std::pair<ASTNodeItem, ASTNewNodeInfo> emplace_scalar_array(TAst& ast, Ts&&... a
     return res;
 }
 
+template <class TOwner, bool IsReverse>
+struct iterator_templated {
+private:
+    static constexpr bool IsConst = std::is_same_v<TOwner, const TOwner>;
+    using T = decltype(std::declval<const TOwner>().operator[](0U));
+    using ItemRefWrapper = typename TOwner::ItemRefWrapper;
+    friend iterator_templated<const TOwner, IsReverse>;
+
+public:
+    iterator_templated(const iterator_templated&) = default;
+    iterator_templated(iterator_templated&&) = default;
+    iterator_templated& operator=(const iterator_templated&) = delete;
+    iterator_templated& operator=(iterator_templated&&) = delete;
+    ~iterator_templated() = default;
+    iterator_templated(const iterator_templated<std::remove_const_t<TOwner>, IsReverse>& other)
+        requires(IsConst)
+        : owner{other.owner}, index{other.index} {}
+    using iterator_category = std::random_access_iterator_tag;
+    using difference_type = int32_t;
+    using pointer = T*;
+    using reference = std::conditional_t<IsConst, T, ItemRefWrapper>;
+    using value_type = T;
+
+private:
+    TOwner& owner;
+    uint32_t index;
+
+    static constexpr int IndexIncrement = (!IsReverse) * 2 - 1;
+
+    iterator_templated(TOwner& owner, uint32_t index) : owner{owner}, index{index} {}
+    friend std::remove_const_t<TOwner>;
+
+public:
+    reference operator*() const { return owner[index - !!IsReverse]; }
+    iterator_templated& operator--() {
+        index -= IndexIncrement;
+        return *this;
+    }
+    iterator_templated operator--(int) {
+        auto res = *this;
+        index -= IndexIncrement;
+        return res;
+    }
+    iterator_templated& operator++() {
+        index += IndexIncrement;
+        return *this;
+    }
+    iterator_templated operator++(int) {
+        auto res = *this;
+        index += IndexIncrement;
+        return res;
+    }
+    iterator_templated& operator+=(difference_type d) {
+        index += IndexIncrement * static_cast<int32_t>(d);
+        return *this;
+    }
+    iterator_templated& operator-=(difference_type d) {
+        index -= IndexIncrement * static_cast<int32_t>(d);
+        return *this;
+    }
+    iterator_templated operator+(difference_type d) const { return iterator_templated{*this} += d; }
+    iterator_templated operator-(difference_type d) const { return iterator_templated{*this} -= d; }
+    std::strong_ordering operator<=>(const iterator_templated& other) const {
+        if constexpr (IsReverse)
+            return other.index <=> index;
+        else
+            return index <=> other.index;
+    }
+    bool operator==(const iterator_templated& other) const { return index == other.index; }
+    bool operator!=(const iterator_templated& other) const { return index != other.index; }
+};
+
 template <concepts::is_ast TAst, class T>
 class ArrayOfScalars {
     static constexpr bool Is8ByteAligned = sizeof(T) == 8;
@@ -1290,12 +1379,10 @@ public:
     ArrayOfScalars(TAst& ast, detail::ASTNodeItem fields, uint32_t index)
         : ast{ast}, fields{fields}, myindex{index} {}
 
-    template <bool, bool>
-    struct iterator_templated;
-    using iterator = iterator_templated<false, false>;
-    using const_iterator = iterator_templated<true, false>;
-    using reverse_iterator = iterator_templated<false, true>;
-    using const_reverse_iterator = iterator_templated<true, true>;
+    using iterator = iterator_templated<ArrayOfScalars, false>;
+    using const_iterator = iterator_templated<const ArrayOfScalars, false>;
+    using reverse_iterator = iterator_templated<ArrayOfScalars, true>;
+    using const_reverse_iterator = iterator_templated<const ArrayOfScalars, true>;
 
     struct ItemRefWrapper {
         T& item;
@@ -1332,81 +1419,18 @@ public:
     }
     T operator[](uint32_t index) const { return get_by_index(index); }
 
-    template <bool IsConst, bool IsReverse>
-    struct iterator_templated {
-        iterator_templated(const iterator_templated&) = default;
-        iterator_templated(iterator_templated&&) = default;
-        iterator_templated& operator=(const iterator_templated&) = delete;
-        iterator_templated& operator=(iterator_templated&&) = delete;
-        ~iterator_templated() = default;
-        using iterator_category = std::random_access_iterator_tag;
-        using difference_type = int32_t;
-        using pointer = T*;
-        using reference = std::conditional_t<IsConst, T, ItemRefWrapper>;
-        using value_type = T;
-
-    private:
-        using owner_t = std::conditional_t<IsConst, const ArrayOfScalars, ArrayOfScalars>;
-        owner_t& owner;
-        uint32_t index;
-
-        static constexpr int IndexIncrement = (!IsReverse) * 2 - 1;
-
-        iterator_templated(owner_t& owner, uint32_t index) : owner{owner}, index{index} {}
-        friend ArrayOfScalars;
-
-    public:
-        reference operator*() const { return owner[index - !!IsReverse]; }
-        iterator_templated& operator--() {
-            index -= IndexIncrement;
-            return *this;
-        }
-        iterator_templated operator--(int) {
-            auto res = *this;
-            index -= IndexIncrement;
-            return res;
-        }
-        iterator_templated& operator++() {
-            index += IndexIncrement;
-            return *this;
-        }
-        iterator_templated operator++(int) {
-            auto res = *this;
-            index += IndexIncrement;
-            return res;
-        }
-        iterator_templated& operator+=(difference_type d) {
-            index += IndexIncrement * static_cast<int32_t>(d);
-            return *this;
-        }
-        iterator_templated& operator-=(difference_type d) {
-            index -= IndexIncrement * static_cast<int32_t>(d);
-            return *this;
-        }
-        iterator operator+(difference_type d) const { return iterator_templated{*this} += d; }
-        iterator operator-(difference_type d) const { return iterator_templated{*this} -= d; }
-        std::strong_ordering operator<=>(const iterator_templated& other) const {
-            if constexpr (IsReverse)
-                return other.index <=> index;
-            else
-                return index <=> other.index;
-        }
-        bool operator==(const iterator_templated& other) const { return index == other.index; }
-        bool operator!=(const iterator_templated& other) const { return index != other.index; }
-    };
-
-    iterator begin() { return iterator{*this, 0}; }
-    iterator end() { return iterator{*this, size()}; }
-    const_iterator begin() const { return const_iterator{*this, 0}; }
-    const_iterator end() const { return const_iterator{*this, size()}; }
-    const_iterator cbegin() const { return const_iterator{*this, 0}; }
-    const_iterator cend() const { return const_iterator{*this, size()}; }
-    reverse_iterator rbegin() { return reverse_iterator{*this, 0}; }
-    reverse_iterator rend() { return reverse_iterator{*this, size()}; }
-    const_reverse_iterator rbegin() const { return const_reverse_iterator{*this, 0}; }
-    const_reverse_iterator rend() const { return const_reverse_iterator{*this, size()}; }
-    const_reverse_iterator crbegin() const { return const_reverse_iterator{*this, 0}; }
-    const_reverse_iterator crend() const { return const_reverse_iterator{*this, size()}; }
+    iterator begin() { return {*this, 0}; }
+    iterator end() { return {*this, size()}; }
+    const_iterator begin() const { return {*this, 0}; }
+    const_iterator end() const { return {*this, size()}; }
+    const_iterator cbegin() const { return {*this, 0}; }
+    const_iterator cend() const { return {*this, size()}; }
+    reverse_iterator rbegin() { return {*this, 0}; }
+    reverse_iterator rend() { return {*this, size()}; }
+    const_reverse_iterator rbegin() const { return {*this, 0}; }
+    const_reverse_iterator rend() const { return {*this, size()}; }
+    const_reverse_iterator crbegin() const { return {*this, 0}; }
+    const_reverse_iterator crend() const { return {*this, size()}; }
 
     template <class U>
     U& annotation() {
@@ -1491,12 +1515,10 @@ public:
             new_ast, this->fields, this->myindex);
     }
 
-    template <bool, bool>
-    struct iterator_templated;
-    using iterator = iterator_templated<false, false>;
-    using const_iterator = iterator_templated<true, false>;
-    using reverse_iterator = iterator_templated<false, true>;
-    using const_reverse_iterator = iterator_templated<true, true>;
+    using iterator = detail::iterator_templated<Array, false>;
+    using const_iterator = detail::iterator_templated<const Array, false>;
+    using reverse_iterator = detail::iterator_templated<Array, true>;
+    using const_reverse_iterator = detail::iterator_templated<const Array, true>;
 
     struct ItemRefWrapper {
     private:
@@ -1518,68 +1540,6 @@ public:
         void assign(Item val) { (*this) = val; }
     };
 
-    template <bool IsConst, bool IsReverse>
-    struct iterator_templated : private base_t::template iterator_templated<IsConst, IsReverse> {
-    private:
-        using w_t = base_t::template iterator_templated<IsConst, IsReverse>;
-
-    public:
-        using iterator_category = std::random_access_iterator_tag;
-        using difference_type = uint32_t;
-        using pointer = Item*;
-        using reference = std::conditional_t<IsConst, Item, ItemRefWrapper>;
-        using value_type = Item;
-        iterator_templated(w_t&& iter) : w_t{std::move(iter)} {}
-
-        reference operator*() {
-            if constexpr (IsConst)
-                return detail::ASTPtr_privates::Create<Item>(w_t::operator*());
-            else
-                return ItemRefWrapper(w_t::operator*());
-        }
-        iterator_templated& operator--() {
-            w_t::operator--();
-            return *this;
-        }
-        iterator_templated operator--(int) {
-            auto res = *this;
-            w_t::operator--();
-            return res;
-        }
-        iterator_templated& operator++() {
-            w_t::operator++();
-            return *this;
-        }
-        iterator_templated operator++(int) {
-            auto res = *this;
-            w_t::operator++();
-            return res;
-        }
-        iterator_templated& operator+=(difference_type d) {
-            w_t::operator+=(d);
-            return *this;
-        }
-        iterator_templated& operator-=(difference_type d) {
-            w_t::operator-=(d);
-            return *this;
-        }
-        iterator_templated operator+(difference_type d) const {
-            return iterator_templated{*this} += d;
-        }
-        iterator_templated operator-(difference_type d) const {
-            return iterator_templated{*this} -= d;
-        }
-        std::strong_ordering operator<=>(const iterator_templated& other) const {
-            return w_t::operator<=>(static_cast<const w_t&>(other));
-        }
-        bool operator==(const iterator_templated& other) const {
-            return w_t::operator==(static_cast<const w_t&>(other));
-        }
-        bool operator!=(const iterator_templated& other) const {
-            return w_t::operator!=(static_cast<const w_t&>(other));
-        }
-    };
-
     Item at(uint32_t index) const {
         return detail::ASTPtr_privates::Create<Item>(base_t::at(index));
     }
@@ -1589,18 +1549,18 @@ public:
     }
     ItemRefWrapper operator[](uint32_t index) { return {base_t::operator[](index)}; }
 
-    iterator begin() { return {base_t::begin()}; }
-    iterator end() { return {base_t::end()}; }
-    const_iterator begin() const { return {base_t::cbegin()}; }
-    const_iterator end() const { return {base_t::cend()}; }
-    const_iterator cbegin() const { return {base_t::cbegin()}; }
-    const_iterator cend() const { return {base_t::cend()}; }
-    reverse_iterator rbegin() { return {base_t::rbegin()}; }
-    reverse_iterator rend() { return {base_t::rend()}; }
-    const_reverse_iterator rbegin() const { return {base_t::crbegin()}; }
-    const_reverse_iterator rend() const { return {base_t::crend()}; }
-    const_reverse_iterator crbegin() const { return {base_t::crbegin()}; }
-    const_reverse_iterator crend() const { return {base_t::crend()}; }
+    iterator begin() { return {*this, 0}; }
+    iterator end() { return {*this, size()}; }
+    const_iterator begin() const { return {*this, 0}; }
+    const_iterator end() const { return {*this, size()}; }
+    const_iterator cbegin() const { return {*this, 0}; }
+    const_iterator cend() const { return {*this, size()}; }
+    reverse_iterator rbegin() { return {*this, size()}; }
+    reverse_iterator rend() { return {*this, 0}; }
+    const_reverse_iterator rbegin() const { return {*this, size()}; }
+    const_reverse_iterator rend() const { return {*this, 0}; }
+    const_reverse_iterator crbegin() const { return {*this, size()}; }
+    const_reverse_iterator crend() const { return {*this, 0}; }
 
 private:
     static constexpr auto ExtractIndicesFromPointers =
@@ -2017,7 +1977,7 @@ public:
     using layout_t = LabelLayout<TStoresTag, NPtrs, NStrings, NDoubles, NInts, NChars, NBools>;
 
 private:
-    std::array<char, sizeof(detail::ASTNodeItem)> inline_data{};
+    std::array<char, sizeof(detail::ASTNodeItem)> inline_data alignas(8){};
     ConditionalIndex<layout_t::PlaceToStoreNodeIndex == -1> cond_index [[no_unique_address]];
 
     template <class TScalar, size_t Pos>
@@ -2084,14 +2044,6 @@ private:
             *reinterpret_cast<TScalar*>(extras() + Pos.second) = value;
     }
 
-    // void set_extras_offset(uint32_t value) {
-    //     set_inline_scalar<uint32_t, layout_t::ExtraPtrOffset()>(value);
-    // }
-    //
-    // void set_strings_offset(uint32_t value) {
-    //     return set_inline_scalar<uint32_t, layout_t::StringPtrOffset()>(value);
-    // }
-
 public:
     using creation_params_t = pack_to_tuple_t<
         concat_packs_t<repeat_pack_t<NPtrs, uint32_t>, repeat_pack_t<NStrings, std::string>,
@@ -2099,55 +2051,7 @@ public:
                        repeat_pack_t<NChars, Char>, repeat_pack_t<NBools, Bool>>>;
 
 private:
-    void initialize(ASTNewNodeInfo new_node_info, uint32_t tag_if_needed,
-                    creation_params_t&& vals) {
-        if constexpr (TStoresTag)
-            set_inline_scalar<uint32_t, layout_t::TagOffset(), false>(tag_if_needed);
-        if constexpr (layout_t::ExtraSpaceInts)
-            set_inline_scalar<uint32_t, layout_t::ExtraPtrOffset(), false>(
-                new_node_info.extras_index);
-        if constexpr (NStrings)
-            set_inline_scalar<uint32_t, layout_t::StringPtrOffset(), false>(
-                new_node_info.strings_index);
-        {
-            [&]<size_t... Indices>(std::index_sequence<Indices...>) {
-                (pointer<Indices, false>(std::get<Indices>(vals)), ...);
-            }(std::make_index_sequence<NPtrs>());
-        }
-        static constexpr size_t StringsStart = NPtrs;
-        {
-            std::string* mystrings =
-                AST_privates::string_tokens(ast).data() + new_node_info.strings_index;
-            [&]<size_t... Indices>(std::index_sequence<Indices...>) {
-                ((mystrings[Indices] = std::move(std::get<StringsStart + Indices>(vals))), ...);
-            }(std::make_index_sequence<NStrings>());
-        }
-        static constexpr size_t ScalarsStart = StringsStart + NStrings;
-        static constexpr size_t ScalarKindStarts[] = {
-            ScalarsStart,
-            ScalarsStart + NDoubles,
-            ScalarsStart + NDoubles + NInts,
-            ScalarsStart + NDoubles + NInts + NChars,
-        };
-        [&]<size_t... TokenIndices>(std::index_sequence<TokenIndices...>) {
-            (
-                [&]() {
-                    static constexpr size_t AbsIndex = ScalarsStart + TokenIndices;
-                    auto value = std::get<AbsIndex>(vals);
-                    static constexpr size_t KindAbsStart = []() consteval {
-                        for (size_t i = std::size(ScalarKindStarts); i; --i) {
-                            if (ScalarKindStarts[i - 1] <= AbsIndex) return ScalarKindStarts[i - 1];
-                        }
-                        return 0UL;
-                    }();
-                    set_scalar_token<decltype(value), AbsIndex - KindAbsStart, false>(value);
-                }(),
-                ...);
-        }(std::make_index_sequence<NDoubles + NInts + NChars + NBools>());
-        AST_privates::tree(ast)[new_node_info.node_index] =
-            reinterpret_cast<ASTNodeItem&>(inline_data);
-        mut_index() = new_node_info.node_index;
-    }
+    void initialize(ASTNewNodeInfo new_node_info, uint32_t tag_if_needed, creation_params_t&& vals);
 
 public:
     template <size_t Index>
@@ -2206,6 +2110,56 @@ public:
 
     ~Label() = default;
 };
+
+template <concepts::is_ast TAst, bool TStoresTag, size_t NPtrs, size_t NStrings, size_t NDoubles,
+          size_t NInts, size_t NChars, size_t NBools>
+void Label<TAst, TStoresTag, NPtrs, NStrings, NDoubles, NInts, NChars, NBools>::initialize(
+    ASTNewNodeInfo new_node_info, uint32_t tag_if_needed, creation_params_t&& vals) {
+    if constexpr (TStoresTag)
+        set_inline_scalar<uint32_t, layout_t::TagOffset(), false>(tag_if_needed);
+    if constexpr (layout_t::ExtraSpaceInts)
+        set_inline_scalar<uint32_t, layout_t::ExtraPtrOffset(), false>(new_node_info.extras_index);
+    if constexpr (NStrings)
+        set_inline_scalar<uint32_t, layout_t::StringPtrOffset(), false>(
+            new_node_info.strings_index);
+    {
+        [&]<size_t... Indices>(std::index_sequence<Indices...>) {
+            (pointer<Indices, false>(std::get<Indices>(vals)), ...);
+        }(std::make_index_sequence<NPtrs>());
+    }
+    static constexpr size_t StringsStart = NPtrs;
+    {
+        std::string* mystrings =
+            AST_privates::string_tokens(ast).data() + new_node_info.strings_index;
+        [&]<size_t... Indices>(std::index_sequence<Indices...>) {
+            ((mystrings[Indices] = std::move(std::get<StringsStart + Indices>(vals))), ...);
+        }(std::make_index_sequence<NStrings>());
+    }
+    static constexpr size_t ScalarsStart = StringsStart + NStrings;
+    static constexpr size_t ScalarKindStarts[] = {
+        ScalarsStart,
+        ScalarsStart + NDoubles,
+        ScalarsStart + NDoubles + NInts,
+        ScalarsStart + NDoubles + NInts + NChars,
+    };
+    [&]<size_t... TokenIndices>(std::index_sequence<TokenIndices...>) {
+        (
+            [&]() {
+                static constexpr size_t AbsIndex = ScalarsStart + TokenIndices;
+                auto value = std::get<AbsIndex>(vals);
+                static constexpr size_t KindAbsStart = []() consteval {
+                    for (size_t i = std::size(ScalarKindStarts); i; --i) {
+                        if (ScalarKindStarts[i - 1] <= AbsIndex) return ScalarKindStarts[i - 1];
+                    }
+                    return 0UL;
+                }();
+                set_scalar_token<decltype(value), AbsIndex - KindAbsStart, false>(value);
+            }(),
+            ...);
+    }(std::make_index_sequence<NDoubles + NInts + NChars + NBools>());
+    AST_privates::tree(ast)[new_node_info.node_index] = reinterpret_cast<ASTNodeItem&>(inline_data);
+    mut_index() = new_node_info.node_index;
+}
 
 template <concepts::is_ast_label TLabel>
 struct label_pointer_fields;
@@ -2287,9 +2241,9 @@ inline TArray AST<TAnnotations...>::get(ASTPtr<TArray> ptr) {
 namespace detail {
 namespace {
 template <concepts::is_ast_ptr TPtr>
-[[maybe_unused]] void copy_annots_for_node(concepts::is_ast auto& source_ast,
-                                           concepts::is_ast auto& dest_ast, TPtr source_ptr,
-                                           TPtr dest_ptr) {
+[[maybe_unused]] inline void copy_annots_for_node(concepts::is_ast auto& source_ast,
+                                                  concepts::is_ast auto& dest_ast, TPtr source_ptr,
+                                                  TPtr dest_ptr) {
     [&]<class... SourceTypes, class... DestTypes>(const AST<SourceTypes...>&,
                                                   const AST<DestTypes...>&) {
         (
@@ -2307,7 +2261,8 @@ template <concepts::is_ast_ptr TPtr>
 
 enum class DFSOrder { PreOrder, PostOrder };
 
-template <DFSOrder TOrder = DFSOrder::PreOrder, bool TMoveStrings = false, concepts::is_ast TSourceAst, concepts::is_ast TDestAst, concepts::is_ast_ptr TPtr>
+template <DFSOrder TOrder = DFSOrder::PreOrder, bool TMoveStrings = false,
+          concepts::is_ast TSourceAst, concepts::is_ast TDestAst, concepts::is_ast_ptr TPtr>
 TPtr deep_copy(TSourceAst& source_ast, TDestAst& dest_ast, TPtr ptr) {
     auto rec_copy = [&](auto&& obj) -> auto {  // return by value
         if constexpr (concepts::is_ast_ptr<std::remove_cvref_t<decltype(obj)>>)
@@ -2393,19 +2348,19 @@ TPtr shallow_copy(TAst& ast, TPtr ptr) {
 template <concepts::detail::default_constructible... TAnnotations>
     requires(detail::pairwise_different_v<TAnnotations...>)
 template <concepts::is_ast_ptr TPtr>
-std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) & {
-    std::pair<AST, TPtr> res;
-    res.second = deep_copy<DFSOrder::PreOrder, false>(*this, res.first, root);
-    return res;
+inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) & {
+    AST res_ast;
+    auto res_ptr = deep_copy<DFSOrder::PreOrder, false>(*this, res_ast, root);
+    return {std::move(res_ast), res_ptr};
 }
 
 template <concepts::detail::default_constructible... TAnnotations>
     requires(detail::pairwise_different_v<TAnnotations...>)
 template <concepts::is_ast_ptr TPtr>
-std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) && {
-    std::pair<AST, TPtr> res;
-    res.second = deep_copy<DFSOrder::PreOrder, true>(*this, res.first, root);
-    return res;
+inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) && {
+    AST res_ast;
+    auto res_ptr = deep_copy<DFSOrder::PreOrder, true>(*this, res_ast, root);
+    return {std::move(res_ast), res_ptr};
 }
 
 }  // namespace lib
