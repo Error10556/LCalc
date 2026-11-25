@@ -751,31 +751,52 @@ struct ASTNewNodeInfo {
 
 struct AST_privates {
     template <concepts::is_ast TAst>
-    static std::vector<detail::ASTNodeItem>& tree(TAst&);
+    static std::vector<detail::ASTNodeItem>& tree(TAst& ast) {
+        return ast.tree;
+    }
     template <concepts::is_ast TAst>
-    static const std::vector<detail::ASTNodeItem>& tree(const TAst&);
+    static const std::vector<detail::ASTNodeItem>& tree(const TAst& ast) {
+        return ast.tree;
+    }
     template <concepts::is_ast TAst>
-    static std::vector<std::string>& string_tokens(TAst&);
+    static std::vector<std::string>& string_tokens(TAst& ast) {
+        return ast.string_tokens;
+    }
     template <concepts::is_ast TAst>
-    static const std::vector<std::string>& string_tokens(const TAst&);
+    static const std::vector<std::string>& string_tokens(const TAst& ast) {
+        return ast.string_tokens;
+    }
     template <concepts::is_ast TAst>
-    static std::vector<uint32_t>& extra(TAst&);
+    static std::vector<uint32_t>& extra(TAst& ast) {
+        return ast.extra;
+    }
     template <concepts::is_ast TAst>
-    static const std::vector<uint32_t>& extra(const TAst&);
+    static const std::vector<uint32_t>& extra(const TAst& ast) {
+        return ast.extra;
+    }
     template <class TAnnot, class... Annots>
         requires concepts::detail::same_as_any_of<TAnnot, Annots...>
-    static std::vector<TAnnot>& annots(AST<Annots...>&);
+    static std::vector<TAnnot>& annots(AST<Annots...>& ast) {
+        return std::get<std::vector<TAnnot>>(ast.annots);
+    }
     template <class TAnnot, class... Annots>
         requires concepts::detail::same_as_any_of<TAnnot, Annots...>
-    static const std::vector<TAnnot>& annots(const AST<Annots...>&);
+    static const std::vector<TAnnot>& annots(const AST<Annots...>& ast) {
+        return std::get<std::vector<TAnnot>>(ast.annots);
+    }
     template <concepts::is_ast TAst>
-    static auto& annots_tuple(TAst&);
+    static auto& annots_tuple(TAst& ast) {
+        return ast.annots;
+    }
     template <concepts::is_ast TAst>
-    static const auto& annots_tuple(const TAst&);
-
+    static const auto& annots_tuple(const TAst& ast) {
+        return ast.annots;
+    }
     template <concepts::is_ast TAst>
-    static ASTNewNodeInfo emplace_back(TAst&, uint32_t nextra, uint32_t nstrings,
-                                       bool needs_8byte_align);
+    static ASTNewNodeInfo emplace_back(TAst& ast, uint32_t nextra, uint32_t nstrings,
+                                       bool needs_8byte_align) {
+        return ast.emplace_back(nextra, nstrings, needs_8byte_align);
+    }
 };
 
 }  // namespace detail
@@ -894,56 +915,6 @@ struct is_ast_annotated_by<AST<RealAnnots...>, NeededAnnots...> {
 };
 
 }  // namespace traits
-
-namespace detail {
-template <concepts::is_ast TAst>
-inline std::vector<detail::ASTNodeItem>& AST_privates::tree(TAst& ast) {
-    return ast.tree;
-}
-template <concepts::is_ast TAst>
-inline const std::vector<detail::ASTNodeItem>& AST_privates::tree(const TAst& ast) {
-    return ast.tree;
-}
-template <concepts::is_ast TAst>
-inline std::vector<std::string>& AST_privates::string_tokens(TAst& ast) {
-    return ast.string_tokens;
-}
-template <concepts::is_ast TAst>
-inline const std::vector<std::string>& AST_privates::string_tokens(const TAst& ast) {
-    return ast.string_tokens;
-}
-template <concepts::is_ast TAst>
-inline std::vector<uint32_t>& AST_privates::extra(TAst& ast) {
-    return ast.extra;
-}
-template <concepts::is_ast TAst>
-inline const std::vector<uint32_t>& AST_privates::extra(const TAst& ast) {
-    return ast.extra;
-}
-template <class TAnnot, class... Annots>
-    requires concepts::detail::same_as_any_of<TAnnot, Annots...>
-inline std::vector<TAnnot>& AST_privates::annots(AST<Annots...>& ast) {
-    return std::get<std::vector<TAnnot>>(ast.annots);
-}
-template <class TAnnot, class... Annots>
-    requires concepts::detail::same_as_any_of<TAnnot, Annots...>
-inline const std::vector<TAnnot>& AST_privates::annots(const AST<Annots...>& ast) {
-    return std::get<std::vector<TAnnot>>(ast.annots);
-}
-template <concepts::is_ast TAst>
-inline auto& AST_privates::annots_tuple(TAst& ast) {
-    return ast.annots;
-}
-template <concepts::is_ast TAst>
-inline const auto& AST_privates::annots_tuple(const TAst& ast) {
-    return ast.annots;
-}
-template <concepts::is_ast TAst>
-inline ASTNewNodeInfo AST_privates::emplace_back(TAst& ast, uint32_t nextra, uint32_t nstrings,
-                                                 bool needs_8byte_align) {
-    return ast.emplace_back(nextra, nstrings, needs_8byte_align);
-}
-}  // namespace detail
 
 /**************************/
 /* Node Pointer (general) */
@@ -2336,9 +2307,8 @@ template <concepts::is_ast_ptr TPtr>
 
 enum class DFSOrder { PreOrder, PostOrder };
 
-template <DFSOrder TOrder = DFSOrder::PreOrder, bool TMoveStrings = false>
-auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_ast,
-               concepts::is_ast_ptr auto ptr) -> decltype(ptr) {
+template <DFSOrder TOrder = DFSOrder::PreOrder, bool TMoveStrings = false, concepts::is_ast TSourceAst, concepts::is_ast TDestAst, concepts::is_ast_ptr TPtr>
+TPtr deep_copy(TSourceAst& source_ast, TDestAst& dest_ast, TPtr ptr) {
     auto rec_copy = [&](auto&& obj) -> auto {  // return by value
         if constexpr (concepts::is_ast_ptr<std::remove_cvref_t<decltype(obj)>>)
             return deep_copy<TOrder, TMoveStrings>(source_ast, dest_ast, obj);
@@ -2394,8 +2364,8 @@ auto deep_copy(concepts::is_ast auto& source_ast, concepts::is_ast auto& dest_as
     return res;
 }
 
-template <bool TMoveStrings = false>
-auto shallow_copy(concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr) -> decltype(ptr) {
+template <bool TMoveStrings = false, concepts::is_ast TAst, concepts::is_ast_ptr TPtr>
+TPtr shallow_copy(TAst& ast, TPtr ptr) {
     auto res = ast.visit(ptr)([&](auto obj) {
         using obj_t = decltype(obj);
         if constexpr (concepts::is_ast_label<obj_t>) {
@@ -2423,7 +2393,7 @@ auto shallow_copy(concepts::is_ast auto& ast, concepts::is_ast_ptr auto ptr) -> 
 template <concepts::detail::default_constructible... TAnnotations>
     requires(detail::pairwise_different_v<TAnnotations...>)
 template <concepts::is_ast_ptr TPtr>
-inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) & {
+std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) & {
     std::pair<AST, TPtr> res;
     res.second = deep_copy<DFSOrder::PreOrder, false>(*this, res.first, root);
     return res;
@@ -2432,7 +2402,7 @@ inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr
 template <concepts::detail::default_constructible... TAnnotations>
     requires(detail::pairwise_different_v<TAnnotations...>)
 template <concepts::is_ast_ptr TPtr>
-inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) && {
+std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) && {
     std::pair<AST, TPtr> res;
     res.second = deep_copy<DFSOrder::PreOrder, true>(*this, res.first, root);
     return res;
