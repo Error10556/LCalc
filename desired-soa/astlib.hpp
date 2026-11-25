@@ -1428,17 +1428,17 @@ public:
     T operator[](uint32_t index) const { return get_by_index(index); }
 
     iterator begin() { return {*this, 0}; }
-    typename iterator::sentinel_t end() { return {}; }
+    iterator end() { return {*this, size()}; }
     const_iterator begin() const { return {*this, 0}; }
-    typename const_iterator::sentinel_t end() const { return {}; }
+    const_iterator end() const { return {*this, size()}; }
     const_iterator cbegin() const { return {*this, 0}; }
-    typename const_iterator::sentinel_t cend() const { return {}; }
+    const_iterator cend() const { return {*this, size()}; }
     reverse_iterator rbegin() { return {*this, 0}; }
-    typename reverse_iterator::sentinel_t rend() { return {}; }
+    reverse_iterator rend() { return {*this, size()}; }
     const_reverse_iterator rbegin() const { return {*this, 0}; }
-    typename const_reverse_iterator::sentinel_t rend() const { return {}; }
+    const_reverse_iterator rend() const { return {*this, size()}; }
     const_reverse_iterator crbegin() const { return {*this, 0}; }
-    typename const_reverse_iterator::sentinel_t crend() const { return {}; }
+    const_reverse_iterator crend() const { return {*this, size()}; }
 
     template <class U>
     U& annotation() {
@@ -1558,17 +1558,17 @@ public:
     ItemRefWrapper operator[](uint32_t index) { return {base_t::operator[](index)}; }
 
     iterator begin() { return {*this, 0}; }
-    typename iterator::sentinel_t end() { return {}; }
+    iterator end() { return {*this, size()}; }
     const_iterator begin() const { return {*this, 0}; }
-    typename const_iterator::sentinel_t end() const { return {}; }
+    const_iterator end() const { return {*this, size()}; }
     const_iterator cbegin() const { return {*this, 0}; }
-    typename const_iterator::sentinel_t cend() const { return {}; }
+    const_iterator cend() const { return {*this, size()}; }
     reverse_iterator rbegin() { return {*this, size()}; }
-    typename reverse_iterator::sentinel_t rend() { return {}; }
+    reverse_iterator rend() { return {*this, 0}; }
     const_reverse_iterator rbegin() const { return {*this, size()}; }
-    typename const_reverse_iterator::sentinel_t rend() const { return {}; }
+    const_reverse_iterator rend() const { return {*this, 0}; }
     const_reverse_iterator crbegin() const { return {*this, size()}; }
-    typename const_reverse_iterator::sentinel_t crend() const { return {}; }
+    const_reverse_iterator crend() const { return {*this, 0}; }
 
 private:
     static constexpr auto ExtractIndicesFromPointers =
