@@ -1257,13 +1257,7 @@ std::pair<ASTNodeItem, ASTNewNodeInfo> emplace_scalar_array(TAst& ast, Ts&&... a
 }
 
 template <class TOwner, bool IsReverse>
-struct sentinel_templated;
-
-template <class TOwner, bool IsReverse>
 struct iterator_templated {
-public:
-    using sentinel_t = sentinel_templated<TOwner, IsReverse>;
-
 private:
     static constexpr bool IsConst = std::is_same_v<TOwner, const TOwner>;
     using ItemRefWrapper = typename TOwner::ItemRefWrapper;
@@ -1340,44 +1334,6 @@ public:
     }
     bool operator==(const iterator_templated& other) const { return index == other.index; }
     bool operator!=(const iterator_templated& other) const { return index != other.index; }
-    std::strong_ordering operator<=>(sentinel_t) const {
-        if constexpr (IsReverse)
-            return 0 <=> index;
-        else
-            return index <=> owner->size();
-    }
-    bool operator==(sentinel_t) const {
-        if constexpr (IsReverse)
-            return index == 0;
-        else
-            return index == owner->size();
-    }
-    bool operator!=(sentinel_t) const {
-        if constexpr (IsReverse)
-            return index != 0;
-        else
-            return index != owner->size();
-    }
-};
-
-template <class TOwner, bool IsReverse>
-struct sentinel_templated {
-public:
-    using iterator_t = iterator_templated<TOwner, IsReverse>;
-    using iterator_category = typename iterator_t::iterator_category;
-    using difference_type = typename iterator_t::difference_type;
-    using pointer = typename iterator_t::pointer;
-    using reference = typename iterator_t::reference;
-    using value_type = typename iterator_t::value_type;
-    auto operator<=>(const iterator_t& iter) const {
-        return 0 <=> (iter <=> *this);
-    }
-    bool operator==(const iterator_t& iter) const {
-        return iter == *this;
-    }
-    bool operator!=(const iterator_t& iter) const {
-        return iter != *this;
-    }
 };
 
 template <concepts::is_ast TAst, class T>
