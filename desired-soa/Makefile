@@ -1,4 +1,4 @@
-.PHONY: build debug coverage clean-build clean-debug clean-coverage clean
+.PHONY: build debug coverage buildprofile clean-build clean-debug clean-coverage clean-buildprofile clean
 
 build:
 	cmake -S . -B build/ -DCMAKE_BUILD_TYPE=Release $(CONFFLAGS)
@@ -12,6 +12,10 @@ coverage:
 	cmake -S . -B coverage/ -DCMAKE_BUILD_TYPE=Coverage -DCMAKE_CXX_COMPILER=g++ $(CONFFLAGS)
 	cmake --build coverage/ -j10 $(MAKEFLAGS)
 
+buildprofile:
+	cmake -S . -B buildprofile/ -DCMAKE_BUILD_TYPE=BuildProfile $(CONFFLAGS)
+	cmake --build buildprofile/ $(MAKEFLAGS)
+
 clean-debug:
 	rm -rf debug/
 
@@ -21,5 +25,8 @@ clean-build:
 clean-coverage:
 	rm -rf coverage/
 
+clean-buildprofile:
+	rm -rf buildprofile/
+
 clean:
-	rm -rf build/ debug/ coverage/
+	rm -rf build/ debug/ coverage/ buildprofile/
