@@ -33,9 +33,6 @@ extern template class AProgram<lib::AST<TravTime>>;
 extern template class printing::ClassicPrettyPrinter<lib::AST<TravTime>>;
 }
 
-extern template lib::AST<TravTime>::AST(AST<>&&);
-extern template lib::AST<>::AST(AST<TravTime>&&);
-
 extern template LC::Program<lib::AST<>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<>, lib::AST<>, LC::Program<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Program<lib::AST<>> ptr);
 extern template LC::Program<lib::AST<>> lib::deep_copy<lib::DFSOrder::PreOrder, true, lib::AST<>, lib::AST<>, LC::Program<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Program<lib::AST<>> ptr);
 extern template LC::Program<lib::AST<>> lib::deep_copy<lib::DFSOrder::PostOrder, false, lib::AST<>, lib::AST<>, LC::Program<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Program<lib::AST<>> ptr);

@@ -818,7 +818,7 @@ class AST {
     std::tuple<std::vector<TAnnotations>...> annots;
 
     template <class... TOtherAnnots>
-    static std::tuple<std::vector<TAnnotations>...> transform_annotations(
+    static inline std::tuple<std::vector<TAnnotations>...> transform_annotations(
         std::tuple<TOtherAnnots...>&& other, uint32_t default_size);
 
     detail::ASTNewNodeInfo emplace_back(uint32_t nextra, uint32_t nstrings, bool needs_8byte_align);
@@ -827,7 +827,12 @@ class AST {
 public:
     AST() = default;
     template <class... TOtherAnnots>
-    AST(AST<TOtherAnnots...>&& other);
+    AST(AST<TOtherAnnots...>&& other)
+        : tree{std::move(detail::AST_privates::tree(other))},
+          string_tokens{std::move(detail::AST_privates::string_tokens(other))},
+          extra{std::move(detail::AST_privates::extra(other))},
+          annots{transform_annotations(std::move(detail::AST_privates::annots_tuple(other)),
+                                       tree.size())} {}
     uint32_t size() const { return tree.size(); }
     template <concepts::detail::default_constructible... T>
         requires(sizeof...(T) > 0)
@@ -869,16 +874,6 @@ public:
 
 template <concepts::detail::default_constructible... TAnnotations>
     requires(detail::pairwise_different_v<TAnnotations...>)
-template <class... TOtherAnnots>
-AST<TAnnotations...>::AST(AST<TOtherAnnots...>&& other)
-    : tree{std::move(detail::AST_privates::tree(other))},
-      string_tokens{std::move(detail::AST_privates::string_tokens(other))},
-      extra{std::move(detail::AST_privates::extra(other))},
-      annots{transform_annotations(std::move(detail::AST_privates::annots_tuple(other)),
-                                   tree.size())} {}
-
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
 detail::ASTNewNodeInfo AST<TAnnotations...>::emplace_back(uint32_t nextra, uint32_t nstrings,
                                                           bool needs_8byte_align) {
     uint32_t res_index = tree.size();
@@ -899,7 +894,7 @@ detail::ASTNewNodeInfo AST<TAnnotations...>::emplace_back(uint32_t nextra, uint3
 template <concepts::detail::default_constructible... TAnnotations>
     requires(detail::pairwise_different_v<TAnnotations...>)
 template <class... TOtherAnnots>
-std::tuple<std::vector<TAnnotations>...> AST<TAnnotations...>::transform_annotations(
+inline std::tuple<std::vector<TAnnotations>...> AST<TAnnotations...>::transform_annotations(
     std::tuple<TOtherAnnots...>&& other, uint32_t default_size) {
     using return_type = std::tuple<std::vector<TAnnotations>...>;
     static constexpr auto other_indices =
@@ -2320,8 +2315,10 @@ TPtr deep_copy(TSourceAst& source_ast, TDestAst& dest_ast, TPtr ptr) {
                     return const_cast<const array_t&>(obj);
             }(arr);
             static_assert(concepts::is_ast_ptr<std::ranges::range_value_t<array_t>>);
-            static_assert(concepts::is_ast_ptr<std::ranges::range_value_t<decltype(optionally_movable_arr)>>);
-            static_assert(concepts::is_ast_ptr<std::ranges::range_value_t<decltype(optionally_movable_arr | std::views::transform(rec_copy))>>);
+            static_assert(
+                concepts::is_ast_ptr<std::ranges::range_value_t<decltype(optionally_movable_arr)>>);
+            static_assert(concepts::is_ast_ptr<std::ranges::range_value_t<
+                              decltype(optionally_movable_arr | std::views::transform(rec_copy))>>);
             if constexpr (TOrder == DFSOrder::PreOrder) {
                 auto reserved_space =
                     detail::AnyAstNode_privates::reserve_space<array_t>(dest_ast, arr.size());
@@ -2334,7 +2331,9 @@ TPtr deep_copy(TSourceAst& source_ast, TDestAst& dest_ast, TPtr ptr) {
             // std::views::transform(rec_copy))
             //     .pointer();
             else
-                return array_t(dest_ast, std::ranges::transform_view(optionally_movable_arr, rec_copy)).pointer();
+                return array_t(dest_ast,
+                               std::ranges::transform_view(optionally_movable_arr, rec_copy))
+                    .pointer();
         }
     }();
     detail::copy_annots_for_node(source_ast, dest_ast, ptr, res);
