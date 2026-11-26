@@ -18,23 +18,6 @@ FILE:
 (l a. l b. l s. l z. a b s z) (l s. l z. s (s (s z))) (l s. l z. s (s (s z)))
 (l b. l f. f (l a. a) b) (l z. z);
 
-str: "Привет!\x21\U0001F525";
-chr: '🔥';
-(l a. a)(l b. b);
-dbl: 90.4e10;
-dbl: 9e-9;
-int: 78000;
-<:123 (l a. (l a. a) a) 2:>;
-<:1<:123 (l a. (l a. a) a) 2:>9:>;
-
-// user-defined functions:
-// id. Expr2 ::= "id" "<" Ident ">"
-// define id varname = Abstraction varname (Variable varname)
-// const. Expr2 ::= "const" "<" Ident ">"
-// define const varname = Abstraction varname (id varname)
-l _. id<a>;
-const <a>;
-
 */
 
 std::pair<AST<>, Program<>> pseudo_parse() {
