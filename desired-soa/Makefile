@@ -13,8 +13,8 @@ coverage:
 	cmake --build coverage/ -j10 $(CMAKE_BUILDFLAGS)
 
 buildprofile:
-	cmake -S . -B buildprofile/ -DCMAKE_BUILD_TYPE=BuildProfile $(CMAKE_CONFFLAGS)
-	cmake --build buildprofile/ $(CMAKE_BUILDFLAGS)
+	cmake -S . -B buildprofile/ --fresh -DCMAKE_BUILD_TYPE=BuildProfile $(CMAKE_CONFFLAGS)
+	cmake --build buildprofile/ $(CMAKE_BUILDFLAGS) &> buildprofile.txt
 
 devsetup:
 	cmake -S . -B devsetup/ -DCMAKE_BUILD_TYPE=DevSetup $(CMAKE_CONFFLAGS)
@@ -36,3 +36,5 @@ clean-devsetup:
 
 clean:
 	rm -rf build/ debug/ coverage/ buildprofile/ devsetup/
+
+all: devsetup build debug coverage buildprofile

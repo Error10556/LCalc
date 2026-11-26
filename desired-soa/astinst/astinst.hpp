@@ -1,7 +1,7 @@
 #pragma once
-#include "ast.hpp"
-#include "annotation.hpp"
-#include "classic-pretty-printer.hpp"
+#include "../ast.hpp"
+#include "../annotation.hpp"
+#include "../classic-pretty-printer.hpp"
 
 namespace ast {
 

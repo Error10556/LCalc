@@ -1,7 +1,7 @@
 #pragma once
-#include "astlib-debug.hpp"
-#include "annotation.hpp"
-#include "ast.hpp"
+#include "../astlib-debug.hpp"
+#include "../annotation.hpp"
+#include "../ast.hpp"
 
 namespace ast::lib::debug {
 

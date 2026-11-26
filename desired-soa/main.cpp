@@ -3,8 +3,8 @@
 
 #include "annotation.hpp"
 #include "ast.hpp"
-#include "astinst.hpp"
-#include "astlib-debug-inst.hpp"
+#include "astinst/astinst.hpp"
+#include "astinst/astlib-debug-inst.hpp"
 #include "classic-pretty-printer.hpp"
 
 using ast::lib::AST;
