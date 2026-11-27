@@ -24,10 +24,10 @@ template LC::Expr<lib::AST<>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib
 template LC::Expr<lib::AST<>> lib::deep_copy<lib::DFSOrder::PreOrder, true, lib::AST<>, lib::AST<>, LC::Expr<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Expr<lib::AST<>> ptr);
 template LC::Expr<lib::AST<>> lib::deep_copy<lib::DFSOrder::PostOrder, false, lib::AST<>, lib::AST<>, LC::Expr<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Expr<lib::AST<>> ptr);
 template LC::Expr<lib::AST<>> lib::deep_copy<lib::DFSOrder::PostOrder, true, lib::AST<>, lib::AST<>, LC::Expr<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Expr<lib::AST<>> ptr);
-template lib::ASTPtr<LC::ListExpr<lib::AST<>>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<>, lib::AST<>, lib::ASTPtr<LC::ListExpr<lib::AST<>>>>(lib::AST<>&, lib::AST<>&, lib::ASTPtr<LC::ListExpr<lib::AST<>>> ptr);
-template lib::ASTPtr<LC::ListExpr<lib::AST<>>> lib::deep_copy<lib::DFSOrder::PreOrder, true, lib::AST<>, lib::AST<>, lib::ASTPtr<LC::ListExpr<lib::AST<>>>>(lib::AST<>&, lib::AST<>&, lib::ASTPtr<LC::ListExpr<lib::AST<>>> ptr);
-template lib::ASTPtr<LC::ListExpr<lib::AST<>>> lib::deep_copy<lib::DFSOrder::PostOrder, false, lib::AST<>, lib::AST<>, lib::ASTPtr<LC::ListExpr<lib::AST<>>>>(lib::AST<>&, lib::AST<>&, lib::ASTPtr<LC::ListExpr<lib::AST<>>> ptr);
-template lib::ASTPtr<LC::ListExpr<lib::AST<>>> lib::deep_copy<lib::DFSOrder::PostOrder, true, lib::AST<>, lib::AST<>, lib::ASTPtr<LC::ListExpr<lib::AST<>>>>(lib::AST<>&, lib::AST<>&, lib::ASTPtr<LC::ListExpr<lib::AST<>>> ptr);
+template lib::NodePtr<LC::ListExpr<lib::AST<>>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<>, lib::AST<>, lib::NodePtr<LC::ListExpr<lib::AST<>>>>(lib::AST<>&, lib::AST<>&, lib::NodePtr<LC::ListExpr<lib::AST<>>> ptr);
+template lib::NodePtr<LC::ListExpr<lib::AST<>>> lib::deep_copy<lib::DFSOrder::PreOrder, true, lib::AST<>, lib::AST<>, lib::NodePtr<LC::ListExpr<lib::AST<>>>>(lib::AST<>&, lib::AST<>&, lib::NodePtr<LC::ListExpr<lib::AST<>>> ptr);
+template lib::NodePtr<LC::ListExpr<lib::AST<>>> lib::deep_copy<lib::DFSOrder::PostOrder, false, lib::AST<>, lib::AST<>, lib::NodePtr<LC::ListExpr<lib::AST<>>>>(lib::AST<>&, lib::AST<>&, lib::NodePtr<LC::ListExpr<lib::AST<>>> ptr);
+template lib::NodePtr<LC::ListExpr<lib::AST<>>> lib::deep_copy<lib::DFSOrder::PostOrder, true, lib::AST<>, lib::AST<>, lib::NodePtr<LC::ListExpr<lib::AST<>>>>(lib::AST<>&, lib::AST<>&, lib::NodePtr<LC::ListExpr<lib::AST<>>> ptr);
 
 template class lib::AST<TravTime>;
 namespace LC {
@@ -51,10 +51,10 @@ template LC::Expr<lib::AST<TravTime>> lib::deep_copy<lib::DFSOrder::PreOrder, fa
 template LC::Expr<lib::AST<TravTime>> lib::deep_copy<lib::DFSOrder::PreOrder, true, lib::AST<TravTime>, lib::AST<TravTime>, LC::Expr<lib::AST<TravTime>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, LC::Expr<lib::AST<TravTime>> ptr);
 template LC::Expr<lib::AST<TravTime>> lib::deep_copy<lib::DFSOrder::PostOrder, false, lib::AST<TravTime>, lib::AST<TravTime>, LC::Expr<lib::AST<TravTime>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, LC::Expr<lib::AST<TravTime>> ptr);
 template LC::Expr<lib::AST<TravTime>> lib::deep_copy<lib::DFSOrder::PostOrder, true, lib::AST<TravTime>, lib::AST<TravTime>, LC::Expr<lib::AST<TravTime>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, LC::Expr<lib::AST<TravTime>> ptr);
-template lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<TravTime>, lib::AST<TravTime>, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> ptr);
-template lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> lib::deep_copy<lib::DFSOrder::PreOrder, true, lib::AST<TravTime>, lib::AST<TravTime>, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> ptr);
-template lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> lib::deep_copy<lib::DFSOrder::PostOrder, false, lib::AST<TravTime>, lib::AST<TravTime>, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> ptr);
-template lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> lib::deep_copy<lib::DFSOrder::PostOrder, true, lib::AST<TravTime>, lib::AST<TravTime>, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, lib::ASTPtr<LC::ListExpr<lib::AST<TravTime>>> ptr);
+template lib::NodePtr<LC::ListExpr<lib::AST<TravTime>>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<TravTime>, lib::AST<TravTime>, lib::NodePtr<LC::ListExpr<lib::AST<TravTime>>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, lib::NodePtr<LC::ListExpr<lib::AST<TravTime>>> ptr);
+template lib::NodePtr<LC::ListExpr<lib::AST<TravTime>>> lib::deep_copy<lib::DFSOrder::PreOrder, true, lib::AST<TravTime>, lib::AST<TravTime>, lib::NodePtr<LC::ListExpr<lib::AST<TravTime>>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, lib::NodePtr<LC::ListExpr<lib::AST<TravTime>>> ptr);
+template lib::NodePtr<LC::ListExpr<lib::AST<TravTime>>> lib::deep_copy<lib::DFSOrder::PostOrder, false, lib::AST<TravTime>, lib::AST<TravTime>, lib::NodePtr<LC::ListExpr<lib::AST<TravTime>>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, lib::NodePtr<LC::ListExpr<lib::AST<TravTime>>> ptr);
+template lib::NodePtr<LC::ListExpr<lib::AST<TravTime>>> lib::deep_copy<lib::DFSOrder::PostOrder, true, lib::AST<TravTime>, lib::AST<TravTime>, lib::NodePtr<LC::ListExpr<lib::AST<TravTime>>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, lib::NodePtr<LC::ListExpr<lib::AST<TravTime>>> ptr);
 
 
 }

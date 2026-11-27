@@ -89,12 +89,12 @@ std::pair<AST<>, Program<>> pseudo_parse() {
     return {std::move(ast), prog};
 }
 
-static_assert(std::is_same_v<ast::lib::detail::astptr_with_updated_annotations_t<ast::lib::ASTPtr<ListExpr<>>, AST<TravTime>>, ast::lib::ASTPtr<ListExpr<AST<TravTime>>>>);
+static_assert(std::is_same_v<ast::lib::detail::astptr_with_updated_annotations_t<ast::lib::NodePtr<ListExpr<>>, AST<TravTime>>, ast::lib::NodePtr<ListExpr<AST<TravTime>>>>);
 
 int traverse(ast::lib::concepts::ast_annotated_by<TravTime> auto& ast,
-             ast::lib::concepts::is_ast_ptr auto root, int nx_time) {
+             ast::lib::concepts::is_node_ptr auto root, int nx_time) {
     root.template annotation<TravTime>(ast).tin = nx_time++;
-    if constexpr (ast::lib::concepts::is_ast_array_ptr<decltype(root)>) {
+    if constexpr (ast::lib::concepts::is_array_ptr<decltype(root)>) {
         const auto arr = ast.get(root);
         for (auto p : arr) nx_time = traverse(ast, p, nx_time);
     } else {
@@ -103,7 +103,7 @@ int traverse(ast::lib::concepts::ast_annotated_by<TravTime> auto& ast,
             [&]<size_t... Indices>(std::index_sequence<Indices...>) {
                 (
                     [&] {
-                        if constexpr (ast::lib::concepts::is_ast_ptr<
+                        if constexpr (ast::lib::concepts::is_node_ptr<
                                           std::tuple_element_t<Indices, decltype(node)>>) {
                             nx_time = traverse(ast, node.template get<Indices>(), nx_time);
                         }

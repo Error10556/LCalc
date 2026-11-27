@@ -63,13 +63,13 @@ class AProgram final {
     BNFC_ASTLIB_IMPLEMENT_LABEL(AProgram, Program, false, 1, 0, 0, 0, 0, 0);
 
     AProgram(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space,
-             lib::ASTPtr<ListExpr<TAst>> ListExpr_);
+             lib::NodePtr<ListExpr<TAst>> ListExpr_);
 
 public:
-    AProgram(TAst& ast, lib::ASTPtr<ListExpr<TAst>> ListExpr_);
+    AProgram(TAst& ast, lib::NodePtr<ListExpr<TAst>> ListExpr_);
 
-    lib::ASTPtr<ListExpr<TAst>> ListExpr_() const;
-    void ListExpr_(lib::ASTPtr<ListExpr<TAst>> value);
+    lib::NodePtr<ListExpr<TAst>> ListExpr_() const;
+    void ListExpr_(lib::NodePtr<ListExpr<TAst>> value);
 
     template <size_t I, bool StringsByRefs = false>
         requires(I < 1)
@@ -80,24 +80,24 @@ public:
 
 template <lib::concepts::is_ast TAst>
 AProgram<TAst>::AProgram(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space,
-                         lib::ASTPtr<ListExpr<TAst>> ListExpr_)
+                         lib::NodePtr<ListExpr<TAst>> ListExpr_)
     : base(ast, reserved_space, lib::traits::type_tag_of_v<AProgram>,
-           {lib::detail::ASTPtr_privates::Index(ListExpr_)}) {}
+           {lib::detail::NodePtr_privates::Index(ListExpr_)}) {}
 
 template <lib::concepts::is_ast TAst>
-AProgram<TAst>::AProgram(TAst& ast, lib::ASTPtr<ListExpr<TAst>> ListExpr_)
+AProgram<TAst>::AProgram(TAst& ast, lib::NodePtr<ListExpr<TAst>> ListExpr_)
     : base(ast, lib::traits::type_tag_of_v<AProgram>,
-           {lib::detail::ASTPtr_privates::Index(ListExpr_)}) {}
+           {lib::detail::NodePtr_privates::Index(ListExpr_)}) {}
 
 template <lib::concepts::is_ast TAst>
-lib::ASTPtr<ListExpr<TAst>> AProgram<TAst>::ListExpr_() const {
-    return lib::detail::ASTPtr_privates::Create<lib::ASTPtr<ListExpr<TAst>>>(
+lib::NodePtr<ListExpr<TAst>> AProgram<TAst>::ListExpr_() const {
+    return lib::detail::NodePtr_privates::Create<lib::NodePtr<ListExpr<TAst>>>(
         base.template pointer<0>());
 }
 
 template <lib::concepts::is_ast TAst>
-void AProgram<TAst>::ListExpr_(lib::ASTPtr<ListExpr<TAst>> value) {
-    base.template pointer<0>(lib::detail::ASTPtr_privates::Index(value));
+void AProgram<TAst>::ListExpr_(lib::NodePtr<ListExpr<TAst>> value) {
+    base.template pointer<0>(lib::detail::NodePtr_privates::Index(value));
 }
 
 }  // namespace LC
@@ -115,7 +115,7 @@ class Abstraction final {
 public:
     Abstraction(TAst& ast, Ident Ident_, Expr<TAst> Expr_)
         : base(ast, lib::traits::type_tag_of_v<Abstraction>,
-               {lib::detail::ASTPtr_privates::Index(Expr_), std::move(Ident_)}) {}
+               {lib::detail::NodePtr_privates::Index(Expr_), std::move(Ident_)}) {}
 
     const Ident& Ident_() const;
     Ident& Ident_();
@@ -141,7 +141,7 @@ template <lib::concepts::is_ast TAst>
 Abstraction<TAst>::Abstraction(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space, Ident Ident_,
                                Expr<TAst> Expr_)
     : base(ast, reserved_space, lib::traits::type_tag_of_v<Abstraction>,
-           {lib::detail::ASTPtr_privates::Index(Expr_), std::move(Ident_)}) {}
+           {lib::detail::NodePtr_privates::Index(Expr_), std::move(Ident_)}) {}
 
 template <lib::concepts::is_ast TAst>
 const Ident& Abstraction<TAst>::Ident_() const {
@@ -161,11 +161,11 @@ void Abstraction<TAst>::Ident_(Ident&& value) {
 }
 template <lib::concepts::is_ast TAst>
 Expr<TAst> Abstraction<TAst>::Expr_() const {
-    return lib::detail::ASTPtr_privates::Create<Expr<TAst>>(base.template pointer<0>());
+    return lib::detail::NodePtr_privates::Create<Expr<TAst>>(base.template pointer<0>());
 }
 template <lib::concepts::is_ast TAst>
 void Abstraction<TAst>::Expr_(Expr<TAst> value) {
-    base.template pointer<0>(lib::detail::ASTPtr_privates::Index(value));
+    base.template pointer<0>(lib::detail::NodePtr_privates::Index(value));
 }
 
 }  // namespace LC
@@ -202,28 +202,28 @@ template <lib::concepts::is_ast TAst>
 Application<TAst>::Application(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space,
                                Expr<TAst> Expr_1, Expr<TAst> Expr_2)
     : base(ast, reserved_space, lib::traits::type_tag_of_v<Application>,
-           {lib::detail::ASTPtr_privates::Index(Expr_1),
-            lib::detail::ASTPtr_privates::Index(Expr_2)}) {}
+           {lib::detail::NodePtr_privates::Index(Expr_1),
+            lib::detail::NodePtr_privates::Index(Expr_2)}) {}
 template <lib::concepts::is_ast TAst>
 Application<TAst>::Application(TAst& ast, Expr<TAst> Expr_1, Expr<TAst> Expr_2)
     : base(ast, lib::traits::type_tag_of_v<Application>,
-           {lib::detail::ASTPtr_privates::Index(Expr_1),
-            lib::detail::ASTPtr_privates::Index(Expr_2)}) {}
+           {lib::detail::NodePtr_privates::Index(Expr_1),
+            lib::detail::NodePtr_privates::Index(Expr_2)}) {}
 template <lib::concepts::is_ast TAst>
 Expr<TAst> Application<TAst>::Expr_1() const {
-    return lib::detail::ASTPtr_privates::Create<Expr<TAst>>(base.template pointer<0>());
+    return lib::detail::NodePtr_privates::Create<Expr<TAst>>(base.template pointer<0>());
 }
 template <lib::concepts::is_ast TAst>
 void Application<TAst>::Expr_1(Expr<TAst> value) {
-    base.template pointer<0>(lib::detail::ASTPtr_privates::Index(value));
+    base.template pointer<0>(lib::detail::NodePtr_privates::Index(value));
 }
 template <lib::concepts::is_ast TAst>
 Expr<TAst> Application<TAst>::Expr_2() const {
-    return lib::detail::ASTPtr_privates::Create<Expr<TAst>>(base.template pointer<1>());
+    return lib::detail::NodePtr_privates::Create<Expr<TAst>>(base.template pointer<1>());
 }
 template <lib::concepts::is_ast TAst>
 void Application<TAst>::Expr_2(Expr<TAst> value) {
-    base.template pointer<1>(lib::detail::ASTPtr_privates::Index(value));
+    base.template pointer<1>(lib::detail::NodePtr_privates::Index(value));
 }
 
 }  // namespace LC
@@ -501,13 +501,13 @@ template <lib::concepts::is_ast TAst>
 SpecialExpr<TAst>::SpecialExpr(TAst& ast, lib::detail::ASTNewNodeInfo reserved_space,
                                SpecialBegin SpecialBegin_, Expr<TAst> Expr_, SpecialEnd SpecialEnd_)
     : base(ast, reserved_space, lib::traits::type_tag_of_v<SpecialExpr>,
-           {lib::detail::ASTPtr_privates::Index(Expr_), std::move(SpecialBegin_),
+           {lib::detail::NodePtr_privates::Index(Expr_), std::move(SpecialBegin_),
             std::move(SpecialEnd_)}) {}
 template <lib::concepts::is_ast TAst>
 SpecialExpr<TAst>::SpecialExpr(TAst& ast, SpecialBegin SpecialBegin_, Expr<TAst> Expr_,
                                SpecialEnd SpecialEnd_)
     : base(ast, lib::traits::type_tag_of_v<SpecialExpr>,
-           {lib::detail::ASTPtr_privates::Index(Expr_), std::move(SpecialBegin_),
+           {lib::detail::NodePtr_privates::Index(Expr_), std::move(SpecialBegin_),
             std::move(SpecialEnd_)}) {}
 
 template <lib::concepts::is_ast TAst>
@@ -528,11 +528,11 @@ void SpecialExpr<TAst>::SpecialBegin_(SpecialBegin&& value) {
 }
 template <lib::concepts::is_ast TAst>
 Expr<TAst> SpecialExpr<TAst>::Expr_() const {
-    return lib::detail::ASTPtr_privates::Create<Expr<TAst>>(base.template pointer<0>());
+    return lib::detail::NodePtr_privates::Create<Expr<TAst>>(base.template pointer<0>());
 }
 template <lib::concepts::is_ast TAst>
 void SpecialExpr<TAst>::Expr_(Expr<TAst> value) {
-    base.template pointer<0>(lib::detail::ASTPtr_privates::Index(value));
+    base.template pointer<0>(lib::detail::NodePtr_privates::Index(value));
 }
 template <lib::concepts::is_ast TAst>
 const SpecialEnd& SpecialExpr<TAst>::SpecialEnd_() const {

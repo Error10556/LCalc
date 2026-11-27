@@ -40,7 +40,7 @@ public:
     std::vector<std::string> annot_names;
     template <class... Annots>
     ASTDump(const AST<Annots...>& ast);
-    template <concepts::is_ast TAst, concepts::is_ast_ptr TPtr>
+    template <concepts::is_ast TAst, concepts::is_node_ptr TPtr>
     void generate_labels(TAst& ast, TPtr ptr);
     void interact(std::istream& in, std::ostream& out);
 };
@@ -67,20 +67,20 @@ ASTDump::ASTDump(const AST<Annots...>& ast) {
     (annots.push_back(blobify_vector(detail::AST_privates::annots<Annots>(ast))), ...);
 }
 
-template <concepts::is_ast TAst, concepts::is_ast_ptr TPtr>
+template <concepts::is_ast TAst, concepts::is_node_ptr TPtr>
 void ASTDump::generate_labels(TAst& ast, TPtr ptr) {
-    std::string& res = tree_labels[detail::ASTPtr_privates::Index(ptr)];
+    std::string& res = tree_labels[detail::NodePtr_privates::Index(ptr)];
     if (res.size()) return;
     auto to_str = [](auto val) {
         using val_t = decltype(val);
         if constexpr (std::is_same_v<val_t, std::string>)
             return show_argument(val);
-        else if constexpr (concepts::is_ast_ptr<val_t>)
-            return show_argument(detail::ASTPtr_privates::Index(val));
+        else if constexpr (concepts::is_node_ptr<val_t>)
+            return show_argument(detail::NodePtr_privates::Index(val));
         else
             return std::to_string(val);
     };
-    if constexpr (concepts::is_ast_variant_ptr<decltype(ptr)>) {
+    if constexpr (concepts::is_variant_ptr<decltype(ptr)>) {
         ast.visit(ptr) | [&](auto node) {
             using obj_t = decltype(node);
             res = traits::lbnf_name<obj_t>::get_name();
@@ -88,7 +88,7 @@ void ASTDump::generate_labels(TAst& ast, TPtr ptr) {
             res += [&]<size_t... Indices>(std::index_sequence<Indices...>) {
                 return (... + [&] {
                     auto cur = node.template get<Indices>();
-                    if constexpr (concepts::is_ast_ptr<decltype(cur)>) generate_labels(ast, cur);
+                    if constexpr (concepts::is_node_ptr<decltype(cur)>) generate_labels(ast, cur);
                     if constexpr (Indices > 0)
                         return ", " + to_str(cur);
                     else
@@ -105,7 +105,7 @@ void ASTDump::generate_labels(TAst& ast, TPtr ptr) {
         res.append("]{");
         bool first = true;
         for (auto i : node) {
-            if constexpr (concepts::is_ast_ptr<decltype(i)>) generate_labels(ast, i);
+            if constexpr (concepts::is_node_ptr<decltype(i)>) generate_labels(ast, i);
             if (first)
                 first = false;
             else

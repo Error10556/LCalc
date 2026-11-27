@@ -5,7 +5,7 @@
                                name, ...)              \
     ns                                                 \
     template <lib::concepts::is_ast TAst = lib::AST<>> \
-    using name = lib::ASTPtr<__VA_ARGS__>;             \
+    using name = lib::NodePtr<__VA_ARGS__>;            \
     endns                                              \
     namespace lib::traits {                            \
     template <class TAst>                              \
@@ -57,7 +57,7 @@
 public:                                                                                           \
     TAst& ast() const { return base.ast; }                                                        \
     cat<TAst> pointer() const {                                                                   \
-        return lib::detail::ASTPtr_privates::Create<cat<TAst>>(base.index());                     \
+        return lib::detail::NodePtr_privates::Create<cat<TAst>>(base.index());                    \
     }                                                                                             \
     template <class T>                                                                            \
     T& annotation() {                                                                             \
