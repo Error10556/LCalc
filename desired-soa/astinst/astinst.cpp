@@ -13,7 +13,6 @@ template class DoubleExpr<lib::AST<>>;
 template class CharExpr<lib::AST<>>;
 template class SpecialExpr<lib::AST<>>;
 template class AProgram<lib::AST<>>;
-template class printing::ClassicPrettyPrinter<lib::AST<>>;
 }
 
 template LC::Program<lib::AST<>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<>, lib::AST<>, LC::Program<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Program<lib::AST<>> ptr);
@@ -40,7 +39,6 @@ template class DoubleExpr<lib::AST<TravTime>>;
 template class CharExpr<lib::AST<TravTime>>;
 template class SpecialExpr<lib::AST<TravTime>>;
 template class AProgram<lib::AST<TravTime>>;
-template class printing::ClassicPrettyPrinter<lib::AST<TravTime>>;
 }
 
 template LC::Program<lib::AST<TravTime>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<TravTime>, lib::AST<TravTime>, LC::Program<lib::AST<TravTime>>>(lib::AST<TravTime>&, lib::AST<TravTime>&, LC::Program<lib::AST<TravTime>> ptr);

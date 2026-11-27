@@ -16,7 +16,6 @@ extern template class DoubleExpr<lib::AST<>>;
 extern template class CharExpr<lib::AST<>>;
 extern template class SpecialExpr<lib::AST<>>;
 extern template class AProgram<lib::AST<>>;
-extern template class printing::ClassicPrettyPrinter<lib::AST<>>;
 }
 
 extern template class lib::AST<TravTime>;
@@ -30,7 +29,6 @@ extern template class DoubleExpr<lib::AST<TravTime>>;
 extern template class CharExpr<lib::AST<TravTime>>;
 extern template class SpecialExpr<lib::AST<TravTime>>;
 extern template class AProgram<lib::AST<TravTime>>;
-extern template class printing::ClassicPrettyPrinter<lib::AST<TravTime>>;
 }
 
 extern template LC::Program<lib::AST<>> lib::deep_copy<lib::DFSOrder::PreOrder, false, lib::AST<>, lib::AST<>, LC::Program<lib::AST<>>>(lib::AST<>&, lib::AST<>&, LC::Program<lib::AST<>> ptr);

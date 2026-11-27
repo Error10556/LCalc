@@ -5,6 +5,7 @@
 #include "ast.hpp"
 #include "astinst/astinst.hpp"
 #include "astinst/astlib-debug-inst.hpp"
+#include "astlib.hpp"
 #include "classic-pretty-printer.hpp"
 
 using ast::lib::AST;
@@ -128,8 +129,9 @@ int main() {
                    .Expr_()
                    .unchecked_get<Variable<>>(ast);
     {
-        auto printer = printing::ClassicPrettyPrinter<AST<>>(std::cout);
-        ast.visit(prog) | printer;
+        auto printer = ast::printing::LC::ClassicPrettyPrinter(std::cout);
+        auto astref = ast::lib::ASTRef<>(ast);
+        astref.visit(prog.update_annotations(astref)) | printer;
         printer.OnNewLine().FlushWhitespace();
     }
     auto aast = std::move(ast).annotate<TravTime>();

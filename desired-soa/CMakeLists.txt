@@ -16,7 +16,7 @@ add_library(lang_options INTERFACE)
 target_compile_options(lang_options INTERFACE -Wall -Wextra)
 target_compile_features(lang_options INTERFACE cxx_std_20)
 
-add_executable(main main.cpp printer-common.cpp astlib-debug.cpp)
+add_executable(main main.cpp printer-common.cpp classic-pretty-printer.cpp astlib-debug.cpp)
 add_subdirectory(astinst)
 if (NOT ${CMAKE_BUILD_TYPE} STREQUAL "DevSetup")
     target_precompile_headers(main PRIVATE astlib.hpp ast.hpp)
