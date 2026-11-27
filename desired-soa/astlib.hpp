@@ -58,6 +58,10 @@ class AST<TAnnotations...>
 │     Changes the annotation list: default-constructs new annotations and keeps existing ones.
 │     The argument must be discarded after the call.
 │
+├── uint32_t size() const
+│     The number of syntax nodes (list nodes and polymorphic nodes) in the AST.
+│     Token values do not count as nodes.
+│
 ├── AST<TAnnotations..., TMore...> annotate<TMore...>() &&
 │     Adds more annotations, returns a new tree with all existing and additional annotations.
 │     Annotation objects are default-constructed for each node. Must be called on an rvalue.
@@ -77,35 +81,86 @@ class AST<TAnnotations...>
 │     Returns a node accessor for a labelled rule object, checking if TLabel is
 │     the correct type for it. If the type does not match, returns an empty optional.
 │
-├── TLabel get(ASTPtr<TLabel> ptr)
+├── TLabel get(NodePtr<TLabel> ptr)
 │     Returns a node accessor for a labelled rule object.
 │     Only defined for pointers representing LBNF categories with exactly one rule.
 │
-├── TArray get(ASTPtr<TArray> ptr)
+├── TArray get(NodePtr<TArray> ptr)
 │     Returns a list accessor.
 │
-└── std::pair<AST, TPtr> preorder(TPtr ptr)
+├── std::pair<AST, TPtr> preorder(TPtr ptr) &
+└── std::pair<AST, TPtr> preorder(TPtr ptr) &&
       Returns a subtree of this tree rooted at the node identified by ptr, with the nodes
       ordered in depth-first pre-order.
       If called on a non-const rvalue, moves the values of string literals;
-      the current AST object must be discarded after the call.
+      the current AST object should be discarded after the call.
       If not, copies values of involved string literals.
       The returned pair contains the subtree as a separate AST and
       the root node pointer for the returned tree.
 
-class ASTPtr<...>
+class ASTRef<TAnnotations...>
+│ References an existing AST object (see above).
+│ The pack of annotations may be a subset of the full set of types in the original AST.
+│ Useful to limit the number of template instantiations of algorithms templated on an AST
+│ (for example, pretty-printers do not access annotations anyway, so they may accept an ASTRef<>
+│ of the real AST object, which may be annotated arbitrarily).
+│ ASTRef satisfies 'concepts::is_ast'; therefore, it can be used with accessors
+│ (see LabelledRuleObject and Array).
+│
+├── ASTRef(AST<TSupersetOfAnnotations...>&)
+├── ASTRef(ASTRef<TSupersetOfAnnotations...>&)
+│     Takes pointers to internal data structures of an existing AST
+│     or copies pointers of another ASTRef.
+│     This object's 'TAnnotations...' must be a subset of
+│     the argument's 'TSupersetOfAnnotations...'.
+│
+├── uint32_t size() const
+│     The number of syntax nodes (list nodes and polymorphic nodes) in the AST.
+│     Token values do not count as nodes.
+│
+├── TAnnot& annotation<TAnnot>(TPtr node_pointer) const
+│     Accesses an annotation object of a syntax node identified by node_pointer.
+│
+├── Visit<AST, TPtr...> visit(TPtr... ptrs) const
+│     Allows dynamic dispatch on one or more polymorphic syntax nodes (see operator|).
+│
+├── TLabel unchecked_get<TLabel>(TPtr ptr) const
+│     Returns a node accessor for a labelled rule object without checking if TLabel is
+│     the correct type for it. If the type does not match, the behavior is undefined!!
+│
+├── std::optional<TLabel> checked_get<TLabel>(TPtr ptr) const
+│     Returns a node accessor for a labelled rule object, checking if TLabel is
+│     the correct type for it. If the type does not match, returns an empty optional.
+│
+├── TLabel get(NodePtr<TLabel> ptr) const
+│     Returns a node accessor for a labelled rule object.
+│     Only defined for pointers representing LBNF categories with exactly one rule.
+│
+├── TArray get(NodePtr<TArray> ptr) const
+│     Returns a list accessor.
+│
+└── std::pair<AST, TPtr> preorder<bool MoveStrings = false>(TPtr ptr) const
+      Returns a subtree of this tree rooted at the node identified by ptr, with the nodes
+      ordered in depth-first pre-order.
+      If 'MoveStrings' is 'true', moves the values of string literals;
+      the referenced AST object should be discarded after the call.
+      If not, copies values of involved string literals.
+      The returned pair contains the subtree as a separate AST and
+      the root node pointer for the returned tree.
+
+class NodePtr<...>
 │ Has several specializations:
-│ 1. ASTPtr<TLabels...> (with 2 or more type parameters)
+│ 1. NodePtr<TLabels...> (with 2 or more type parameters)
 │    A polymorphic syntax node generated from an LBNF category with 2 or more labelled
 │    rules. To access the node, use dynamic dispatch via visitation
 │    (see operator|(Visit, Visitor)).
-│ 2. ASTPtr<TLabel>
+│ 2. NodePtr<TLabel>
 │    A syntax node pointer generated from an LBNF category with only 1 labelled rule.
 │    However, traits::ast_class_type_v<> still gives ASTClassType::VariantPtr.
-│ 3. ASTPtr<TArray>
+│ 3. NodePtr<TArray>
 │    A pointer to a BNFC list.
 │
-├── Visit<TAst, ASTPtr> visit(TAst& ast) const  (if specialization 1 or 2)
+├── Visit<TAst, NodePtr> visit(TAst& ast) const  (if specialization 1 or 2)
 │     Allows dynamic dispatch.
 │
 ├── TLabel unchecked_get<TLabel>(TAst& ast)     (if specialization 1)
@@ -126,8 +181,8 @@ class ASTPtr<...>
 ├── const TAnnot& annotation<TAnnot>(const AST<TAnnotations...>&)
 │     Returns an annotation of this node.
 │
-├── ASTPtr<...> update_annotations<TNewAst>() const
-└── ASTPtr<...> update_annotations(const TNewAst&) const
+├── NodePtr<...> update_annotations<TNewAst>() const
+└── NodePtr<...> update_annotations(const TNewAst&) const
       Returns the same pointer for the AST with new annotations.
 
 class Visit<TAst, TVariantPtr...>
@@ -149,7 +204,7 @@ decltype(auto) operator|(Visit&& visited_fwd_ref, Visitor&& visitor_fwd_ref)
 
 class Array<TAst, TItem>
 │ Accesses a list of syntax node pointers or token values.
-│ TItem can be an ASTPtr or any token value type.
+│ TItem can be an NodePtr or any token value type.
 │ The list size cannot be changed, hence the name.
 │
 ├── Array(TAst&, TItem...)
@@ -173,7 +228,7 @@ class Array<TAst, TItem>
 ├── bool empty() const
 │     Equivalent to `size() == 0`.
 │
-├── ASTPtr<Array> pointer() const
+├── NodePtr<Array> pointer() const
 │     Returns the pointer.
 │
 ├── Array<TNewAst, ...> update_annotations(TNewAst& ast) const
@@ -219,7 +274,7 @@ class LabelledRuleObject<TAst>
 ├── TAst& ast() const
 │     Returns the owning AST data structure.
 │
-├── ASTPtr<LabelledRuleObject> pointer() const
+├── NodePtr<LabelledRuleObject> pointer() const
 │     Returns the pointer to this object.
 │
 ├── LabelledRuleObject<TNewAst> update_annotations(TNewAst& ast) const
@@ -240,12 +295,18 @@ class LabelledRuleObject<TAst>
   Information about AST classes.
 
 bool is_ast_v<T>
-  'true' if T is an instantiation of 'ast::lib::AST<...>'.
+  'true' if T is an instantiation of ast::lib::AST<...> or ast::lib::ASTRef<...>.
+
+bool is_ast_primary_v<T>
+  'true' if T is an instantiation of ast::lib::AST<...>.
+
+bool is_ast_ref_v<T>
+  'true' if T is an instantiation of ast::lib::ASTRef<...>.
 
 enum class ASTClassType
 │ Kinds of objects used in this module.
-├── VariantPtr  = pointer (ASTPtr) to a polymorphic node object (LBNF category)
-├── ArrayPtr    = pointer (ASTPtr) to a list of nodes or tokens
+├── VariantPtr  = pointer (NodePtr) to a polymorphic node object (LBNF category)
+├── ArrayPtr    = pointer (NodePtr) to a list of nodes or tokens
 ├── Array       = accessor representing a list of nodes or tokens
 ├── Label       = accessor representing a node of known type (LBNF labelled rule)
 ├── StringToken = any token represented as a std::string
@@ -269,7 +330,7 @@ uint32_t type_tag_of_v<TLabel>
   The rule index in the LBNF category that the labelled rule belongs to.
   Internally used as the tag for dynamic dispatch.
 
-using ast_array_value_t<TArray>
+using array_value_t<TArray>
   The type of items in the array.
 
 bool is_ast_annotated_by_v<Ast<...>, Annotations...>
@@ -281,36 +342,43 @@ bool is_ast_annotated_by_v<Ast<...>, Annotations...>
   Contains useful concepts for template definitions.
 
 is_ast<T>
-  T must be an ast::lib::AST<...> instantiation.
+  T must be an instantiation of ast::lib::AST<...> or ast::lib::ASTRef<...>.
+
+is_ast_primary<T>
+  T must be an instantiation of ast::lib::AST<...>.
+
+is_ast_ref<T>
+  T must be an instantiation of ast::lib::ASTRef<...>.
 
 ast_annotated_by<AST<...>, Annotations...>
-  The AST instantiation must contain each of the listed annotation structs.
+  The AST instantiation must contain each of the listed annotation structs
+  (perhaps in a different order; perhaps alongside other structs).
 
-is_ast_variant_ptr<T>
-  T must be a pointer (ASTPtr) to a polymorphic node object (LBNF category).
+is_variant_ptr<T>
+  T must be a pointer (NodePtr) to a polymorphic node object (LBNF category).
 
-is_ast_array_ptr<T>
-  T must be a pointer (ASTPtr) to a list of syntax nodes or token values.
+is_array_ptr<T>
+  T must be a pointer (NodePtr) to a list of syntax nodes or token values.
 
-is_ast_ptr<T>
-  T must be an AST object pointer (ASTPtr).
+is_node_ptr<T>
+  T must be an AST object pointer (NodePtr).
 
-is_ast_label<T>
+is_label<T>
   T must be an accessor to a polymorphic node object (LBNF category).
 
-is_ast_array<T>
+is_array<T>
   T must be an accessor to a list of syntax nodes or token values.
 
-is_ast_node<T>
+is_node<T>
   T must be an accessor to a list or label.
 
-is_ast_scalar_token<T>
+is_scalar_token<T>
   T must be a token value represented as a fundamental type (Double, Integer, Char, Bool).
 
-is_ast_string_token<T>
+is_string_token<T>
   T must be a token value represented as a std::string.
 
-is_ast_token<T>
+is_token<T>
   T must be a type of a token value (std::string, Double, Integer, Char, Bool).
 
 }  // namespace ast::lib::concepts
@@ -319,6 +387,8 @@ is_ast_token<T>
 
 #pragma once
 // we assume read-write access to the AST (TODO: implement read-only labels)
+#include <pthread.h>
+
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -557,12 +627,28 @@ using repeat_pack_t = repeat_pack<N, T>::value_t;
 namespace traits {
 
 template <class T>
-struct is_ast {
+struct is_ast_primary {
     static constexpr bool value = false;
 };
 
 template <class T>
+struct is_ast_ref {
+    static constexpr bool value = false;
+};
+
+template <class T>
+struct is_ast {
+    static constexpr bool value = is_ast_primary<T>::value || is_ast_ref<T>::value;
+};
+
+template <class T>
 static constexpr bool is_ast_v = is_ast<T>::value;
+
+template <class T>
+static constexpr bool is_ast_primary_v = is_ast_primary<T>::value;
+
+template <class T>
+static constexpr bool is_ast_ref_v = is_ast_ref<T>::value;
 
 enum class ASTClassType {
     VariantPtr,
@@ -624,47 +710,53 @@ namespace concepts {
 template <class T>
 concept is_ast = traits::is_ast_v<T>;
 
+template <class T>
+concept is_ast_primary = traits::is_ast_primary_v<T>;
+
+template <class T>
+concept is_ast_ref = traits::is_ast_ref_v<T>;
+
 template <class TAst, class... Annots>
 concept ast_annotated_by = traits::is_ast_annotated_by_v<TAst, Annots...>;
 
 template <class T>
-concept is_ast_variant_ptr = traits::ast_class_type_v<T> == traits::ASTClassType::VariantPtr;
+concept is_variant_ptr = traits::ast_class_type_v<T> == traits::ASTClassType::VariantPtr;
 
 template <class T>
-concept is_ast_array_ptr = traits::ast_class_type_v<T> == traits::ASTClassType::ArrayPtr;
+concept is_array_ptr = traits::ast_class_type_v<T> == traits::ASTClassType::ArrayPtr;
 
 template <class T>
-concept is_ast_ptr = is_ast_variant_ptr<T> || is_ast_array_ptr<T>;
+concept is_node_ptr = is_variant_ptr<T> || is_array_ptr<T>;
 
 template <class T>
-concept is_ast_label = traits::ast_class_type_v<T> == traits::ASTClassType::Label;
+concept is_label = traits::ast_class_type_v<T> == traits::ASTClassType::Label;
 
 template <class T>
-concept is_ast_array = traits::ast_class_type_v<T> == traits::ASTClassType::Array;
+concept is_array = traits::ast_class_type_v<T> == traits::ASTClassType::Array;
 
 template <class T>
-concept is_ast_node = is_ast_label<T> || is_ast_array<T>;
+concept is_node = is_label<T> || is_array<T>;
 
 template <class T>
-concept is_ast_scalar_token = traits::ast_class_type_v<T> == traits::ASTClassType::ScalarToken;
+concept is_scalar_token = traits::ast_class_type_v<T> == traits::ASTClassType::ScalarToken;
 
 template <class T>
-concept is_ast_string_token = traits::ast_class_type_v<T> == traits::ASTClassType::StringToken;
+concept is_string_token = traits::ast_class_type_v<T> == traits::ASTClassType::StringToken;
 
 template <class T>
-concept is_ast_token = is_ast_string_token<T> || is_ast_scalar_token<T>;
+concept is_token = is_string_token<T> || is_scalar_token<T>;
 
 }  // namespace concepts
 
 namespace traits {
 
-template <concepts::is_ast_label TLabel>
+template <concepts::is_label TLabel>
 struct lbnf_category_of;
 
-template <concepts::is_ast_label TLabel>
+template <concepts::is_label TLabel>
 using lbnf_category_of_t = lbnf_category_of<TLabel>::value_t;
 
-template <concepts::is_ast_label TLabel>
+template <concepts::is_label TLabel>
 struct type_tag_of {
 private:
     using cat_t = lbnf_category_of_t<TLabel>;
@@ -675,24 +767,24 @@ public:
     static constexpr uint32_t value = signed_val;
 };
 
-template <concepts::is_ast_label TLabel>
+template <concepts::is_label TLabel>
 constexpr uint32_t type_tag_of_v = type_tag_of<TLabel>::value;
 
-template <concepts::is_ast_array TArray>
-struct ast_array_value;
+template <concepts::is_array TArray>
+struct array_value;
 
-template <concepts::is_ast_array TArray>
-using ast_array_value_t = ast_array_value<TArray>::value_t;
+template <concepts::is_array TArray>
+using ast_array_value_t = array_value<TArray>::value_t;
 
-template <concepts::is_ast_node T>
+template <concepts::is_node T>
 struct lbnf_coercion_level;
 
-template <concepts::is_ast_array T>
+template <concepts::is_array T>
 struct lbnf_coercion_level<T> {
     static constexpr int value = 0;
 };
 
-template <concepts::is_ast_node T>
+template <concepts::is_node T>
 constexpr int lbnf_coercion_level_v = lbnf_coercion_level<T>::value;
 
 template <class T>
@@ -735,6 +827,8 @@ struct lbnf_name<Bool> {
 template <concepts::detail::default_constructible... TAnnotations>
     requires(detail::pairwise_different_v<TAnnotations...>)
 class AST;
+template <class... TAnnotations>
+class ASTRef;
 
 namespace detail {
 
@@ -750,29 +844,41 @@ struct ASTNewNodeInfo {
 };
 
 struct AST_privates {
-    template <concepts::is_ast TAst>
+    template <concepts::is_ast_primary TAst>
     static std::vector<detail::ASTNodeItem>& tree(TAst& ast) {
         return ast.tree;
     }
-    template <concepts::is_ast TAst>
+    template <concepts::is_ast_primary TAst>
     static const std::vector<detail::ASTNodeItem>& tree(const TAst& ast) {
         return ast.tree;
     }
-    template <concepts::is_ast TAst>
+    template <concepts::is_ast_ref TAst>
+    static std::vector<detail::ASTNodeItem>& tree(const TAst& ast) {
+        return *ast.tree;
+    }
+    template <concepts::is_ast_primary TAst>
     static std::vector<std::string>& string_tokens(TAst& ast) {
         return ast.string_tokens;
     }
-    template <concepts::is_ast TAst>
+    template <concepts::is_ast_primary TAst>
     static const std::vector<std::string>& string_tokens(const TAst& ast) {
         return ast.string_tokens;
     }
-    template <concepts::is_ast TAst>
+    template <concepts::is_ast_ref TAst>
+    static std::vector<std::string>& string_tokens(const TAst& ast) {
+        return *ast.string_tokens;
+    }
+    template <concepts::is_ast_primary TAst>
     static std::vector<uint32_t>& extra(TAst& ast) {
         return ast.extra;
     }
-    template <concepts::is_ast TAst>
+    template <concepts::is_ast_primary TAst>
     static const std::vector<uint32_t>& extra(const TAst& ast) {
         return ast.extra;
+    }
+    template <concepts::is_ast_ref TAst>
+    static std::vector<uint32_t>& extra(const TAst& ast) {
+        return *ast.extra;
     }
     template <class TAnnot, class... Annots>
         requires concepts::detail::same_as_any_of<TAnnot, Annots...>
@@ -784,15 +890,20 @@ struct AST_privates {
     static const std::vector<TAnnot>& annots(const AST<Annots...>& ast) {
         return std::get<std::vector<TAnnot>>(ast.annots);
     }
-    template <concepts::is_ast TAst>
+    template <class TAnnot, class... Annots>
+        requires concepts::detail::same_as_any_of<TAnnot, Annots...>
+    static std::vector<TAnnot>& annots(const ASTRef<Annots...>& ast) {
+        return *std::get<std::vector<TAnnot>*>(ast.annots);
+    }
+    template <concepts::is_ast_primary TAst>
     static auto& annots_tuple(TAst& ast) {
         return ast.annots;
     }
-    template <concepts::is_ast TAst>
+    template <concepts::is_ast_primary TAst>
     static const auto& annots_tuple(const TAst& ast) {
         return ast.annots;
     }
-    template <concepts::is_ast TAst>
+    template <concepts::is_ast_primary TAst>
     static ASTNewNodeInfo emplace_back(TAst& ast, uint32_t nextra, uint32_t nstrings,
                                        bool needs_8byte_align) {
         return ast.emplace_back(nextra, nstrings, needs_8byte_align);
@@ -801,11 +912,11 @@ struct AST_privates {
 
 }  // namespace detail
 
-template <concepts::is_ast TAst, concepts::is_ast_variant_ptr... TASTPtr>
-    requires(sizeof...(TASTPtr) > 0)
+template <concepts::is_ast TAst, concepts::is_variant_ptr... TNodePtr>
+    requires(sizeof...(TNodePtr) > 0)
 class Visit;
 template <class...>
-class ASTPtr;
+class NodePtr;
 template <concepts::is_ast, class>
 class Array;
 
@@ -840,35 +951,34 @@ public:
         return AST<TAnnotations..., T...>(std::move(*this));
     }
 
-    template <class TAnnot, concepts::is_ast_ptr TPtr>
+    template <class TAnnot, concepts::is_node_ptr TPtr>
         requires(std::same_as<TAnnot, TAnnotations> || ...)
     inline TAnnot& annotation(TPtr ptr)
         requires(sizeof...(TAnnotations) > 0);
-    template <class TAnnot, concepts::is_ast_ptr TPtr>
+    template <class TAnnot, concepts::is_node_ptr TPtr>
         requires(std::same_as<TAnnot, TAnnotations> || ...)
     inline const TAnnot& annotation(TPtr ptr) const
         requires(sizeof...(TAnnotations) > 0);
 
-    template <concepts::is_ast_variant_ptr... TPtr>
+    template <concepts::is_variant_ptr... TPtr>
         requires(sizeof...(TPtr) > 0)
     inline Visit<AST, TPtr...> visit(TPtr... ptrs) {
         return {*this, ptrs...};
     }
-    template <concepts::is_ast_label TLabel, concepts::is_ast_label... TLs>
+    template <concepts::is_label TLabel, concepts::is_label... TLs>
         requires(concepts::detail::same_as_any_of<TLabel, TLs...> && sizeof...(TLs) > 1)
-    inline TLabel unchecked_get(ASTPtr<TLs...> ptr);
-    template <concepts::is_ast_label TLabel, concepts::is_ast_label... TLs>
+    inline TLabel unchecked_get(NodePtr<TLs...> ptr);
+    template <concepts::is_label TLabel, concepts::is_label... TLs>
         requires(concepts::detail::same_as_any_of<TLabel, TLs...>)
-    inline std::optional<TLabel> checked_get(ASTPtr<TLs...> ptr);
-    template <concepts::is_ast_label TLabel>
-    inline TLabel get(ASTPtr<TLabel> ptr);
-    template <concepts::is_ast_array TArray>
-    inline TArray get(ASTPtr<TArray> ptr);
+    inline std::optional<TLabel> checked_get(NodePtr<TLs...> ptr);
+    template <concepts::is_label TLabel>
+    inline TLabel get(NodePtr<TLabel> ptr);
+    template <concepts::is_array TArray>
+    inline TArray get(NodePtr<TArray> ptr);
 
-public:
-    template <concepts::is_ast_ptr TPtr>
+    template <concepts::is_node_ptr TPtr>
     inline std::pair<AST, TPtr> preorder(TPtr root) &;
-    template <concepts::is_ast_ptr TPtr>
+    template <concepts::is_node_ptr TPtr>
     inline std::pair<AST, TPtr> preorder(TPtr root) &&;
 };
 
@@ -915,7 +1025,7 @@ inline std::tuple<std::vector<TAnnotations>...> AST<TAnnotations...>::transform_
 namespace traits {
 
 template <class... Ts>
-struct is_ast<AST<Ts...>> {
+struct is_ast_primary<AST<Ts...>> {
     static constexpr bool value = true;
 };
 
@@ -926,22 +1036,81 @@ struct is_ast_annotated_by<AST<RealAnnots...>, NeededAnnots...> {
 
 }  // namespace traits
 
+template <class... TAnnotations>
+class ASTRef {
+    friend detail::AST_privates;
+    std::vector<detail::ASTNodeItem>* tree;
+    std::vector<std::string>* string_tokens;
+    std::vector<uint32_t>* extra;
+    std::tuple<std::vector<TAnnotations>*...> annots;
+
+public:
+    template <concepts::ast_annotated_by<TAnnotations...> TAst>
+    ASTRef(TAst& ast)
+        : tree{&detail::AST_privates::tree(ast)},
+          string_tokens{&detail::AST_privates::string_tokens(ast)},
+          extra{&detail::AST_privates::extra(ast)},
+          annots{&detail::AST_privates::annots<TAnnotations>(ast)...} {}
+    ASTRef() = delete;
+    uint32_t size() const {
+        return tree->size();
+    }
+
+    template <class TAnnot, concepts::is_node_ptr TPtr>
+        requires(std::same_as<TAnnot, TAnnotations> || ...)
+    inline TAnnot& annotation(TPtr ptr) const
+        requires(sizeof...(TAnnotations) > 0);
+
+    template <concepts::is_variant_ptr... TPtr>
+        requires(sizeof...(TPtr) > 0)
+    inline Visit<ASTRef, TPtr...> visit(TPtr... ptrs) const {
+        return {const_cast<ASTRef&>(*this), ptrs...};
+    }
+    template <concepts::is_label TLabel, concepts::is_label... TLs>
+        requires(concepts::detail::same_as_any_of<TLabel, TLs...> && sizeof...(TLs) > 1)
+    inline TLabel unchecked_get(NodePtr<TLs...> ptr) const;
+    template <concepts::is_label TLabel, concepts::is_label... TLs>
+        requires(concepts::detail::same_as_any_of<TLabel, TLs...>)
+    inline std::optional<TLabel> checked_get(NodePtr<TLs...> ptr) const;
+    template <concepts::is_label TLabel>
+    inline TLabel get(NodePtr<TLabel> ptr) const;
+    template <concepts::is_array TArray>
+    inline TArray get(NodePtr<TArray> ptr) const;
+
+    template <bool MoveStrings = false, concepts::is_node_ptr TPtr>
+    inline std::pair<AST<TAnnotations...>, TPtr> preorder(TPtr root) const;
+};
+
+namespace traits {
+
+template <class... TAnnotations>
+struct is_ast_ref<ASTRef<TAnnotations...>> {
+    static constexpr bool value = true;
+};
+
+template <class... RealAnnots, class... NeededAnnots>
+struct is_ast_annotated_by<ASTRef<RealAnnots...>, NeededAnnots...> {
+    static constexpr bool value = (... && (detail::pack_find_v<NeededAnnots, RealAnnots...> >= 0));
+};
+
+}  // namespace traits
+
 /**************************/
 /* Node Pointer (general) */
 /**************************/
 
 template <class...>
-class ASTPtr {
+class NodePtr {
     static_assert(false, "This kind of AST pointer is not supported");
 };
 
 namespace detail {
-struct ASTPtr_privates {
-    template <concepts::is_ast_ptr TPtr>
+struct NodePtr_privates {
+    template <concepts::is_node_ptr TPtr>
     static uint32_t Index(TPtr ptr) {
         return ptr.index;
     }
-    template <concepts::is_ast_ptr TPtr>
+    template <concepts::is_node_ptr TPtr>
     static TPtr Create(uint32_t index) {
         return TPtr(index);
     }
@@ -955,22 +1124,22 @@ struct ASTPtr_privates {
 namespace detail {
 
 template <size_t Index, class... Ts>
-struct pack_of_types_index<Index, ASTPtr<Ts...>> {
+struct pack_of_types_index<Index, NodePtr<Ts...>> {
     using value_t = pack_index<Index, Ts...>::value_t;
 };
 
 template <class T, class... Ts>
-struct pack_of_types_find<T, ASTPtr<Ts...>> {
+struct pack_of_types_find<T, NodePtr<Ts...>> {
     static constexpr int value = pack_find<T, Ts...>::value;
 };
 
 template <class... Ts>
-struct pack_of_types_size<ASTPtr<Ts...>> {
+struct pack_of_types_size<NodePtr<Ts...>> {
     static constexpr size_t value = sizeof...(Ts);
 };
 
 template <size_t Index, class... Ts, class... Packs>
-struct packs_mdindex<Index, ASTPtr<Ts...>, Packs...> {
+struct packs_mdindex<Index, NodePtr<Ts...>, Packs...> {
 private:
     static constexpr size_t coef = (pack_of_types_size_v<Packs> * ...);
     using rest_t = packs_mdindex<Index % coef, Packs...>::value_t;
@@ -986,34 +1155,34 @@ public:
 };
 
 template <size_t Index, class... Ts>
-struct packs_mdindex<Index, ASTPtr<Ts...>> {
+struct packs_mdindex<Index, NodePtr<Ts...>> {
     using value_t = pack_of_types<pack_index_t<Index, Ts...>>;
 };
 
-template <concepts::is_ast_ptr TPtr, concepts::is_ast TAst>
+template <concepts::is_node_ptr TPtr, concepts::is_ast TAst>
 struct astptr_with_updated_annotations;
 
 template <class... Ts, concepts::is_ast TAst>
-struct astptr_with_updated_annotations<ASTPtr<Ts...>, TAst> {
+struct astptr_with_updated_annotations<NodePtr<Ts...>, TAst> {
     using value_t =
-        ASTPtr<decltype(std::declval<Ts>().update_annotations(std::declval<TAst&>()))...>;
+        NodePtr<decltype(std::declval<Ts>().update_annotations(std::declval<TAst&>()))...>;
 };
 
-template <concepts::is_ast_ptr TPtr, concepts::is_ast TAst>
+template <concepts::is_node_ptr TPtr, concepts::is_ast TAst>
 using astptr_with_updated_annotations_t = astptr_with_updated_annotations<TPtr, TAst>::value_t;
 
 }  // namespace detail
 
-template <concepts::is_ast_label... Ts>
+template <concepts::is_label... Ts>
     requires(sizeof...(Ts) > 1)
-class ASTPtr<Ts...> {
+class NodePtr<Ts...> {
     uint32_t index;
-    ASTPtr(uint32_t index) : index{index} {}
-    friend detail::ASTPtr_privates;
+    NodePtr(uint32_t index) : index{index} {}
+    friend detail::NodePtr_privates;
 
 public:
     template <concepts::is_ast TAst>
-    Visit<TAst, ASTPtr> visit(TAst& ast) const {
+    Visit<TAst, NodePtr> visit(TAst& ast) const {
         return {ast, *this};
     }
     template <concepts::detail::same_as_any_of<Ts...> TLabel, concepts::is_ast TAst>
@@ -1035,26 +1204,26 @@ public:
         return ast.template annotation<TAnnot>(*this);
     }
     template <concepts::is_ast TNewAst>
-    detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations() const {
-        return detail::ASTPtr_privates::Create<
-            detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst>>(index);
+    detail::astptr_with_updated_annotations_t<NodePtr, TNewAst> update_annotations() const {
+        return detail::NodePtr_privates::Create<
+            detail::astptr_with_updated_annotations_t<NodePtr, TNewAst>>(index);
     }
     template <concepts::is_ast TNewAst>
-    detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations(
+    detail::astptr_with_updated_annotations_t<NodePtr, TNewAst> update_annotations(
         const TNewAst&) const {
         return update_annotations<TNewAst>();
     }
 };
 
-template <concepts::is_ast_label TLabel>
-class ASTPtr<TLabel> {
+template <concepts::is_label TLabel>
+class NodePtr<TLabel> {
     uint32_t index;
-    ASTPtr(uint32_t index) : index{index} {}
-    friend detail::ASTPtr_privates;
+    NodePtr(uint32_t index) : index{index} {}
+    friend detail::NodePtr_privates;
 
 public:
     template <concepts::is_ast TAst>
-    Visit<TAst, ASTPtr> visit(TAst& ast) const {
+    Visit<TAst, NodePtr> visit(TAst& ast) const {
         return {ast, *this};
     }
     template <concepts::is_ast TAst>
@@ -1072,20 +1241,20 @@ public:
         return ast.template annotation<TAnnot>(*this);
     }
     template <concepts::is_ast TNewAst>
-    detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations() const {
-        return detail::ASTPtr_privates::Create<
-            detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst>>(index);
+    detail::astptr_with_updated_annotations_t<NodePtr, TNewAst> update_annotations() const {
+        return detail::NodePtr_privates::Create<
+            detail::astptr_with_updated_annotations_t<NodePtr, TNewAst>>(index);
     }
     template <concepts::is_ast TNewAst>
-    detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations(
+    detail::astptr_with_updated_annotations_t<NodePtr, TNewAst> update_annotations(
         const TNewAst&) const {
         return update_annotations<TNewAst>();
     }
 };
 
 namespace traits {
-template <concepts::is_ast_label... Ts>
-struct ast_class_type<ASTPtr<Ts...>> {
+template <concepts::is_label... Ts>
+struct ast_class_type<NodePtr<Ts...>> {
     static constexpr ASTClassType value = ASTClassType::VariantPtr;
 };
 }  // namespace traits
@@ -1098,69 +1267,69 @@ public:
 template <class... Funcs>
 Cases(Funcs&&...) -> Cases<Funcs...>;
 
-template <concepts::is_ast TAst, concepts::is_ast_variant_ptr... TASTPtr>
-    requires(sizeof...(TASTPtr) > 0)
+template <concepts::is_ast TAst, concepts::is_variant_ptr... TNodePtr>
+    requires(sizeof...(TNodePtr) > 0)
 class Visit {
     TAst& ast;
-    std::array<uint32_t, sizeof...(TASTPtr)> indices;
+    std::array<uint32_t, sizeof...(TNodePtr)> indices;
 
 public:
-    Visit(TAst& ast, TASTPtr... ptrs)
-        : ast{ast}, indices{detail::ASTPtr_privates::Index(ptrs)...} {}
+    Visit(TAst& ast, TNodePtr... ptrs)
+        : ast{ast}, indices{detail::NodePtr_privates::Index(ptrs)...} {}
     template <class Visitor>
     auto operator()(Visitor&&)
-        -> std::invoke_result_t<Visitor&&, detail::pack_of_types_index_t<0ULL, TASTPtr>...>;
+        -> std::invoke_result_t<Visitor&&, detail::pack_of_types_index_t<0ULL, TNodePtr>...>;
     template <class Visitor>
     decltype(auto) visit(Visitor&& visitor) {
         return (*this)(std::forward<Visitor>(visitor));
     }
 };
 
-template <class TAst, class... TASTPtr, class Visitor>
-inline decltype(auto) operator|(Visit<TAst, TASTPtr...>&& visited, Visitor&& f) {
+template <class TAst, class... TNodePtr, class Visitor>
+inline decltype(auto) operator|(Visit<TAst, TNodePtr...>&& visited, Visitor&& f) {
     return std::move(visited)(std::forward<Visitor>(f));
 }
 
 namespace detail {
 
 struct AnyAstNode_privates {
-    template <concepts::is_ast_label Label, class... Args>
+    template <concepts::is_label Label, class... Args>
     static Label create_label(Args&&... args) {
         return Label(std::forward<Args>(args)...);
     }
-    template <concepts::is_ast_array TArray, class... Args>
+    template <concepts::is_array TArray, class... Args>
     static TArray create_array(Args&&... args) {
         return TArray(std::forward<Args>(args)...);
     }
-    template <concepts::is_ast_label TLabel, concepts::is_ast TAst>
+    template <concepts::is_label TLabel, concepts::is_ast TAst>
     static ASTNewNodeInfo reserve_space(TAst& ast) {
         return TLabel::base_t::reserve_space(ast);
     }
-    template <concepts::is_ast_array TArray, concepts::is_ast TAst>
+    template <concepts::is_array TArray, concepts::is_ast TAst>
     static ASTNewNodeInfo reserve_space(TAst& ast, uint32_t size) {
         return TArray::reserve_space(ast, size);
     }
-    template <concepts::is_ast_label TLabel>
+    template <concepts::is_label TLabel>
     using label_base_t = TLabel::base_t;
 };
 
 }  // namespace detail
 
-template <concepts::is_ast TAst, concepts::is_ast_variant_ptr... TASTPtr>
-    requires(sizeof...(TASTPtr) > 0)
+template <concepts::is_ast TAst, concepts::is_variant_ptr... TNodePtr>
+    requires(sizeof...(TNodePtr) > 0)
 template <class Visitor>
-auto Visit<TAst, TASTPtr...>::operator()(Visitor&& visitor)
-    -> std::invoke_result_t<Visitor&&, detail::pack_of_types_index_t<0ULL, TASTPtr>...> {
+auto Visit<TAst, TNodePtr...>::operator()(Visitor&& visitor)
+    -> std::invoke_result_t<Visitor&&, detail::pack_of_types_index_t<0ULL, TNodePtr>...> {
     using namespace detail;
-    constexpr size_t npacks = sizeof...(TASTPtr);
-    using proxy_t = std::invoke_result_t<Visitor&&, pack_of_types_index_t<0ULL, TASTPtr>...> (*)(
+    constexpr size_t npacks = sizeof...(TNodePtr);
+    using proxy_t = std::invoke_result_t<Visitor&&, pack_of_types_index_t<0ULL, TNodePtr>...> (*)(
         Visitor&&, TAst&, const std::array<uint32_t, npacks>&);
     static constexpr std::array vtable = []<size_t... TIndices>(
                                              std::integer_sequence<size_t, TIndices...>) {
         return std::array<proxy_t, sizeof...(TIndices)>{
             [](Visitor&& vis, TAst& ast,
                const std::array<uint32_t, npacks>& indices) -> decltype(auto) {
-                using MyTypesPack = packs_mdindex_t<TIndices, TASTPtr...>;
+                using MyTypesPack = packs_mdindex_t<TIndices, TNodePtr...>;
                 return [&]<class... MyTypes, size_t... MyTypeIndices>(
                            pack_of_types<MyTypes...>,
                            std::integer_sequence<size_t, MyTypeIndices...>) -> decltype(auto) {
@@ -1168,8 +1337,8 @@ auto Visit<TAst, TASTPtr...>::operator()(Visitor&& visitor)
                         AnyAstNode_privates::create_label<MyTypes>(ast, indices[MyTypeIndices])...);
                 }(MyTypesPack(), std::make_index_sequence<pack_of_types_size_v<MyTypesPack>>());
             }...};
-    }(std::make_index_sequence<(pack_of_types_size_v<TASTPtr> * ...)>());
-    static constexpr std::array<size_t, npacks> coefs{pack_of_types_size_v<TASTPtr>...};
+    }(std::make_index_sequence<(pack_of_types_size_v<TNodePtr> * ...)>());
+    static constexpr std::array<size_t, npacks> coefs{pack_of_types_size_v<TNodePtr>...};
     size_t totalindex = 0;
     const auto& treenodes = detail::AST_privates::tree(ast);
     for (size_t i = 0; i < std::size(indices); i++) {
@@ -1194,7 +1363,7 @@ struct ast_class_type<Array<TAst, Item>> {
     static constexpr ASTClassType value = ASTClassType::Array;
 };
 template <concepts::is_ast TAst, class T>
-struct ast_array_value<Array<TAst, T>> {
+struct array_value<Array<TAst, T>> {
     using value_t = T;
 };
 template <concepts::is_ast TAst, class T>
@@ -1497,7 +1666,7 @@ public:
 
 }  // namespace detail
 
-template <concepts::is_ast TAst, concepts::is_ast_ptr Item>
+template <concepts::is_ast TAst, concepts::is_node_ptr Item>
 class Array<TAst, Item> : private detail::ArrayOfScalars<TAst, uint32_t> {
     using base_t = detail::ArrayOfScalars<TAst, uint32_t>;
 
@@ -1512,8 +1681,8 @@ public:
 
     TAst& ast() const { return base_t::ast; }
 
-    ASTPtr<Array> pointer() const {
-        return detail::ASTPtr_privates::Create<ASTPtr<Array>>(this->myindex);
+    NodePtr<Array> pointer() const {
+        return detail::NodePtr_privates::Create<NodePtr<Array>>(this->myindex);
     }
     template <lib::concepts::is_ast NewAst>
     Array<NewAst, detail::astptr_with_updated_annotations_t<Item, NewAst>> update_annotations(
@@ -1538,22 +1707,22 @@ public:
 
     public:
         ItemRefWrapper& operator=(Item ptr) {
-            w = detail::ASTPtr_privates::Index(ptr);
+            w = detail::NodePtr_privates::Index(ptr);
             return *this;
         }
         operator Item() const { return read(); }
         Item read() const {
-            return detail::ASTPtr_privates::Create<Item>(static_cast<uint32_t>(w));
+            return detail::NodePtr_privates::Create<Item>(static_cast<uint32_t>(w));
         }
         void assign(Item val) { (*this) = val; }
     };
 
     Item at(uint32_t index) const {
-        return detail::ASTPtr_privates::Create<Item>(base_t::at(index));
+        return detail::NodePtr_privates::Create<Item>(base_t::at(index));
     }
     ItemRefWrapper at(uint32_t index) { return {base_t::at(index)}; }
     Item operator[](uint32_t index) const {
-        return detail::ASTPtr_privates::Create<Item>(base_t::operator[](index));
+        return detail::NodePtr_privates::Create<Item>(base_t::operator[](index));
     }
     ItemRefWrapper operator[](uint32_t index) { return {base_t::operator[](index)}; }
 
@@ -1572,7 +1741,7 @@ public:
 
 private:
     static constexpr auto ExtractIndicesFromPointers =
-        std::ranges::views::transform(detail::ASTPtr_privates::Index<Item>);
+        std::ranges::views::transform(detail::NodePtr_privates::Index<Item>);
     template <std::ranges::range Range>
         requires(std::same_as<std::ranges::range_value_t<Range>, Item>)
     Array(TAst& ast, detail::ASTNewNodeInfo reserved_space, Range&& range)
@@ -1586,10 +1755,10 @@ public:
     Array(TAst& ast, std::initializer_list<Item> items)
         : base_t(ast, items | ExtractIndicesFromPointers) {}
     template <std::same_as<Item>... Items>
-    Array(TAst& ast, Items... items) : base_t(ast, detail::ASTPtr_privates::Index(items)...) {}
+    Array(TAst& ast, Items... items) : base_t(ast, detail::NodePtr_privates::Index(items)...) {}
 };
 
-template <concepts::is_ast TAst, concepts::is_ast_scalar_token Token>
+template <concepts::is_ast TAst, concepts::is_scalar_token Token>
 class Array<TAst, Token> : private detail::ArrayOfScalars<TAst, Token> {
     using base_t = detail::ArrayOfScalars<TAst, Token>;
 
@@ -1601,8 +1770,8 @@ private:
 public:
     TAst& ast() const { return base_t::ast; }
 
-    ASTPtr<Array> pointer() const {
-        return detail::ASTPtr_privates::Create<ASTPtr<Array>>(this->myindex);
+    NodePtr<Array> pointer() const {
+        return detail::NodePtr_privates::Create<NodePtr<Array>>(this->myindex);
     }
     template <lib::concepts::is_ast NewAst>
     Array<NewAst, Token> update_annotations(NewAst& new_ast) const {
@@ -1692,7 +1861,7 @@ public:
     }
     const_reverse_iterator crend() const { return string_token_vector().crend() - strings_ptr; }
 
-    ASTPtr<Array> pointer() const { return lib::detail::ASTPtr_privates::Create<Array>(myindex); }
+    NodePtr<Array> pointer() const { return lib::detail::NodePtr_privates::Create<Array>(myindex); }
     template <class T>
     T& annotation() {
         return this->m_ast.template annotation<T>(pointer());
@@ -1766,11 +1935,11 @@ public:
         : Array(ast, MovableStrings(lst), private_tag_t{}) {}
 };
 
-template <concepts::is_ast_array TArray>
-class ASTPtr<TArray> {
+template <concepts::is_array TArray>
+class NodePtr<TArray> {
     uint32_t index;
-    ASTPtr(uint32_t index) : index{index} {}
-    friend detail::ASTPtr_privates;
+    NodePtr(uint32_t index) : index{index} {}
+    friend detail::NodePtr_privates;
 
 public:
     template <concepts::is_ast TAst>
@@ -1788,20 +1957,20 @@ public:
         return ast.template annotation<TAnnot>(*this);
     }
     template <concepts::is_ast TNewAst>
-    detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations() const {
-        return detail::ASTPtr_privates::Create<
-            detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst>>(index);
+    detail::astptr_with_updated_annotations_t<NodePtr, TNewAst> update_annotations() const {
+        return detail::NodePtr_privates::Create<
+            detail::astptr_with_updated_annotations_t<NodePtr, TNewAst>>(index);
     }
     template <concepts::is_ast TNewAst>
-    detail::astptr_with_updated_annotations_t<ASTPtr, TNewAst> update_annotations(
+    detail::astptr_with_updated_annotations_t<NodePtr, TNewAst> update_annotations(
         const TNewAst&) const {
         return update_annotations<TNewAst>();
     }
 };
 
 namespace traits {
-template <concepts::is_ast_array TArray>
-struct ast_class_type<ASTPtr<TArray>> {
+template <concepts::is_array TArray>
+struct ast_class_type<NodePtr<TArray>> {
     static constexpr ASTClassType value = ASTClassType::ArrayPtr;
 };
 }  // namespace traits
@@ -2169,86 +2338,24 @@ void Label<TAst, TStoresTag, NPtrs, NStrings, NDoubles, NInts, NChars, NBools>::
     mut_index() = new_node_info.node_index;
 }
 
-template <concepts::is_ast_label TLabel>
+template <concepts::is_label TLabel>
 struct label_pointer_fields;
 
-template <concepts::is_ast_label TLabel>
+template <concepts::is_label TLabel>
 using label_pointer_fields_t = label_pointer_fields<TLabel>::value_t;
 
-template <concepts::is_ast_label TLabel>
+template <concepts::is_label TLabel>
 struct label_tuple_size;
 
 }  // namespace detail
 
-/**************************/
-/* AST method definitions */
-/**************************/
-
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
-template <class TAnnot, concepts::is_ast_ptr TPtr>
-    requires(std::same_as<TAnnot, TAnnotations> || ...)
-inline TAnnot& AST<TAnnotations...>::annotation(TPtr ptr)
-    requires(sizeof...(TAnnotations) > 0)
-{
-    return std::get<std::vector<TAnnot>>(annots)[detail::ASTPtr_privates::Index(ptr)];
-}
-
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
-template <class TAnnot, concepts::is_ast_ptr TPtr>
-    requires(std::same_as<TAnnot, TAnnotations> || ...)
-inline const TAnnot& AST<TAnnotations...>::annotation(TPtr ptr) const
-    requires(sizeof...(TAnnotations) > 0)
-{
-    return std::get<std::vector<TAnnot>>(annots)[detail::ASTPtr_privates::Index(ptr)];
-}
-
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
-template <concepts::is_ast_label TLabel, concepts::is_ast_label... TLs>
-    requires(concepts::detail::same_as_any_of<TLabel, TLs...> && sizeof...(TLs) > 1)
-inline TLabel AST<TAnnotations...>::unchecked_get(ASTPtr<TLs...> ptr) {
-    return detail::AnyAstNode_privates::create_label<TLabel>(*this,
-                                                             detail::ASTPtr_privates::Index(ptr));
-}
-
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
-template <concepts::is_ast_label TLabel, concepts::is_ast_label... TLs>
-    requires(concepts::detail::same_as_any_of<TLabel, TLs...>)
-inline std::optional<TLabel> AST<TAnnotations...>::checked_get(ASTPtr<TLs...> ptr) {
-    if constexpr (sizeof...(TLs) == 1)
-        return get(ptr);
-    else {
-        uint32_t index = detail::ASTPtr_privates::Index(ptr);
-        static constexpr int NeedTag = detail::pack_find_v<TLabel, TLs...>;
-        if (NeedTag != -1 && (int)tree[index].info == NeedTag)
-            return {detail::AnyAstNode_privates::create_label<TLabel>(*this, index)};
-        else
-            return {};
-    }
-}
-
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
-template <concepts::is_ast_label TLabel>
-inline TLabel AST<TAnnotations...>::get(ASTPtr<TLabel> ptr) {
-    return detail::AnyAstNode_privates::create_label<TLabel>(*this,
-                                                             detail::ASTPtr_privates::Index(ptr));
-}
-
-template <concepts::detail::default_constructible... TAnnotations>
-    requires(detail::pairwise_different_v<TAnnotations...>)
-template <concepts::is_ast_array TArray>
-inline TArray AST<TAnnotations...>::get(ASTPtr<TArray> ptr) {
-    return detail::AnyAstNode_privates::create_array<TArray>(*this,
-                                                             detail::ASTPtr_privates::Index(ptr));
-}
+/*****************************/
+/* Subtree cloning functions */
+/*****************************/
 
 namespace detail {
 namespace {
-template <concepts::is_ast_ptr TPtr>
+template <concepts::is_node_ptr TPtr>
 [[maybe_unused]] inline void copy_annots_for_node(concepts::is_ast auto& source_ast,
                                                   concepts::is_ast auto& dest_ast, TPtr source_ptr,
                                                   TPtr dest_ptr) {
@@ -2270,16 +2377,16 @@ template <concepts::is_ast_ptr TPtr>
 enum class DFSOrder { PreOrder, PostOrder };
 
 template <DFSOrder TOrder = DFSOrder::PreOrder, bool TMoveStrings = false,
-          concepts::is_ast TSourceAst, concepts::is_ast TDestAst, concepts::is_ast_ptr TPtr>
+          concepts::is_ast TSourceAst, concepts::is_ast TDestAst, concepts::is_node_ptr TPtr>
 TPtr deep_copy(TSourceAst& source_ast, TDestAst& dest_ast, TPtr ptr) {
     auto rec_copy = [&](auto&& obj) -> auto {  // return by value
-        if constexpr (concepts::is_ast_ptr<std::remove_cvref_t<decltype(obj)>>)
+        if constexpr (concepts::is_node_ptr<std::remove_cvref_t<decltype(obj)>>)
             return deep_copy<TOrder, TMoveStrings>(source_ast, dest_ast, obj);
         else
             return std::forward<decltype(obj)>(obj);
     };
     TPtr res = [&] {
-        if constexpr (concepts::is_ast_variant_ptr<TPtr>) {
+        if constexpr (concepts::is_variant_ptr<TPtr>) {
             return source_ast.visit(ptr)([&](auto obj) {
                 using obj_t = decltype(obj);
                 static constexpr size_t argcount = std::tuple_size_v<obj_t>;
@@ -2312,12 +2419,12 @@ TPtr deep_copy(TSourceAst& source_ast, TDestAst& dest_ast, TPtr ptr) {
                     return std::ranges::subrange(std::make_move_iterator(obj.begin()),
                                                  std::make_move_iterator(obj.end()));
                 else
-                    return const_cast<const array_t&>(obj);
+                    return static_cast<const array_t&>(obj);
             }(arr);
-            static_assert(concepts::is_ast_ptr<std::ranges::range_value_t<array_t>>);
+            static_assert(concepts::is_node_ptr<std::ranges::range_value_t<array_t>>);
             static_assert(
-                concepts::is_ast_ptr<std::ranges::range_value_t<decltype(optionally_movable_arr)>>);
-            static_assert(concepts::is_ast_ptr<std::ranges::range_value_t<
+                concepts::is_node_ptr<std::ranges::range_value_t<decltype(optionally_movable_arr)>>);
+            static_assert(concepts::is_node_ptr<std::ranges::range_value_t<
                               decltype(optionally_movable_arr | std::views::transform(rec_copy))>>);
             if constexpr (TOrder == DFSOrder::PreOrder) {
                 auto reserved_space =
@@ -2326,13 +2433,8 @@ TPtr deep_copy(TSourceAst& source_ast, TDestAst& dest_ast, TPtr ptr) {
                            dest_ast, reserved_space,
                            optionally_movable_arr | std::views::transform(rec_copy))
                     .pointer();
-            }
-            // else return array_t(dest_ast, optionally_movable_arr |
-            // std::views::transform(rec_copy))
-            //     .pointer();
-            else
-                return array_t(dest_ast,
-                               std::ranges::transform_view(optionally_movable_arr, rec_copy))
+            } else
+                return array_t(dest_ast, optionally_movable_arr | std::views::transform(rec_copy))
                     .pointer();
         }
     }();
@@ -2340,10 +2442,10 @@ TPtr deep_copy(TSourceAst& source_ast, TDestAst& dest_ast, TPtr ptr) {
     return res;
 }
 
-template <bool TMoveStrings = false, concepts::is_ast TAst, concepts::is_ast_ptr TPtr>
+template <bool TMoveStrings = false, concepts::is_ast TAst, concepts::is_node_ptr TPtr>
 TPtr shallow_copy(TAst& ast, TPtr ptr) {
     TPtr res = [&] {
-        if constexpr (concepts::is_ast_variant_ptr<TPtr>) {
+        if constexpr (concepts::is_variant_ptr<TPtr>) {
             return ast.visit(ptr)([&](auto obj) {
                 using obj_t = decltype(obj);
                 static constexpr size_t argcount = std::tuple_size_v<obj_t>;
@@ -2361,7 +2463,7 @@ TPtr shallow_copy(TAst& ast, TPtr ptr) {
                     return std::ranges::subrange(std::make_move_iterator(obj.begin()),
                                                  std::make_move_iterator(obj.end()));
                 else
-                    return const_cast<const array_t>(obj);
+                    return static_cast<const array_t>(obj);
             };
             return array_t(ast, make_optionally_movable(arr)).pointer();
         }
@@ -2370,9 +2472,75 @@ TPtr shallow_copy(TAst& ast, TPtr ptr) {
     return res;
 }
 
+/**************************/
+/* AST method definitions */
+/**************************/
+
 template <concepts::detail::default_constructible... TAnnotations>
     requires(detail::pairwise_different_v<TAnnotations...>)
-template <concepts::is_ast_ptr TPtr>
+template <class TAnnot, concepts::is_node_ptr TPtr>
+    requires(std::same_as<TAnnot, TAnnotations> || ...)
+inline TAnnot& AST<TAnnotations...>::annotation(TPtr ptr)
+    requires(sizeof...(TAnnotations) > 0)
+{
+    return std::get<std::vector<TAnnot>>(annots)[detail::NodePtr_privates::Index(ptr)];
+}
+
+template <concepts::detail::default_constructible... TAnnotations>
+    requires(detail::pairwise_different_v<TAnnotations...>)
+template <class TAnnot, concepts::is_node_ptr TPtr>
+    requires(std::same_as<TAnnot, TAnnotations> || ...)
+inline const TAnnot& AST<TAnnotations...>::annotation(TPtr ptr) const
+    requires(sizeof...(TAnnotations) > 0)
+{
+    return std::get<std::vector<TAnnot>>(annots)[detail::NodePtr_privates::Index(ptr)];
+}
+
+template <concepts::detail::default_constructible... TAnnotations>
+    requires(detail::pairwise_different_v<TAnnotations...>)
+template <concepts::is_label TLabel, concepts::is_label... TLs>
+    requires(concepts::detail::same_as_any_of<TLabel, TLs...> && sizeof...(TLs) > 1)
+inline TLabel AST<TAnnotations...>::unchecked_get(NodePtr<TLs...> ptr) {
+    return detail::AnyAstNode_privates::create_label<TLabel>(*this,
+                                                             detail::NodePtr_privates::Index(ptr));
+}
+
+template <concepts::detail::default_constructible... TAnnotations>
+    requires(detail::pairwise_different_v<TAnnotations...>)
+template <concepts::is_label TLabel, concepts::is_label... TLs>
+    requires(concepts::detail::same_as_any_of<TLabel, TLs...>)
+inline std::optional<TLabel> AST<TAnnotations...>::checked_get(NodePtr<TLs...> ptr) {
+    if constexpr (sizeof...(TLs) == 1)
+        return get(ptr);
+    else {
+        uint32_t index = detail::NodePtr_privates::Index(ptr);
+        static constexpr int NeedTag = detail::pack_find_v<TLabel, TLs...>;
+        if (NeedTag != -1 && (int)tree[index].info == NeedTag)
+            return {detail::AnyAstNode_privates::create_label<TLabel>(*this, index)};
+        else
+            return {};
+    }
+}
+
+template <concepts::detail::default_constructible... TAnnotations>
+    requires(detail::pairwise_different_v<TAnnotations...>)
+template <concepts::is_label TLabel>
+inline TLabel AST<TAnnotations...>::get(NodePtr<TLabel> ptr) {
+    return detail::AnyAstNode_privates::create_label<TLabel>(*this,
+                                                             detail::NodePtr_privates::Index(ptr));
+}
+
+template <concepts::detail::default_constructible... TAnnotations>
+    requires(detail::pairwise_different_v<TAnnotations...>)
+template <concepts::is_array TArray>
+inline TArray AST<TAnnotations...>::get(NodePtr<TArray> ptr) {
+    return detail::AnyAstNode_privates::create_array<TArray>(*this,
+                                                             detail::NodePtr_privates::Index(ptr));
+}
+
+template <concepts::detail::default_constructible... TAnnotations>
+    requires(detail::pairwise_different_v<TAnnotations...>)
+template <concepts::is_node_ptr TPtr>
 inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) & {
     AST res_ast;
     auto res_ptr = deep_copy<DFSOrder::PreOrder, false>(*this, res_ast, root);
@@ -2381,10 +2549,62 @@ inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr
 
 template <concepts::detail::default_constructible... TAnnotations>
     requires(detail::pairwise_different_v<TAnnotations...>)
-template <concepts::is_ast_ptr TPtr>
+template <concepts::is_node_ptr TPtr>
 inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr root) && {
     AST res_ast;
     auto res_ptr = deep_copy<DFSOrder::PreOrder, true>(*this, res_ast, root);
+    return {std::move(res_ast), res_ptr};
+}
+
+/*****************************/
+/* ASTRef method definitions */
+/*****************************/
+
+template <class... TAnnotations>
+template <class TAnnot, concepts::is_node_ptr TPtr>
+    requires(std::same_as<TAnnot, TAnnotations> || ...)
+inline TAnnot& ASTRef<TAnnotations...>::annotation(TPtr ptr) const
+    requires(sizeof...(TAnnotations) > 0)
+{
+    return (*std::get<std::vector<TAnnot>*>(annots))[detail::NodePtr_privates::Index(ptr)];
+}
+
+template <class... TAnnotations>
+template <concepts::is_label TLabel, concepts::is_label... TLs>
+    requires(concepts::detail::same_as_any_of<TLabel, TLs...> && sizeof...(TLs) > 1)
+inline TLabel ASTRef<TAnnotations...>::unchecked_get(NodePtr<TLs...> ptr) const {
+    return detail::AnyAstNode_privates::create_label<TLabel>(const_cast<ASTRef&>(*this),
+                                                             detail::NodePtr_privates::Index(ptr));
+}
+
+template <class... TAnnotations>
+template <concepts::is_label TLabel, concepts::is_label... TLs>
+    requires(concepts::detail::same_as_any_of<TLabel, TLs...>)
+inline std::optional<TLabel> ASTRef<TAnnotations...>::checked_get(NodePtr<TLs...> ptr) const {
+    if constexpr (sizeof...(TLs) == 1)
+        return get(ptr);
+    else {
+        uint32_t index = detail::NodePtr_privates::Index(ptr);
+        static constexpr int NeedTag = detail::pack_find_v<TLabel, TLs...>;
+        if (NeedTag != -1 && (int)(*tree)[index].info == NeedTag)
+            return {detail::AnyAstNode_privates::create_label<TLabel>(*this, index)};
+        else
+            return {};
+    }
+}
+
+template <class... TAnnotations>
+template <concepts::is_label TLabel>
+inline TLabel ASTRef<TAnnotations...>::get(NodePtr<TLabel> ptr) const {
+    return detail::AnyAstNode_privates::create_label<TLabel>(const_cast<ASTRef&>(*this),
+                                                             detail::NodePtr_privates::Index(ptr));
+}
+
+template <class... TAnnotations>
+template <bool MoveStrings, concepts::is_node_ptr TPtr>
+inline std::pair<AST<TAnnotations...>, TPtr> ASTRef<TAnnotations...>::preorder(TPtr root) const {
+    AST res_ast;
+    auto res_ptr = deep_copy<DFSOrder::PreOrder, false>(*this, res_ast, root);
     return {std::move(res_ast), res_ptr};
 }
 
@@ -2394,10 +2614,10 @@ inline std::pair<AST<TAnnotations...>, TPtr> AST<TAnnotations...>::preorder(TPtr
 
 namespace std {
 
-template <ast::lib::concepts::is_ast_label TLabel>
+template <ast::lib::concepts::is_label TLabel>
 struct tuple_size<TLabel>
     : public integral_constant<size_t, ast::lib::detail::label_tuple_size<TLabel>::value> {};
-template <size_t I, ast::lib::concepts::is_ast_label TLabel>
+template <size_t I, ast::lib::concepts::is_label TLabel>
 struct tuple_element<I, TLabel> {
     using type = decltype(std::declval<TLabel>().template get<I>());
 };
